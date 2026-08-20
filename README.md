@@ -1,13 +1,13 @@
 # mknitro
 launcher developer
 - Dom
-boss
+ boss
 - humbleking
-developer
+ developer
 - humbleking
 - bsl
 - Dom
-textures
+ textures
 - tintin
 - humbleking
 - bsl
