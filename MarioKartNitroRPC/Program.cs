@@ -4,10 +4,10 @@ using DiscordRPC.Logging;
 class Program
 {
     // YOUR DISCORD APPLICATION ID
-    const string APPLICATION_ID = "PUT_YOUR_APPLICATION_ID_HERE";
+    const string APPLICATION_ID = "1540841269553795112";
 
     // EXACT KEY OF YOUR DISCORD LARGE IMAGE
-    const string IMAGE_KEY = "mario_kart_nitro";
+    const string IMAGE_KEY = "mariokart_nitro";
 
     static DiscordRpcClient client;
 
