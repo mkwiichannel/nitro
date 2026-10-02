@@ -4,7 +4,7 @@
   "theme": {
     "season": "Raveyard",
     "logo_url": "",
-    "banner_url": "",
+    "banner_url": "https://github.com/mkwiichannel/nitro/blob/main/banner.png",
     "default_mii_url": "https://github.com/mkwiichannel/nitro/blob/main/starter.mii",
     "ui_html_url": " ",
     "ui_version": "3"
