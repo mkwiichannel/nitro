@@ -3,10 +3,10 @@
   "content_url": "https://drive.google.com/file/d/1dFDYKKFY2CaoIvH_l_Zoays_N1P4EpGk/view?usp=sharing",
   "theme": {
     "season": "Raveyard",
-    "logo_url": "https://raw.githubusercontent.com/mkwiichannel/nitro/main/assets/logo.png",
-    "banner_url": "https://raw.githubusercontent.com/mkwiichannel/nitro/main/assets/season1_banner.png",
-    "default_mii_url": "https://raw.githubusercontent.com/mkwiichannel/nitro/main/assets/starter.mii",
-    "ui_html_url": "https://raw.githubusercontent.com/mkwiichannel/nitro/main/assets/index.html",
+    "logo_url": "",
+    "banner_url": "",
+    "default_mii_url": "",
+    "ui_html_url": " ",
     "ui_version": "2"
   }
 }
