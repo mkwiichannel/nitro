@@ -1,0 +1,2570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mario Kart Nitro — Launcher</title>
+<link rel="icon" type="image/png" href="Untitleddesign6.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0512;
+    --bg-2: #120a1f;
+    --panel: #1a0e2b;
+    --panel-hover: #241340;
+    --border: rgba(180,90,255,0.18);
+    --border-strong: rgba(255,140,20,0.4);
+    --blue: #ff8c00;
+    --blue-2: #ffa513;
+    --cyan: #c084fc;
+    --text: #e8eefb;
+    --text-dim: #8b9ab3;
+    --text-faint: #56637c;
+    --green: #ff8c00;
+    --spooky-green: #39d97a;
+    --radius: 14px;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Rajdhani', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 500px at 12% -10%, rgba(255,140,0,0.16), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(192,132,252,0.08), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  ::selection{ background:rgba(255,140,0,0.35); }
+
+  /* ---------- Titlebar ---------- */
+  .titlebar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 26px;
+    border-bottom:1px solid var(--border);
+    background:rgba(6,10,19,0.7);
+    backdrop-filter:blur(14px);
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:8px;
+    object-fit:contain; display:block;
+    filter:drop-shadow(0 0 10px rgba(255,140,0,0.45));
+  }
+  .brand-text{ font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:0.5px; }
+  .brand-text span{ color:var(--cyan); }
+  .ver-pill{
+    font-family:var(--mono); font-size:10.5px; color:var(--text-dim);
+    border:1px solid var(--border); border-radius:20px; padding:3px 9px; margin-left:8px;
+  }
+  nav.tabs{ display:flex; gap:4px; background:var(--bg-2); padding:4px; border-radius:11px; border:1px solid var(--border); }
+  nav.tabs button{
+    all:unset; cursor:pointer; font-family:var(--body); font-weight:500; font-size:13px;
+    color:var(--text-dim); padding:8px 16px; border-radius:8px; transition:all .15s ease;
+  }
+  nav.tabs button:hover{ color:var(--text); }
+  nav.tabs button.active{ background:var(--panel-hover); color:var(--text); box-shadow:inset 0 0 0 1px var(--border-strong); }
+  .status-dot{ display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+  .status-dot i{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; }
+
+  /* ---------- Layout ---------- */
+  main{ flex:1; padding:40px 26px 60px; max-width:1180px; margin:0 auto; width:100%; }
+  .screen{ display:none; animation:rise .35s ease; }
+  .screen.active{ display:block; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none; } }
+
+  /* ---------- Home ---------- */
+  .hero{
+    position:relative; overflow:hidden;
+    border:1px solid var(--border); border-radius:22px;
+    padding:64px 48px 52px;
+    background:
+      radial-gradient(700px 300px at 15% 0%, rgba(255,140,0,0.20), transparent 65%),
+      linear-gradient(180deg, #1a0e2b, #0a0512);
+    margin-bottom:28px;
+  }
+  .hero-badge{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--mono); font-size:11px; letter-spacing:0.6px; color:var(--cyan);
+    border:1px solid var(--border-strong); border-radius:20px; padding:6px 13px;
+    background:rgba(255,140,0,0.08); margin-bottom:26px;
+  }
+  .hero-title{
+    font-family:var(--display); font-weight:700; line-height:0.92; margin:0;
+    font-size:clamp(46px, 7vw, 84px); letter-spacing:0.5px;
+  }
+  .hero-title .l1{ color:#fff; display:block; }
+  .hero-title .l2{
+    display:block; margin-top:-4px;
+    background:linear-gradient(100deg, var(--blue-2), var(--cyan) 60%, #a9ecff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 26px rgba(192,132,252,0.35));
+  }
+  .hero-banner{
+    border-radius:16px; overflow:hidden; margin-bottom:24px;
+    border:1px solid var(--border-strong);
+    box-shadow:0 14px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,140,0,0.06);
+  }
+  .hero-banner img{ display:block; width:100%; height:auto; }
+  .stripe{ height:2px; width:150px; margin:26px 0 22px; border-radius:2px;
+    background:linear-gradient(90deg, var(--blue), var(--spooky-green), var(--cyan), transparent); }
+  .hero-sub{ color:var(--text-dim); font-size:15px; max-width:480px; margin:0 0 30px; line-height:1.55; }
+
+  .hero-actions{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .btn{
+    all:unset; cursor:pointer; font-family:var(--body); font-weight:600; font-size:13.5px;
+    padding:13px 26px; border-radius:11px; transition:all .15s ease; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-primary{
+    background:linear-gradient(100deg, var(--blue), #ffb347);
+    color:#1a0800; box-shadow:0 6px 22px rgba(255,140,0,0.35);
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 8px 26px rgba(255,140,0,0.5); }
+  .btn-update{
+    background:linear-gradient(100deg, #ff9d3b, #ffb547);
+    color:#1a0f00; box-shadow:0 6px 22px rgba(255,157,59,0.35);
+  }
+  .btn-update:hover{ transform:translateY(-1px); box-shadow:0 8px 26px rgba(255,157,59,0.5); }
+  .btn-ghost{
+    background:rgba(255,255,255,0.02); color:var(--text); border:1px solid var(--border-strong) !important;
+  }
+  .btn-ghost:hover{ background:var(--panel-hover); border-color:var(--blue) !important; }
+  .btn-danger-ghost{ background:rgba(255,255,255,0.02); color:var(--text-dim); border:1px solid var(--border) !important; }
+  .btn-danger-ghost:hover{ color:#ff8f8f; border-color:rgba(255,110,110,0.4) !important; }
+
+  .path-bar{
+    margin-top:30px; display:flex; gap:22px; flex-wrap:wrap;
+    font-family:var(--mono); font-size:11.5px; color:var(--text-faint);
+    border-top:1px solid var(--border); padding-top:18px;
+  }
+  .path-bar b{ color:var(--text-dim); font-weight:500; }
+
+  /* ---------- Stat / feature grids ---------- */
+  .grid-4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:14px; }
+  .grid-4.cards{ margin-bottom:28px; }
+  @media(max-width:900px){ .grid-4{ grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; background:var(--panel);
+  }
+  .stat .label{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:10px; }
+  .stat .val{ font-family:var(--mono); font-size:20px; color:var(--text); }
+  .stat .val.dim{ color:var(--text-faint); }
+
+  .card{
+    display:flex; flex-direction:column; align-items:flex-start;
+    width:100%; box-sizing:border-box;
+    border:1px solid var(--border); border-radius:var(--radius); padding:22px; background:var(--panel);
+    cursor:pointer; transition:all .18s ease; text-align:left;
+  }
+  .card:hover{ background:var(--panel-hover); border-color:var(--border-strong); transform:translateY(-2px); }
+  .card .icon{
+    width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,140,0,0.12); border:1px solid var(--border-strong); margin-bottom:14px;
+    color:var(--cyan); font-size:16px; flex-shrink:0;
+  }
+  .card h3{ margin:0 0 6px; font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:0.3px; width:100%; }
+  .card p{ margin:0; font-size:12.5px; color:var(--text-dim); line-height:1.5; width:100%; }
+
+  /* ---------- Section header (sub pages) ---------- */
+  .sub-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:30px; flex-wrap:wrap; }
+  .sub-head h2{ font-family:var(--display); font-weight:700; font-size:30px; margin:0; letter-spacing:0.3px; }
+  .sub-head .tag{ color:var(--text-faint); font-size:13px; }
+  .back{
+    all:unset; cursor:pointer; font-family:var(--body); font-weight:600; font-size:12.5px;
+    color:var(--cyan); border:1px solid var(--border-strong); border-radius:9px; padding:8px 14px;
+    background:rgba(255,140,0,0.06);
+  }
+  .back:hover{ background:rgba(255,140,0,0.14); }
+
+  /* ---------- Forms ---------- */
+  .panel{ border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); padding:30px; }
+  .field{ margin-bottom:22px; max-width:560px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-dim); margin-bottom:9px; }
+  .field .row{ display:flex; gap:10px; }
+  .field input[type=text], .field select, .field textarea{
+    flex:1; width:100%; background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+    font-family:var(--mono); font-size:12.5px; padding:12px 14px; border-radius:9px; outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--blue); }
+  .field .hint{ font-size:11px; color:var(--text-faint); margin-top:7px; font-family:var(--body); }
+  .field-inline{ display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:var(--text-dim); }
+  .field-inline input{ accent-color:var(--blue); width:15px; height:15px; }
+  .browse{
+    all:unset; cursor:pointer; font-family:var(--body); font-weight:600; font-size:12px; color:var(--cyan);
+    border:1px solid var(--border-strong); border-radius:9px; padding:0 16px; white-space:nowrap;
+  }
+  .browse:hover{ background:rgba(255,140,0,0.1); }
+
+  /* ---------- Mods toolbar ---------- */
+  .toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .empty-panel{
+    border:1px dashed var(--border-strong); border-radius:var(--radius); padding:60px 20px; text-align:center;
+    color:var(--text-faint); font-size:13px; background:rgba(255,255,255,0.012);
+  }
+  .empty-panel b{ display:block; color:var(--text-dim); font-family:var(--display); font-weight:600; font-size:15px; margin-bottom:6px; }
+
+  .toast{
+    position:fixed; bottom:22px; right:22px; max-width:480px; z-index:50; white-space:pre-wrap;
+    background:var(--panel-hover); border:1px solid var(--border-strong); border-radius:11px;
+    padding:14px 18px; font-size:13px; color:var(--text); box-shadow:0 12px 30px rgba(0,0,0,0.5);
+    opacity:0; transform:translateY(8px); transition:all .2s ease; pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:none; }
+  .toast.error{ border-color:rgba(255,110,110,0.4); color:#ffb3b3; }
+
+  /* ---------- Credits ---------- */
+  .credit-block{ margin-bottom:26px; max-width:640px; }
+  .credit-block h4{ font-family:var(--display); font-weight:700; font-size:15.5px; color:var(--cyan); margin:0 0 8px; letter-spacing:0.3px; }
+  .credit-block p{ margin:0; font-size:13.5px; color:var(--text-dim); line-height:1.6; }
+  .credit-block a{ color:var(--blue-2); text-decoration:none; }
+  .credit-block a:hover{ text-decoration:underline; }
+  .credit-block code{ font-family:var(--mono); font-size:12px; background:var(--bg-2); padding:1px 6px; border-radius:5px; border:1px solid var(--border); }
+
+  footer{ text-align:center; padding:20px; color:var(--text-faint); font-size:11px; font-family:var(--mono); border-top:1px solid var(--border); }
+
+  .credits-footnote{
+    margin-top:34px; padding-top:10px; border-top:1px solid var(--border);
+    font-size:8.5px; color:rgba(86,99,124,0.55); font-family:var(--mono); line-height:1.6;
+    letter-spacing:0.1px;
+  }
+  .credits-footnote a{ color:rgba(86,99,124,0.55); text-decoration:none; }
+  .credits-footnote a:hover{ color:var(--text-faint); }
+
+
+  /* ---------- REAL MII SYSTEM ---------- */
+  .mii-shell{display:grid;grid-template-columns:300px minmax(420px,1fr);gap:18px}
+  .mii-list,.mii-editor,.mii-preview{background:rgba(10,13,22,.82);border:1px solid var(--border);border-radius:14px}
+  .mii-list{padding:14px;max-height:610px;overflow:auto}
+  .mii-list-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .mii-list-head strong{font-family:var(--display);font-size:15px}
+  .mii-slot{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border:1px solid transparent;background:transparent;color:var(--text);border-radius:9px;cursor:pointer;margin-bottom:5px}
+  .mii-slot:hover{background:var(--panel-hover);border-color:var(--border)}
+  .mii-slot.active{background:rgba(255,107,0,.10);border-color:rgba(255,140,0,.42)}
+  .mii-slot .num{width:26px;color:var(--text-faint);font-family:var(--mono);font-size:11px}
+  .mii-slot .name{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mii-empty{color:var(--text-faint);font-style:italic}
+  .mii-main{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:16px}
+  .mii-preview{min-height:420px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 40%,rgba(255,120,0,.12),transparent 50%),#080b12}
+  .mii-preview img{width:100%;height:100%;max-height:520px;object-fit:contain}
+  .mii-preview .loading{color:var(--text-faint);font-family:var(--mono);font-size:12px}
+  .mii-editor{padding:16px;max-height:610px;overflow:auto}
+  .mii-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .mii-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px}
+  .mii-tab{border:1px solid var(--border);background:var(--bg-2);color:var(--text-dim);border-radius:7px;padding:7px 10px;font-size:11px;cursor:pointer}
+  .mii-tab.active{color:#fff;border-color:rgba(255,140,0,.5);background:rgba(255,107,0,.12)}
+  .mii-section{display:none}.mii-section.active{display:block}
+  .mii-field{margin-bottom:13px}.mii-field label{display:flex;justify-content:space-between;color:var(--text-dim);font-size:11px;margin-bottom:6px}
+  .mii-field input[type=text],.mii-field select{width:100%;box-sizing:border-box;background:#0b0e16;border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px}
+  .mii-field input[type=range]{width:100%}
+  .mii-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mii-status{font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:10px;min-height:14px}
+  @media(max-width:900px){.mii-shell,.mii-main{grid-template-columns:1fr}.mii-list{max-height:240px}}
+
+  /* ---------- Halloween shaders ---------- */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%),
+      radial-gradient(600px 300px at 15% 100%, rgba(120,40,200,0.18), transparent 70%),
+      radial-gradient(600px 300px at 85% 100%, rgba(255,120,0,0.12), transparent 70%);
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background:
+      radial-gradient(400px 200px at 20% 30%, rgba(160,60,255,0.08), transparent 70%),
+      radial-gradient(500px 250px at 75% 60%, rgba(255,140,0,0.06), transparent 70%);
+    animation: fogdrift 18s ease-in-out infinite alternate;
+  }
+  @keyframes fogdrift{
+    from{ transform: translate(-2%, 0) scale(1); }
+    to{ transform: translate(2%, -1%) scale(1.06); }
+  }
+  main, .titlebar, footer{ position:relative; z-index:1; }
+  .hero-banner{ box-shadow:0 14px 50px rgba(0,0,0,0.65), 0 0 40px rgba(255,120,0,0.18), 0 0 60px rgba(150,50,255,0.14) !important; }
+  .btn-primary{ background:linear-gradient(100deg, #ff6b00, #ffa513) !important; box-shadow:0 6px 24px rgba(255,120,0,0.45) !important; }
+  .btn-primary:hover{ box-shadow:0 8px 30px rgba(255,140,0,0.65) !important; }
+  .card:hover, .stat:hover{ box-shadow:0 0 24px rgba(160,60,255,0.2); }
+
+  /* ---------- Window-edge glow pulse ---------- */
+  .window-glow{
+    position:fixed; inset:0; z-index:30; pointer-events:none;
+    border:2px solid transparent;
+    box-shadow:
+      inset 0 0 22px 0 rgba(255,140,0,0.22),
+      inset 0 0 46px 0 rgba(160,60,255,0.16),
+      0 0 18px 0 rgba(255,140,0,0.10);
+    animation: winglow 4.5s ease-in-out infinite alternate;
+  }
+  @keyframes winglow{
+    from{
+      box-shadow:
+        inset 0 0 16px 0 rgba(255,140,0,0.16),
+        inset 0 0 34px 0 rgba(160,60,255,0.12),
+        0 0 12px 0 rgba(255,140,0,0.08);
+      border-color: rgba(255,140,0,0.18);
+    }
+    to{
+      box-shadow:
+        inset 0 0 30px 0 rgba(255,140,0,0.32),
+        inset 0 0 60px 0 rgba(160,60,255,0.24),
+        inset 0 0 40px 0 rgba(57,217,122,0.14),
+        0 0 26px 0 rgba(160,60,255,0.16);
+      border-color: rgba(160,60,255,0.4);
+    }
+  }
+</style>
+</head>
+<body>
+<div class="window-glow"></div>
+<div class="titlebar">
+<div class="brand"><img class="brand-mark" id="brandLogo" src="Untitleddesign6.png" alt="Mario Kart Nitro" />
+<div class="brand-text">MARIO KART <span>NITRO</span></div>
+<div class="ver-pill" id="verPill">v1.0.0</div>
+</div>
+<nav class="tabs" id="tabs"><button data-target="home" class="active" id="navHome">Home</button> <button data-target="mii" id="navMii">Mii</button> <button data-target="credits" id="navCredits">Credits</button> <button data-target="settings" id="navSettings">Settings</button></nav>
+</div>
+<main>
+<section class="screen active" id="home">
+<div class="hero">
+<div class="hero-banner"><img src="Untitleddesign_season1.png" alt="Mario Kart Nitro — Season 1" /></div>
+<div class="stripe"></div>
+<p class="hero-sub"> </p>
+<div class="hero-actions"><button class="btn btn-primary" id="heroPlayBtn"><span id="heroPlayLabel">▶ Play</span></button> <button class="btn btn-ghost" onclick="go('settings')" id="heroSettingsBtn">Settings</button> <button class="btn btn-ghost" onclick="go('credits')" id="heroCreditsBtn">Credits</button> <button class="btn btn-danger-ghost" id="exitBtn">Exit</button></div>
+<div class="path-bar" id="playNotice"><span><b> </b></span></div>
+</div>
+<div class="grid-4">
+<div class="stat">
+<div class="label" id="labelDolphin">Dolphin</div>
+<div class="val dim" id="statDolphin">NOT SET</div>
+</div>
+<div class="stat">
+<div class="label" id="labelIso">MKW ISO</div>
+<div class="val dim" id="statIso">NOT SET</div>
+</div>
+<div class="stat">
+<div class="label" id="labelActiveMod">Active Mod</div>
+<div class="val dim" id="statMod">NONE</div>
+</div>
+<div class="stat">
+<div class="label" id="labelLauncher">Launcher</div>
+<div class="val" id="statVersion">v1.0.0</div>
+</div>
+</div>
+<div class="grid-4 cards">
+<button class="card" id="cardPlayBtn">
+<div class="icon">▶</div>
+<h3 id="cardPlayTitle">Play</h3>
+<p id="cardPlayDesc">Launch Mario Kart Wii through Dolphin with your active mod.</p>
+</button>
+<button class="card" onclick="go('settings')">
+<div class="icon">⚙</div>
+<h3 id="cardSettingsTitle">Settings</h3>
+<p id="cardSettingsDesc">Configure paths, resolution, language and updates.</p>
+</button>
+<button class="card" onclick="go('credits')">
+<div class="icon">i</div>
+<h3 id="cardCreditsTitle">Credits</h3>
+<p id="cardCreditsDesc">License, community links, and what Nitro is built on.</p>
+</button>
+</div>
+</section>
+
+<!-- REAL MII SYSTEM -->
+<section class="screen" id="mii">
+<div class="sub-head"><button class="back" onclick="go('home')" id="miiBackBtn">← Home</button>
+<h2 id="miiTitle">Mii</h2><div class="tag">Nitro Mii library · syncs on Play</div></div>
+<div class="mii-shell">
+  <aside class="mii-list">
+    <div class="mii-list-head"><strong>Miis</strong><button class="browse" id="miiRefreshBtn">Refresh</button></div>
+    <div id="miiList"><div class="empty-panel">Set your Dolphin path in Settings first.</div></div>
+  </aside>
+  <div class="mii-main">
+    <div class="mii-preview" id="miiPreview"><div class="loading">Select a Mii</div></div>
+    <div class="mii-editor">
+      <div class="mii-toolbar">
+        <button class="btn btn-primary" id="miiSaveBtn">Save to Nitro</button>
+        <button class="btn btn-ghost" id="miiNewBtn">New Mii</button>
+        <button class="btn btn-ghost" id="miiRefresh2Btn">Reload</button>
+        <button class="btn btn-ghost" id="miiRendererBtn">Set FFL renderer</button>
+      </div>
+      <div class="mii-tabs">
+        <button class="mii-tab active" data-miitab="identity">Identity</button>
+        <button class="mii-tab" data-miitab="face">Face</button>
+        <button class="mii-tab" data-miitab="hair">Hair</button>
+        <button class="mii-tab" data-miitab="eyes">Eyes</button>
+        <button class="mii-tab" data-miitab="brows">Brows</button>
+        <button class="mii-tab" data-miitab="nose">Nose</button>
+        <button class="mii-tab" data-miitab="mouth">Mouth</button>
+        <button class="mii-tab" data-miitab="extras">Extras</button>
+      </div>
+      <div class="mii-section active" id="miitab-identity">
+        <div class="mii-field"><label>Name</label><input type="text" id="miiName" maxlength="10"></div>
+        <div class="mii-row2">
+          <div class="mii-field"><label>Gender</label><select id="miiGender"><option value="0">Male</option><option value="1">Female</option></select></div>
+          <div class="mii-field"><label>Favorite color</label><select id="miiFav"></select></div>
+        </div>
+        <div class="mii-row2"><div class="mii-field"><label>Height <span id="miiHeightV">64</span></label><input id="miiHeight" type="range" min="0" max="127"></div>
+        <div class="mii-field"><label>Weight <span id="miiWeightV">64</span></label><input id="miiWeight" type="range" min="0" max="127"></div></div>
+      </div>
+      <div class="mii-section" id="miitab-face">
+        <div class="mii-row2"><div class="mii-field"><label>Face shape</label><select id="miiFaceShape"></select></div><div class="mii-field"><label>Skin</label><select id="miiSkin"></select></div></div>
+        <div class="mii-field"><label>Facial feature</label><select id="miiFeature"></select></div>
+      </div>
+      <div class="mii-section" id="miitab-hair">
+        <div class="mii-field"><label>Hair style ID <span id="hairV">1</span></label><input id="miiHair" type="range" min="0" max="127"></div>
+        <div class="mii-field"><label>Hair color</label><select id="miiHairColor"></select></div>
+        <div class="field-inline"><input type="checkbox" id="miiHairFlip"> <span>Flip hair</span></div>
+      </div>
+      <div class="mii-section" id="miitab-eyes">
+        <div class="mii-field"><label>Eye style ID <span id="eyeTypeV">0</span></label><input id="miiEyeType" type="range" min="0" max="63"></div>
+        <div class="mii-row2"><div class="mii-field"><label>Color</label><select id="miiEyeColor"></select></div><div class="mii-field"><label>Rotation</label><input id="miiEyeRot" type="range" min="0" max="7"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label>Vertical</label><input id="miiEyeVert" type="range" min="0" max="31"></div><div class="mii-field"><label>Size</label><input id="miiEyeSize" type="range" min="0" max="7"></div></div>
+        <div class="mii-field"><label>Spacing</label><input id="miiEyeSpace" type="range" min="0" max="15"></div>
+      </div>
+      <div class="mii-section" id="miitab-brows">
+        <div class="mii-field"><label>Eyebrow style ID</label><input id="miiBrowType" type="range" min="0" max="31"></div>
+        <div class="mii-row2"><div class="mii-field"><label>Color</label><select id="miiBrowColor"></select></div><div class="mii-field"><label>Rotation</label><input id="miiBrowRot" type="range" min="0" max="15"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label>Size</label><input id="miiBrowSize" type="range" min="0" max="15"></div><div class="mii-field"><label>Vertical</label><input id="miiBrowVert" type="range" min="0" max="31"></div></div>
+        <div class="mii-field"><label>Spacing</label><input id="miiBrowSpace" type="range" min="0" max="15"></div>
+      </div>
+      <div class="mii-section" id="miitab-nose">
+        <div class="mii-row2"><div class="mii-field"><label>Nose type</label><select id="miiNoseType"></select></div><div class="mii-field"><label>Size</label><input id="miiNoseSize" type="range" min="0" max="15"></div></div>
+        <div class="mii-field"><label>Vertical</label><input id="miiNoseVert" type="range" min="0" max="31"></div>
+      </div>
+      <div class="mii-section" id="miitab-mouth">
+        <div class="mii-row2"><div class="mii-field"><label>Mouth style ID</label><input id="miiLipType" type="range" min="0" max="31"></div><div class="mii-field"><label>Color</label><select id="miiLipColor"></select></div></div>
+        <div class="mii-row2"><div class="mii-field"><label>Size</label><input id="miiLipSize" type="range" min="0" max="15"></div><div class="mii-field"><label>Vertical</label><input id="miiLipVert" type="range" min="0" max="31"></div></div>
+      </div>
+      <div class="mii-section" id="miitab-extras">
+        <div class="mii-row2"><div class="mii-field"><label>Glasses</label><select id="miiGlassType"></select></div><div class="mii-field"><label>Glasses color</label><select id="miiGlassColor"></select></div></div>
+        <div class="mii-row2"><div class="mii-field"><label>Mustache</label><select id="miiMustache"></select></div><div class="mii-field"><label>Beard</label><select id="miiBeard"></select></div></div>
+        <div class="mii-field"><label>Creator name</label><input type="text" id="miiCreator" maxlength="10"></div>
+        <div class="mii-status" id="miiStatus"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- SETTINGS -->
+<section class="screen" id="settings">
+<div class="sub-head"><button class="back" onclick="go('home')" id="settingsBackBtn">← Home</button>
+<h2 id="settingsTitle">Settings</h2>
+<div class="tag" id="settingsTag">Launcher configuration</div>
+</div>
+<div class="panel">
+<div class="field"><label id="labelDolphinPath">Dolphin path</label>
+<div class="row"><input type="text" placeholder="Not set" id="settingsDolphinPath" readonly /><button class="browse" id="browseDolphinBtn"><span class="browseLabel">Browse</span></button></div>
+</div>
+<div class="field"><label id="labelIsoPath">MKW ISO path</label>
+<div class="row"><input type="text" placeholder="Not set" id="settingsIsoPath" readonly /><button class="browse" id="browseIsoBtn"><span class="browseLabel">Browse</span></button></div>
+</div>
+<div class="field"><label id="labelModDir">Mod directory</label>
+<div class="row"><input type="text" id="settingsModDir" readonly /><button class="browse" id="browseModDirBtn"><span class="browseLabel">Browse</span></button></div>
+</div>
+<div class="field"><label id="labelResolution">Resolution</label> <input type="text" id="settingsResolution" value="1920x1080" style="max-width: 220px;" /></div>
+<div class="field"><label id="labelLanguage">Language</label><select id="settingsLanguage" style="max-width: 220px;">
+<option value="en">English</option>
+<option value="de">Deutsch</option>
+<option value="fr">Français</option>
+<option value="es">Español</option>
+<option value="it">Italiano</option>
+<option value="pt">Português</option>
+<option value="nl">Nederlands</option>
+<option value="pl">Polski</option>
+<option value="tr">Türkçe</option>
+<option value="ru">Русский</option>
+<option value="ja">日本語</option>
+<option value="ko">한국어</option>
+<option value="zh">中文</option>
+<option value="ar">العربية</option>
+<option value="sv">Svenska</option>
+<option value="fi">Suomi</option>
+</select></div>
+<div class="field-inline"><input type="checkbox" id="settingsFullscreen" /> <span id="labelFullscreen">Fullscreen</span></div>
+<div class="field-inline"><input type="checkbox" id="settingsAutoUpdate" checked="checked" /> <span id="labelAutoUpdate">Automatic updates</span></div>
+<button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button>
+<div style="margin-top:26px; padding-top:22px; border-top:1px solid var(--border);">
+<div style="font-size:12px; color:var(--text-faint); margin-bottom:12px;" id="troubleshootingLabel">Troubleshooting</div>
+<button class="btn btn-ghost" id="diagnosticsBtn"><span id="diagnosticsBtnLabel">Show diagnostics</span></button> <button class="btn btn-ghost" id="dolphinLogBtn"><span id="dolphinLogBtnLabel">Show Dolphin's log</span></button>
+<div id="diagnosticsPanel" style="display:none; margin-top:16px;">
+  <pre id="diagnosticsText" style="white-space:pre-wrap; font-family:var(--mono); font-size:11.5px; color:var(--text-dim); margin:0; max-height:400px; overflow:auto; background:var(--bg-2); border:1px solid var(--border); border-radius:9px; padding:14px;"></pre>
+</div>
+</div>
+</div>
+</section>
+<!-- CREDITS -->
+<section class="screen" id="credits">
+<div class="sub-head"><button class="back" onclick="go('home')" id="creditsBackBtn">← Home</button>
+<h2 id="creditsTitle">Credits</h2>
+<div class="tag"></div>
+</div>
+<div class="panel">
+<div class="credit-block">
+<h4 id="creditsAppName">Mario Kart Nitro</h4>
+<p id="creditsAppDesc">Custom launcher — version 1.0.0</p>
+</div>
+<div class="credit-block">
+<h4 id="creditsLicenseTitle">License</h4>
+<p id="creditsLicenseText">GNU GPL v3.0 — preserve and include the license when redistributing derivative work.</p>
+</div>
+<div class="credit-block">
+<h4 id="creditsCommunityTitle">Community</h4>
+<p><a href="#" onclick="window.pywebview.api.open_discord(); return false;">discord.gg/wbU8vw8vJq</a></p>
+</div>
+<div class="credit-block">
+<h4 id="creditsProfileTitle">Nitro profile</h4>
+<p id="creditsProfileText">Included <code>MKnitro.xml</code> / <code>Config.pul</code> / <code>Loader.pul</code> / <code>Code.pul</code> are bundled as the current launcher profile inputs.</p>
+</div>
+<button class="btn btn-primary" id="openDiscordBtn"> <svg width="16" height="16" viewbox="0 0 127.14 96.36" fill="currentColor" style="flex-shrink: 0;"> <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"></path> </svg> <span id="openDiscordLabel">Open Discord</span> </button>
+<div class="credits-footnote" id="creditsFootnote">Built on WheelWizard by Patchzy &amp; WantToBeeMe — <a href="#">github.com/TeamWheelWizard/WheelWizard</a></div>
+</div>
+</section>
+<!-- SETUP / WELCOME -->
+<section class="screen" id="setup">
+<div class="sub-head"><button class="back" onclick="go('home')">← Home</button>
+<h2 id="setupTitle">Setup</h2>
+<div class="tag"></div>
+</div>
+<div class="panel">
+<p id="setupIntro" style="margin: 0 0 26px; color: var(--text-dim); font-size: 14px;">Set your paths once. Nitro will remember them.</p>
+<div class="field"><label id="labelSetupDolphin">Dolphin installation</label>
+<div class="row"><input type="text" placeholder="Not set" id="setupDolphinPath" readonly /><button class="browse" id="setupBrowseDolphinBtn"><span class="browseLabel">Browse</span></button></div>
+</div>
+<div class="field"><label id="labelSetupIso">Mario Kart Wii ISO</label>
+<div class="row"><input type="text" placeholder="Not set" id="setupIsoPath" readonly /><button class="browse" id="setupBrowseIsoBtn"><span class="browseLabel">Browse</span></button></div>
+</div>
+<button class="btn btn-primary" id="setupContinueBtn"><span id="setupContinueLabel">Continue</span></button></div>
+</section>
+</main><footer> </footer>
+<script src="mii_renderer/fflModule.cjs"></script>
+<script>
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.target===id));
+    window.scrollTo({top:0, behavior:'smooth'});
+    if(id==='mii') refreshMiis();
+  }
+  document.querySelectorAll('#tabs button').forEach(b=>{
+    b.addEventListener('click', ()=>go(b.dataset.target));
+  });
+
+
+// ---------- REAL MII SYSTEM ----------
+let miiRecords = [];
+let selectedMii = -1;
+let currentMii = null;
+let miiNew = false;
+let currentStageId = null;
+
+let MIIJS = null;
+let fflResourceBytes = null;
+let fflResourceState = null;
+
+const MII_ENUMS = {
+  fav: ["Red","Orange","Yellow","Light Green","Green","Blue","Light Blue","Pink","Purple","Brown","White","Black"],
+  face: ["Teardrop","Circle","Oval","Glob","Pointy","Bread","Octagon","Square"],
+  skin: ["Light","Yellow","Red","Pink","Dark Brown","Brown"],
+  feature: ["None","Cheeks","Cheek and Eyes","Freckles","Baggy Eyes","Chad","Tired","Chin","Eye Shadow","Beard","Mouth Corners","Wrinkles"],
+  hair: ["Black","Brown","Red","Light Red","Grey","Light Brown","Blonde","Gold"],
+  eyes: ["Black","Grey","Brown","Gold","Blue","Green"],
+  nose: ["Default","Semi Circle","Dots","V Shape","Full Nose","U Shape","Flat C","Upside Down C","Squidward","Arrow Down","Flat","Tunnel"],
+  lip: ["Skin","Red","Pink"],
+  glass: ["None","Square","Rectangle","Circle","Oval","Misses","Sad Sunglasses","Sunglasses","Cool Sunglasses"],
+  glassColor: ["Grey","Dark Gold","Red","Blue","Gold","White"],
+  mustache: ["None","Normal","Lines","Droopy"],
+  beard: ["None","Thin","Wide","Widest"]
+};
+
+/* =========================================================
+   MII COLOR / FEATURE SPACE CONVERSION
+
+   MiiJS's public get()/set() API is NOT in raw Wii index space for
+   several fields. Internally every Mii (whatever console it came
+   from) is unified into one modern/Switch-era canonical numbering,
+   and encode() always runs a backPort() pass that maps that
+   canonical numbering DOWN into the legacy Wii indices actually
+   stored in RFL_DB.dat (decode runs the reverse, forwardPort()).
+
+   For hairColor/eyebrowColor/faceColor the canonical and legacy
+   Wii indices happen to line up 1:1 over the small range this
+   editor exposes, so no conversion is needed for SAVING those.
+   But eyeColor/mouthColor/glassesColor/faceFeature are NOT 1:1 --
+   setting "eyeColor" to a plain 0-5 dropdown index and saving was
+   silently writing a completely different, wrong color, because
+   the library was reinterpreting that 0-5 as a canonical index and
+   remapping it. These tables were reverse-engineered by sweeping
+   the real library and reading the raw bytes it actually wrote,
+   not guessed -- each entry is the smallest canonical value that
+   makes encode() produce the exact Wii index on the left.
+
+   DISPLAY (loading an existing Mii) needs the opposite direction:
+   take the canonical value currently decoded and run it back
+   through the SAME lookup tables the library itself uses
+   (backTables.switch.*) to see what Wii index it currently means --
+   that's also why some already-created Miis showed colors as
+   blank/wrong before: the dropdown was shown the raw canonical
+   number untranslated, which is very often out of its 0-5/0-7
+   range entirely. */
+const MII_EYE_COLOR_WII_TO_CANON = {0:0,1:4,2:1,3:5,4:12,5:13};
+const MII_MOUTH_COLOR_WII_TO_CANON = {0:0,1:15,2:21};
+const MII_GLASS_COLOR_WII_TO_CANON = {0:0,1:1,2:15,3:12,4:7,5:4};
+/* wii faceFeature index -> [canonical faceFeature, canonical makeup] */
+const MII_FACE_FEATURE_WII_TO_CANON = {
+  0:[0,0], 1:[0,1], 2:[0,3], 3:[0,9], 4:[5,0], 5:[2,0],
+  6:[1,0], 7:[6,0], 8:[8,0], 9:[0,10], 10:[9,0], 11:[11,0]
+};
+
+/* canonical -> wii lookup tables, copied from the real library's own
+   backTables.switch.* (these are what encode()/decode() use internally) */
+const MII_EYES_COLORS_TABLE = [0,2,2,2,1,3,2,3,0,1,2,3,4,5,2,2,4,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,4,4,4,4,4,4,4,1,0,4,4,4,4,4,4,4,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,3,3,3,3,3,3,3,3,2,2,3,3,3,3,2,2,2,2,2,1,1,1,1,1,1];
+const MII_MOUTHS_COLORS_TABLE = [4,4,4,4,4,4,4,3,4,4,4,4,4,4,4,1,4,4,4,0,1,2,3,4,4,2,3,3,4,4,4,4,1,4,4,2,3,3,4,4,4,4,4,4,4,3,3,3,4,4,4,3,3,3,3,3,4,4,4,4,4,3,3,3,3,4,4,4,4,3,3,3,3,3,3,4,4,3,3,3,3,3,3,4,3,3,3,3,3,4,0,3,3,3,3,4,3,3,3,3];
+const MII_GLASSES_COLORS_TABLE = [0,1,1,1,5,1,1,4,0,5,1,1,3,5,1,2,3,4,5,4,2,2,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,5,5,5,5,5,5,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5];
+const MII_HAIRS_COLORS_TABLE = [0,1,2,3,4,5,6,7,0,4,3,5,4,4,6,2,0,6,4,3,2,2,7,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,0,0,4,4,4,4,4,4,0,0,0,4,4,4,4,4,4,5,5,5,4,4,4,4,4,4,4,5,7,5,7,7,7,7,7,6,7,7,7,7,7,3,7,7,7,7,7,0,4,4,4,4];
+const MII_FACE_COLORS_TABLE = [0,1,2,3,4,5,0,1,5,5];
+/* wii faceFeature index -> canonical [feature, makeup] (see above);
+   also used in reverse (canonical -> wii) by replaying the library's
+   own feature/makeup resolution rules -- see miiFeatureCanonicalToWii() */
+const MII_FEATURES_3DS_TABLE = ['0','6',5,6,'6',4,7,7,8,10,'6',11];
+const MII_MAKEUPS_3DS_TABLE = [0,1,1,2,1,1,2,2,2,3,9,9];
+
+function miiColorCanonicalToWii(table, canonical, clampMax) {
+  let v = table[canonical] ?? 0;
+  if (clampMax !== undefined && v > clampMax) v = 0;
+  return v;
+}
+
+function miiColorWiiToCanonical(map, wiiIndex) {
+  return map[wiiIndex] ?? 0;
+}
+
+function miiFeatureCanonicalToWii(canonicalFeature, canonicalMakeup) {
+  const legacyFeature = MII_FEATURES_3DS_TABLE[canonicalFeature];
+  const legacyMakeup = MII_MAKEUPS_3DS_TABLE[canonicalMakeup];
+  const numericLegacyFeature = Number(legacyFeature);
+  const numericLegacyMakeup = Number(legacyMakeup);
+  if (typeof legacyFeature !== "string") {
+    return Number.isFinite(numericLegacyFeature) ? numericLegacyFeature : 0;
+  } else if (numericLegacyMakeup > 0) {
+    return numericLegacyMakeup;
+  }
+  return Number.isFinite(numericLegacyFeature) ? numericLegacyFeature : 0;
+}
+
+function fillSelect(id, arr) {
+  const e = document.getElementById(id);
+  if (!e) return;
+
+  e.innerHTML = arr
+    .map((x, i) => `<option value="${i}">${x}</option>`)
+    .join("");
+}
+
+[
+  "miiFav",
+  "miiFaceShape",
+  "miiSkin",
+  "miiFeature",
+  "miiHairColor",
+  "miiEyeColor",
+  "miiBrowColor",
+  "miiNoseType",
+  "miiLipColor",
+  "miiGlassType",
+  "miiGlassColor",
+  "miiMustache",
+  "miiBeard"
+].forEach((id, i) => {
+  const map = [
+    "fav",
+    "face",
+    "skin",
+    "feature",
+    "hair",
+    "eyes",
+    "hair", /* eyebrow color reuses the hair-color palette, like the
+                real Mii Maker -- this <select> had never been
+                populated at all before, so it always showed empty */
+    "nose",
+    "lip",
+    "glass",
+    "glassColor",
+    "mustache",
+    "beard"
+  ];
+
+  fillSelect(id, MII_ENUMS[map[i]]);
+});
+
+document.querySelectorAll(".mii-tab").forEach(button => {
+  button.onclick = () => {
+    document.querySelectorAll(".mii-tab")
+      .forEach(x => x.classList.remove("active"));
+
+    document.querySelectorAll(".mii-section")
+      .forEach(x => x.classList.remove("active"));
+
+    button.classList.add("active");
+
+    const section = document.getElementById(
+      "miitab-" + button.dataset.miitab
+    );
+
+    if (section) {
+      section.classList.add("active");
+    }
+  };
+});
+
+function miiSet(id, value) {
+  const e = document.getElementById(id);
+  if (e) e.value = value;
+}
+
+function miiVal(id) {
+  const e = document.getElementById(id);
+  return e ? e.value : 0;
+}
+
+function setMiiStatus(message, error = false) {
+  const e = document.getElementById("miiStatus");
+  if (!e) return;
+
+  e.textContent = message;
+  e.style.color = error ? "#ff8f8f" : "";
+}
+
+function bytesToB64(u8) {
+  let s = "";
+
+  for (let i = 0; i < u8.length; i++) {
+    s += String.fromCharCode(u8[i]);
+  }
+
+  return btoa(s);
+}
+
+function b64ToBytes(s) {
+  const x = atob(s);
+  const u = new Uint8Array(x.length);
+
+  for (let i = 0; i < x.length; i++) {
+    u[i] = x.charCodeAt(i);
+  }
+
+  return u;
+}
+
+/* =========================================================
+   MIIJS
+   ========================================================= */
+
+async function ensureMiiJS() {
+  if (!MIIJS) {
+    /* Bundled locally in mii_renderer/ -- the plain npm package does NOT
+       ship fflModule.cjs/.wasm (only the GitHub release's browserBuild.zip
+       does), so a CDN import of the npm package can never render. */
+    MIIJS = await import(
+      "./mii_renderer/miijs.browser.esm.js"
+    );
+  }
+
+  return MIIJS;
+}
+
+/* =========================================================
+   FFL RESOURCE
+   ========================================================= */
+
+function b64ToUint8(b64) {
+  if (!b64) {
+    throw new Error("Backend returned an empty FFL resource.");
+  }
+
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+
+  for (let i = 0; i < bin.length; i++) {
+    out[i] = bin.charCodeAt(i);
+  }
+
+  return out;
+}
+
+async function ensureFFLResource() {
+  if (fflResourceBytes instanceof Uint8Array &&
+      fflResourceBytes.length > 0) {
+    return fflResourceBytes;
+  }
+
+  if (!window.pywebview || !window.pywebview.api) {
+    throw new Error("pywebview API is not ready.");
+  }
+
+  setMiiStatus("Loading FFL renderer resource...");
+
+  let result;
+
+  try {
+    result = await window.pywebview.api.get_ffl_resource();
+  } catch (e) {
+    throw new Error(
+      "get_ffl_resource() failed: " + (e?.message || e)
+    );
+  }
+
+  fflResourceState = result;
+
+  if (!result) {
+    throw new Error(
+      "get_ffl_resource() returned nothing."
+    );
+  }
+
+  if (!result.ok) {
+    throw new Error(
+      result.error ||
+      result.message ||
+      "FFLResHigh.dat could not be loaded."
+    );
+  }
+
+  if (!result.data) {
+    throw new Error(
+      "The backend found the FFL resource but returned no data."
+    );
+  }
+
+  try {
+    fflResourceBytes = b64ToUint8(result.data);
+  } catch (e) {
+    throw new Error(
+      "FFL resource data is not valid Base64: " +
+      (e?.message || e)
+    );
+  }
+
+  if (!fflResourceBytes.length) {
+    throw new Error(
+      "FFL resource contains zero bytes."
+    );
+  }
+
+  setMiiStatus(
+    "FFL renderer loaded (" +
+    fflResourceBytes.length.toLocaleString() +
+    " bytes)."
+  );
+
+  return fflResourceBytes;
+}
+
+/* =========================================================
+   FFL RESOURCE SELECTOR
+   ========================================================= */
+
+async function configureFFL() {
+  if (!window.pywebview || !window.pywebview.api) {
+    setMiiStatus("Native bridge not ready.", true);
+    return;
+  }
+
+  try {
+    const result =
+      await window.pywebview.api.pick_ffl_resource();
+
+    if (result?.ok) {
+      fflResourceBytes = null;
+
+      fflResourceState = result;
+
+      setMiiStatus(
+        "FFL renderer resource selected: " +
+        (result.path || "resource")
+      );
+
+      toast("Real Mii renderer resource installed.");
+
+      if (currentMii) {
+        await renderCurrentMii();
+      }
+
+      return;
+    }
+
+    if (result?.cancelled) {
+      setMiiStatus("FFL resource selection cancelled.");
+      return;
+    }
+
+    setMiiStatus(
+      result?.error ||
+      result?.message ||
+      "Could not select FFL resource.",
+      true
+    );
+
+  } catch (e) {
+    setMiiStatus(
+      "FFL resource selection failed: " +
+      (e?.message || e),
+      true
+    );
+  }
+}
+
+/* =========================================================
+   MII LIST
+   ========================================================= */
+
+async function refreshMiis() {
+  if (!window.pywebview || !window.pywebview.api) {
+    setMiiStatus("Native bridge not ready.", true);
+    return;
+  }
+
+  try {
+    const r = await window.pywebview.api.get_miis();
+
+    if (!r || !r.ok) {
+      const list = document.getElementById("miiList");
+
+      if (list) {
+        list.innerHTML =
+          '<div class="empty-panel">' +
+          (r?.error || "Dolphin path not set.") +
+          "</div>";
+      }
+
+      return;
+    }
+
+    miiRecords = r.miis || [];
+
+    const list = document.getElementById("miiList");
+
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    miiRecords.forEach((m, i) => {
+      const button = document.createElement("button");
+
+      button.className =
+        "mii-slot" +
+        (i === selectedMii ? " active" : "");
+
+      const tag =
+        m.origin === "Dolphin"
+          ? "Dolphin"
+          : "Nitro";
+
+      button.innerHTML =
+        `<span class="num">${String(i + 1).padStart(2, "0")}</span>` +
+        `<span class="name">` +
+        `${m.name || "Unnamed Mii"} ` +
+        `<small style="opacity:.55;font-size:10px">${tag}</small>` +
+        `</span>`;
+
+      button.onclick = () => selectMii(i);
+
+      list.appendChild(button);
+    });
+
+    if (!miiRecords.length) {
+      list.innerHTML =
+        '<div class="empty-panel">' +
+        "<b>No Miis yet</b>" +
+        "Press New Mii to create one in Nitro. " +
+        "Saved Miis sync to Dolphin when you press Play." +
+        "</div>";
+    } else if (
+      selectedMii < 0 &&
+      !miiNew &&
+      !currentStageId
+    ) {
+      await selectMii(0);
+    }
+
+    try {
+      const rr =
+        await window.pywebview.api.get_ffl_resource_state();
+
+      fflResourceState = rr;
+
+      if (rr?.ok) {
+        setMiiStatus(
+          (r.message || "Miis loaded.") +
+          " · FFL renderer ready."
+        );
+      } else {
+        setMiiStatus(
+          (r.message || "Miis loaded.") +
+          " · FFL renderer resource not selected."
+        );
+      }
+
+    } catch (_) {
+      setMiiStatus(
+        r.message ||
+        "Miis loaded. FFL renderer resource not selected."
+      );
+    }
+
+  } catch (e) {
+    setMiiStatus(
+      "Could not load Miis: " +
+      (e?.message || e),
+      true
+    );
+  }
+}
+
+/* =========================================================
+   SELECT MII
+   ========================================================= */
+
+async function selectMii(i) {
+  if (!miiRecords[i]) return;
+
+  selectedMii = i;
+  miiNew = false;
+  currentStageId =
+    miiRecords[i]?.stage_id || null;
+
+  document.querySelectorAll(".mii-slot")
+    .forEach((x, n) => {
+      x.classList.toggle("active", n === i);
+    });
+
+  try {
+    const { Mii } = await ensureMiiJS();
+
+    currentMii = await Mii.create(
+      b64ToBytes(miiRecords[i].data)
+    );
+
+    loadMiiForm(currentMii);
+
+    await renderCurrentMii();
+
+    setMiiStatus(
+      miiRecords[i].origin === "Nitro library"
+        ? "Loaded staged Mii from Nitro. Changes sync to Dolphin on Play."
+        : "Loaded slot " +
+          (Number(miiRecords[i].slot) + 1) +
+          " from Dolphin. Save changes to Nitro; they sync on Play."
+    );
+
+  } catch (e) {
+    setMiiStatus(
+      "Mii decode failed: " +
+      (e?.message || e),
+      true
+    );
+  }
+}
+
+/* =========================================================
+   LOAD FORM
+   ========================================================= */
+
+function loadMiiForm(m) {
+  /* Friendly short names from MiiJS's own `mappings` table -- NOT the
+     hand-guessed nested paths this editor used before (face.shape,
+     face.skinColor, hair.flip, eyes.vertical, eyes.spacing,
+     eyebrows.vertical, eyebrows.spacing, nose.vertical, mouth.vertical,
+     facialHair.mustacheType, facialHair.beardType, meta.gender -- none
+     of those paths exist in the real library, so every one of those
+     fields was silently reading as its fallback default and silently
+     discarding any edit instead of ever reaching the encoded Mii). */
+  const g = path => m.get(path);
+
+  miiSet("miiName", g("name") || "");
+  miiSet("miiCreator", g("creatorName") || "");
+
+  miiSet("miiGender", g("gender") ?? 0);
+  miiSet("miiFav", g("favoriteColor") ?? 0);
+
+  miiSet("miiHeight", g("height") ?? 64);
+  miiSet("miiWeight", g("weight") ?? 64);
+
+  miiSet("miiFaceShape", g("faceType") ?? 0);
+  miiSet(
+    "miiSkin",
+    miiColorCanonicalToWii(MII_FACE_COLORS_TABLE, g("faceColor") ?? 0)
+  );
+  miiSet(
+    "miiFeature",
+    miiFeatureCanonicalToWii(g("faceFeature") ?? 0, g("makeup") ?? 0)
+  );
+
+  miiSet("miiHair", g("hairType") ?? 0);
+  miiSet(
+    "miiHairColor",
+    miiColorCanonicalToWii(MII_HAIRS_COLORS_TABLE, g("hairColor") ?? 0)
+  );
+
+  const hairFlip =
+    document.getElementById("miiHairFlip");
+
+  if (hairFlip) {
+    hairFlip.checked = !!g("hairFlipped");
+  }
+
+  miiSet("miiEyeType", g("eyeType") ?? 0);
+  miiSet(
+    "miiEyeColor",
+    miiColorCanonicalToWii(MII_EYES_COLORS_TABLE, g("eyeColor") ?? 0)
+  );
+  miiSet("miiEyeRot", g("eyeRotation") ?? 0);
+  miiSet("miiEyeVert", g("eyeYPosition") ?? 0);
+  miiSet("miiEyeSize", g("eyeSize") ?? 0);
+  miiSet("miiEyeSpace", g("eyeDistanceApart") ?? 0);
+
+  miiSet("miiBrowType", g("eyebrowType") ?? 0);
+  miiSet(
+    "miiBrowColor",
+    miiColorCanonicalToWii(MII_HAIRS_COLORS_TABLE, g("eyebrowColor") ?? 0)
+  );
+  miiSet("miiBrowRot", g("eyebrowRotation") ?? 0);
+  miiSet("miiBrowSize", g("eyebrowSize") ?? 0);
+  miiSet("miiBrowVert", g("eyebrowYPosition") ?? 0);
+  miiSet("miiBrowSpace", g("eyebrowDistanceApart") ?? 0);
+
+  miiSet("miiNoseType", g("noseType") ?? 0);
+  miiSet("miiNoseSize", g("noseSize") ?? 0);
+  miiSet("miiNoseVert", g("noseYPosition") ?? 0);
+
+  miiSet("miiLipType", g("mouthType") ?? 0);
+  miiSet(
+    "miiLipColor",
+    miiColorCanonicalToWii(MII_MOUTHS_COLORS_TABLE, g("mouthColor") ?? 0, 2)
+  );
+  miiSet("miiLipSize", g("mouthSize") ?? 0);
+  miiSet("miiLipVert", g("mouthYPosition") ?? 0);
+
+  miiSet("miiGlassType", g("glassesType") ?? 0);
+  miiSet(
+    "miiGlassColor",
+    miiColorCanonicalToWii(MII_GLASSES_COLORS_TABLE, g("glassesColor") ?? 0)
+  );
+
+  miiSet(
+    "miiMustache",
+    g("mustacheType") ?? 0
+  );
+
+  miiSet(
+    "miiBeard",
+    g("beardType") ?? 0
+  );
+
+  const heightV =
+    document.getElementById("miiHeightV");
+
+  const weightV =
+    document.getElementById("miiWeightV");
+
+  const hairV =
+    document.getElementById("hairV");
+
+  const eyeTypeV =
+    document.getElementById("eyeTypeV");
+
+  if (heightV)
+    heightV.textContent = miiVal("miiHeight");
+
+  if (weightV)
+    weightV.textContent = miiVal("miiWeight");
+
+  if (hairV)
+    hairV.textContent = miiVal("miiHair");
+
+  if (eyeTypeV)
+    eyeTypeV.textContent = miiVal("miiEyeType");
+}
+
+/* =========================================================
+   APPLY FORM
+   ========================================================= */
+
+async function applyMiiForm() {
+  if (!currentMii) return;
+
+  const set = (path, value) => {
+    const n = Number(value);
+
+    currentMii.set(
+      path,
+      Number.isNaN(n) ? value : n
+    );
+  };
+
+  /* Friendly short names from MiiJS's own `mappings` table -- see the
+     comment on loadMiiForm() for why this changed. */
+  set("name", miiVal("miiName"));
+  set("creatorName", miiVal("miiCreator"));
+  set("gender", miiVal("miiGender"));
+
+  set("favoriteColor", miiVal("miiFav"));
+  set("height", miiVal("miiHeight"));
+  set("weight", miiVal("miiWeight"));
+
+  set("faceType", miiVal("miiFaceShape"));
+  set("faceColor", miiVal("miiSkin")); /* identity in this range, verified */
+
+  {
+    const [canonFeature, canonMakeup] =
+      MII_FACE_FEATURE_WII_TO_CANON[Number(miiVal("miiFeature"))] || [0, 0];
+    set("faceFeature", canonFeature);
+    set("makeup", canonMakeup);
+  }
+
+  set("hairType", miiVal("miiHair"));
+  set("hairColor", miiVal("miiHairColor")); /* identity in this range, verified */
+
+  const hairFlip =
+    document.getElementById("miiHairFlip");
+
+  if (hairFlip) {
+    set("hairFlipped", hairFlip.checked);
+  }
+
+  set("eyeType", miiVal("miiEyeType"));
+  set(
+    "eyeColor",
+    miiColorWiiToCanonical(MII_EYE_COLOR_WII_TO_CANON, Number(miiVal("miiEyeColor")))
+  );
+  set("eyeRotation", miiVal("miiEyeRot"));
+  set("eyeYPosition", miiVal("miiEyeVert"));
+  set("eyeSize", miiVal("miiEyeSize"));
+  set("eyeDistanceApart", miiVal("miiEyeSpace"));
+
+  set("eyebrowType", miiVal("miiBrowType"));
+  set("eyebrowColor", miiVal("miiBrowColor")); /* identity in this range, verified */
+  set("eyebrowRotation", miiVal("miiBrowRot"));
+  set("eyebrowSize", miiVal("miiBrowSize"));
+  set("eyebrowYPosition", miiVal("miiBrowVert"));
+  set("eyebrowDistanceApart", miiVal("miiBrowSpace"));
+
+  set("noseType", miiVal("miiNoseType"));
+  set("noseSize", miiVal("miiNoseSize"));
+  set("noseYPosition", miiVal("miiNoseVert"));
+
+  set("mouthType", miiVal("miiLipType"));
+  set(
+    "mouthColor",
+    miiColorWiiToCanonical(MII_MOUTH_COLOR_WII_TO_CANON, Number(miiVal("miiLipColor")))
+  );
+  set("mouthSize", miiVal("miiLipSize"));
+  set("mouthYPosition", miiVal("miiLipVert"));
+
+  set("glassesType", miiVal("miiGlassType"));
+  set(
+    "glassesColor",
+    miiColorWiiToCanonical(MII_GLASS_COLOR_WII_TO_CANON, Number(miiVal("miiGlassColor")))
+  );
+
+  set("mustacheType", miiVal("miiMustache"));
+  set("beardType", miiVal("miiBeard"));
+}
+
+/* =========================================================
+   REAL MII RENDERER
+   ========================================================= */
+
+async function renderCurrentMii() {
+  if (!currentMii) return;
+
+  const preview =
+    document.getElementById("miiPreview");
+
+  if (!preview) return;
+
+  preview.innerHTML =
+    '<div class="loading">Rendering real Mii…</div>';
+
+  try {
+    const resource =
+      await ensureFFLResource();
+
+    if (!(resource instanceof Uint8Array) ||
+        resource.length === 0) {
+      throw new Error(
+        "FFL resource contains no data."
+      );
+    }
+
+    const png = await currentMii.render(false, {
+      size: 512,
+      fflResBuffer: resource
+    });
+
+    if (!png) {
+      throw new Error(
+        "MiiJS returned no rendered image."
+      );
+    }
+
+    const blob =
+      new Blob([png], {
+        type: "image/png"
+      });
+
+    const url =
+      URL.createObjectURL(blob);
+
+    preview.innerHTML = "";
+
+    const img =
+      document.createElement("img");
+
+    img.src = url;
+    img.alt = "Nintendo Mii";
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+    };
+
+    preview.appendChild(img);
+
+    setMiiStatus(
+      "Real Nintendo-style Mii rendered."
+    );
+
+  } catch (e) {
+    console.error(
+      "Mii renderer error:",
+      e
+    );
+
+    preview.innerHTML =
+      '<div class="loading">' +
+      "<b>Real Mii renderer failed</b><br><br>" +
+      "Error:<br>" +
+      `<small>${String(e?.message || e)}</small>` +
+      "<br><br>" +
+      "Use <b>Set FFL renderer</b> to select " +
+      "FFLResHigh.dat / AFLResHigh.dat." +
+      "</div>";
+
+    setMiiStatus(
+      "FFL renderer error: " +
+      (e?.message || e),
+      true
+    );
+  }
+}
+
+/* =========================================================
+   SAVE MII
+   ========================================================= */
+
+async function saveMii() {
+  if (
+    !currentMii ||
+    (selectedMii < 0 && !miiNew)
+  ) {
+    return;
+  }
+
+  try {
+    await applyMiiForm();
+
+    const { MiiFormats } =
+      await ensureMiiJS();
+
+    const raw =
+      await currentMii.encode(
+        MiiFormats.RCD
+      );
+
+    const targetSlot =
+      miiNew
+        ? -1
+        : (miiRecords[selectedMii]?.slot ?? -1);
+
+    const stageId =
+      currentStageId ||
+      (
+        !miiNew
+          ? (miiRecords[selectedMii]?.stage_id || null)
+          : null
+      );
+
+    const result =
+      await window.pywebview.api.save_mii(
+        targetSlot,
+        bytesToB64(raw),
+        stageId
+      );
+
+    if (!result?.ok) {
+      throw new Error(
+        result?.error ||
+        "The native Mii save operation failed."
+      );
+    }
+
+    currentStageId =
+      result.stage_id;
+
+    miiNew = false;
+
+    await refreshMiis();
+
+    const index =
+      miiRecords.findIndex(
+        x => x.stage_id === currentStageId
+      );
+
+    if (index >= 0) {
+      await selectMii(index);
+    }
+
+    setMiiStatus(
+      "Saved in Nitro. It will be written into the selected Dolphin database when you press Play."
+    );
+
+    toast(
+      "Mii saved to Nitro. It syncs to Dolphin when you press Play."
+    );
+
+  } catch (e) {
+    console.error(
+      "Mii save failed:",
+      e
+    );
+
+    toast(
+      "Mii save failed: " +
+      (e?.message || e),
+      true,
+      true
+    );
+
+    setMiiStatus(
+      "Mii save failed: " +
+      (e?.message || e),
+      true
+    );
+  }
+}
+
+/* =========================================================
+   NEW MII
+   ========================================================= */
+
+/* A minimally-valid, blank 74-byte Wii Mii record (MiiFormats.RCD).
+   MiiJS has no zero-argument "blank Mii" constructor -- `new Mii()` /
+   `Mii.create()` both require real decodable Mii data, so a verified
+   all-zero record (with the one field libjs enforces a minimum on,
+   eyebrowYPosition, nudged up to 3) is used as the starting point for
+   a new Mii instead. */
+const BLANK_MII_RCD_B64 =
+  "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+async function newMii() {
+  try {
+    const { Mii } =
+      await ensureMiiJS();
+
+    /* Make sure manifest.json's theme block has actually been checked
+       at least once before deciding there's no remote starter Mii --
+       the startup check on pywebviewready is fire-and-forget and may
+       still be in flight (or may have been offline at the time), so
+       this is the guarantee that New Mii doesn't fall back to the
+       built-in blank Mii just because of timing. Cheap either way:
+       it's a tiny manifest.json fetch, not the mod content. */
+    try {
+      await window.pywebview.api.check_for_update();
+    } catch (e) {
+      console.warn("Couldn't re-check for a remote default Mii:", e);
+    }
+
+    /* Prefer a remotely-pushed starter Mii (manifest.json's
+       theme.default_mii_url) when one has been configured -- that's
+       what every "New Mii" click should build from once it's set up.
+       Falls back to the built-in blank Mii if none is configured, or
+       if the native call/download/decode fails for any reason, so
+       New Mii always keeps working either way. */
+    let usedRemoteTemplate = false;
+
+    try {
+      const remote =
+        await window.pywebview.api.get_default_mii();
+
+      if (remote?.ok && remote.data) {
+        currentMii = await Mii.create(
+          b64ToBytes(remote.data)
+        );
+        usedRemoteTemplate = true;
+      }
+    } catch (e) {
+      console.warn(
+        "Remote default Mii unavailable, using the built-in blank Mii:",
+        e
+      );
+    }
+
+    if (!usedRemoteTemplate) {
+      currentMii = await Mii.create(
+        b64ToBytes(BLANK_MII_RCD_B64)
+      );
+
+      currentMii.set("name", "Mii");
+      currentMii.set("creatorName", "Mii");
+      currentMii.set("height", 64);
+      currentMii.set("weight", 64);
+      currentMii.set("mingle", true);
+      currentMii.set("copying", true);
+    }
+
+    miiNew = true;
+    selectedMii = -1;
+    currentStageId = null;
+
+    document.querySelectorAll(".mii-slot")
+      .forEach(x =>
+        x.classList.remove("active")
+      );
+
+    loadMiiForm(currentMii);
+
+    await renderCurrentMii();
+
+    setMiiStatus(
+      "New Mii ready. Save it to Nitro; Play will sync it into Dolphin."
+    );
+
+    toast(
+      "New Mii created. Press Save to Nitro, then Play to sync it to Dolphin."
+    );
+
+  } catch (e) {
+    console.error(
+      "Could not create Mii:",
+      e
+    );
+
+    setMiiStatus(
+      "Could not create Mii: " +
+      (e?.message || e),
+      true
+    );
+
+    toast(
+      "Could not create Mii: " +
+      (e?.message || e),
+      true,
+      true
+    );
+  }
+}
+
+/* =========================================================
+   LIVE RENDERING
+   ========================================================= */
+
+let renderTimer = 0;
+
+document.addEventListener("input", event => {
+  if (!event.target.closest("#mii")) {
+    return;
+  }
+
+  clearTimeout(renderTimer);
+
+  renderTimer = setTimeout(async () => {
+    if (!currentMii) return;
+
+    try {
+      await applyMiiForm();
+      await renderCurrentMii();
+    } catch (e) {
+      console.error(
+        "Live Mii render failed:",
+        e
+      );
+    }
+  }, 250);
+});
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+const miiRefreshBtn =
+  document.getElementById("miiRefreshBtn");
+
+if (miiRefreshBtn) {
+  miiRefreshBtn.onclick =
+    refreshMiis;
+}
+
+const miiRefresh2Btn =
+  document.getElementById("miiRefresh2Btn");
+
+if (miiRefresh2Btn) {
+  miiRefresh2Btn.onclick =
+    refreshMiis;
+}
+
+const miiSaveBtn =
+  document.getElementById("miiSaveBtn");
+
+if (miiSaveBtn) {
+  miiSaveBtn.onclick =
+    saveMii;
+}
+
+const miiNewBtn =
+  document.getElementById("miiNewBtn");
+
+if (miiNewBtn) {
+  miiNewBtn.onclick =
+    newMii;
+}
+
+const miiRendererBtn =
+  document.getElementById("miiRendererBtn");
+
+if (miiRendererBtn) {
+  miiRendererBtn.onclick =
+    configureFFL;
+}
+
+/* ---------- toast ---------- */
+
+let toastEl = null;
+
+function toast(msg, isError, sticky) {
+  if (!toastEl) {
+    toastEl =
+      document.createElement("div");
+
+    toastEl.className =
+      "toast";
+
+    document.body.appendChild(
+      toastEl
+    );
+  }
+
+  toastEl.textContent = msg;
+
+  toastEl.className =
+    "toast show" +
+    (isError ? " error" : "");
+
+  clearTimeout(
+    toastEl._t
+  );
+
+  if (!sticky) {
+    toastEl._t =
+      setTimeout(() => {
+        toastEl.classList.remove(
+          "show"
+        );
+      }, 12000);
+  }
+}
+
+
+  // ---------- translations ----------
+  const TRANSLATIONS = {
+    en: { navHome:"Home", navCredits:"Credits", navSettings:"Settings",
+      heroSettingsBtn:"Settings", heroCreditsBtn:"Credits", exitBtn:"Exit",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Active Mod", labelLauncher:"Launcher",
+      notSet:"NOT SET", none:"NONE",
+      cardPlayTitle:"Play", cardPlayDesc:"Launch Mario Kart Wii through Dolphin with your active mod.",
+      cardSettingsTitle:"Settings", cardSettingsDesc:"Configure paths, resolution, language and updates.",
+      cardCreditsTitle:"Credits", cardCreditsDesc:"License, community links, and what Nitro is built on.",
+      settingsBackBtn:"← Home", settingsTitle:"Settings", settingsTag:"Launcher configuration",
+      labelDolphinPath:"Dolphin path", labelIsoPath:"MKW ISO path", labelModDir:"Mod directory",
+      labelResolution:"Resolution", labelLanguage:"Language", labelFullscreen:"Fullscreen",
+      labelAutoUpdate:"Automatic updates", saveSettingsLabel:"Save settings", browseLabel:"Browse",
+      troubleshootingLabel:"Troubleshooting", diagnosticsBtnLabel:"Show diagnostics", dolphinLogBtnLabel:"Show Dolphin's log",
+      setupTitle:"Setup", setupIntro:"Set your paths once. Nitro will remember them.",
+      labelSetupDolphin:"Dolphin installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Continue",
+      creditsBackBtn:"← Home", creditsTitle:"Credits",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Custom launcher — version 1.0.0",
+      creditsLicenseTitle:"License",
+      creditsLicenseText:"GNU GPL v3.0 — preserve and include the license when redistributing derivative work.",
+      creditsCommunityTitle:"Community",
+      creditsProfileTitle:"Nitro profile",
+      openDiscordLabel:"Open Discord",
+      creditsProfileText:"Included MKnitro.xml / Config.pul / Loader.pul / Code.pul are bundled as the current launcher profile inputs.",
+      playLabel:"Play",
+      checkingFiles:"Checking mod files...",
+      extracting:"Extracting...",
+      downloadingMod:"Downloading mod",
+      downloadingUpdate:"Downloading update",
+      launching:"Launching...",
+      toastFailedStart:"Failed to start the download.",
+      toastDownloadingFirst:"Downloading the mod for the first time — this can take up to 10 minutes depending on your connection.",
+      toastDownloadingUpdate:"Downloading an update — this can take a few minutes.",
+      toastDontClose:"Please don't close this window.",
+      toastFailedFetch:"Failed to fetch the mod.",
+      toastCouldntCheck:"Couldn't check for updates",
+      toastGotPrefix:"Got v",
+      toastLaunched:"Launched.",
+      toastCouldNotLaunch:"Could not launch.",
+      toastSettingsSaved:"Settings saved." },
+    de: { navHome:"Start", navCredits:"Credits", navSettings:"Einstellungen",
+      heroSettingsBtn:"Einstellungen", heroCreditsBtn:"Credits", exitBtn:"Beenden",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiver Mod", labelLauncher:"Launcher",
+      notSet:"NICHT GESETZT", none:"KEINER",
+      cardPlayTitle:"Spielen", cardPlayDesc:"Starte Mario Kart Wii über Dolphin mit deinem aktiven Mod.",
+      cardSettingsTitle:"Einstellungen", cardSettingsDesc:"Pfade, Auflösung, Sprache und Updates konfigurieren.",
+      cardCreditsTitle:"Credits", cardCreditsDesc:"Lizenz, Community-Links und worauf Nitro basiert.",
+      settingsBackBtn:"← Start", settingsTitle:"Einstellungen", settingsTag:"Launcher-Konfiguration",
+      labelDolphinPath:"Dolphin-Pfad", labelIsoPath:"MKW-ISO-Pfad", labelModDir:"Mod-Verzeichnis",
+      labelResolution:"Auflösung", labelLanguage:"Sprache", labelFullscreen:"Vollbild",
+      labelAutoUpdate:"Automatische Updates", saveSettingsLabel:"Einstellungen speichern", browseLabel:"Durchsuchen",
+      troubleshootingLabel:"Problembehandlung", diagnosticsBtnLabel:"Diagnose anzeigen", dolphinLogBtnLabel:"Dolphin-Log anzeigen",
+      setupTitle:"Einrichtung", setupIntro:"Lege deine Pfade einmal fest. Nitro merkt sie sich.",
+      labelSetupDolphin:"Dolphin-Installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Weiter",
+      creditsBackBtn:"← Start", creditsTitle:"Credits",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Eigener Launcher — Version 1.0.0",
+      creditsLicenseTitle:"Lizenz",
+      creditsLicenseText:"GNU GPL v3.0 — Lizenz bei Weitergabe abgeleiteter Werke beibehalten und beilegen.",
+      creditsCommunityTitle:"Community",
+      creditsProfileTitle:"Nitro-Profil",
+      openDiscordLabel:"Discord öffnen",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul sind als aktuelle Launcher-Profildaten enthalten.",
+      playLabel:"Spielen",
+      checkingFiles:"Mod-Dateien werden geprüft...",
+      extracting:"Wird entpackt...",
+      downloadingMod:"Mod wird heruntergeladen",
+      downloadingUpdate:"Update wird heruntergeladen",
+      launching:"Wird gestartet...",
+      toastFailedStart:"Download konnte nicht gestartet werden.",
+      toastDownloadingFirst:"Der Mod wird zum ersten Mal heruntergeladen — je nach Verbindung kann das bis zu 10 Minuten dauern.",
+      toastDownloadingUpdate:"Update wird heruntergeladen — das kann einige Minuten dauern.",
+      toastDontClose:"Bitte dieses Fenster nicht schließen.",
+      toastFailedFetch:"Mod konnte nicht abgerufen werden.",
+      toastCouldntCheck:"Updates konnten nicht geprüft werden",
+      toastGotPrefix:"Version ",
+      toastLaunched:"Gestartet.",
+      toastCouldNotLaunch:"Konnte nicht gestartet werden.",
+      toastSettingsSaved:"Einstellungen gespeichert." },
+    fr: { navHome:"Accueil", navCredits:"Crédits", navSettings:"Paramètres",
+      heroSettingsBtn:"Paramètres", heroCreditsBtn:"Crédits", exitBtn:"Quitter",
+      labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod actif", labelLauncher:"Launcher",
+      notSet:"NON DÉFINI", none:"AUCUN",
+      cardPlayTitle:"Jouer", cardPlayDesc:"Lancez Mario Kart Wii via Dolphin avec votre mod actif.",
+      cardSettingsTitle:"Paramètres", cardSettingsDesc:"Configurez les chemins, la résolution, la langue et les mises à jour.",
+      cardCreditsTitle:"Crédits", cardCreditsDesc:"Licence, liens communautaires et base de Nitro.",
+      settingsBackBtn:"← Accueil", settingsTitle:"Paramètres", settingsTag:"Configuration du launcher",
+      labelDolphinPath:"Chemin Dolphin", labelIsoPath:"Chemin ISO MKW", labelModDir:"Répertoire des mods",
+      labelResolution:"Résolution", labelLanguage:"Langue", labelFullscreen:"Plein écran",
+      labelAutoUpdate:"Mises à jour automatiques", saveSettingsLabel:"Enregistrer", browseLabel:"Parcourir",
+      troubleshootingLabel:"Dépannage", diagnosticsBtnLabel:"Afficher le diagnostic", dolphinLogBtnLabel:"Afficher le journal Dolphin",
+      setupTitle:"Configuration", setupIntro:"Définissez vos chemins une fois. Nitro s'en souviendra.",
+      labelSetupDolphin:"Installation Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continuer",
+      creditsBackBtn:"← Accueil", creditsTitle:"Crédits",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Launcher personnalisé — version 1.0.0",
+      creditsLicenseTitle:"Licence",
+      creditsLicenseText:"GNU GPL v3.0 — conservez et incluez la licence lors de la redistribution d'un travail dérivé.",
+      creditsCommunityTitle:"Communauté",
+      creditsProfileTitle:"Profil Nitro",
+      openDiscordLabel:"Ouvrir Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul sont inclus comme entrées de profil actuelles du launcher.",
+      playLabel:"Jouer",
+      checkingFiles:"Vérification des fichiers du mod...",
+      extracting:"Extraction...",
+      downloadingMod:"Téléchargement du mod",
+      downloadingUpdate:"Téléchargement de la mise à jour",
+      launching:"Lancement...",
+      toastFailedStart:"Impossible de démarrer le téléchargement.",
+      toastDownloadingFirst:"Téléchargement du mod pour la première fois — cela peut prendre jusqu'à 10 minutes selon votre connexion.",
+      toastDownloadingUpdate:"Téléchargement d'une mise à jour — cela peut prendre quelques minutes.",
+      toastDontClose:"Veuillez ne pas fermer cette fenêtre.",
+      toastFailedFetch:"Impossible de récupérer le mod.",
+      toastCouldntCheck:"Impossible de vérifier les mises à jour",
+      toastGotPrefix:"Version ",
+      toastLaunched:"Lancé.",
+      toastCouldNotLaunch:"Impossible de lancer.",
+      toastSettingsSaved:"Paramètres enregistrés." },
+    es: { navHome:"Inicio", navCredits:"Créditos", navSettings:"Ajustes",
+      heroSettingsBtn:"Ajustes", heroCreditsBtn:"Créditos", exitBtn:"Salir",
+      labelDolphin:"Dolphin", labelIso:"ISO de MKW", labelActiveMod:"Mod activo", labelLauncher:"Launcher",
+      notSet:"NO CONFIGURADO", none:"NINGUNO",
+      cardPlayTitle:"Jugar", cardPlayDesc:"Inicia Mario Kart Wii mediante Dolphin con tu mod activo.",
+      cardSettingsTitle:"Ajustes", cardSettingsDesc:"Configura rutas, resolución, idioma y actualizaciones.",
+      cardCreditsTitle:"Créditos", cardCreditsDesc:"Licencia, enlaces de la comunidad y en qué se basa Nitro.",
+      settingsBackBtn:"← Inicio", settingsTitle:"Ajustes", settingsTag:"Configuración del launcher",
+      labelDolphinPath:"Ruta de Dolphin", labelIsoPath:"Ruta de la ISO", labelModDir:"Directorio de mods",
+      labelResolution:"Resolución", labelLanguage:"Idioma", labelFullscreen:"Pantalla completa",
+      labelAutoUpdate:"Actualizaciones automáticas", saveSettingsLabel:"Guardar ajustes", browseLabel:"Examinar",
+      troubleshootingLabel:"Solución de problemas", diagnosticsBtnLabel:"Mostrar diagnóstico", dolphinLogBtnLabel:"Mostrar registro de Dolphin",
+      setupTitle:"Configuración", setupIntro:"Configura tus rutas una vez. Nitro las recordará.",
+      labelSetupDolphin:"Instalación de Dolphin", labelSetupIso:"ISO de Mario Kart Wii", setupContinueLabel:"Continuar",
+      creditsBackBtn:"← Inicio", creditsTitle:"Créditos",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Launcher personalizado — versión 1.0.0",
+      creditsLicenseTitle:"Licencia",
+      creditsLicenseText:"GNU GPL v3.0 — conserva e incluye la licencia al redistribuir trabajo derivado.",
+      creditsCommunityTitle:"Comunidad",
+      creditsProfileTitle:"Perfil de Nitro",
+      openDiscordLabel:"Abrir Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul están incluidos como entradas del perfil actual del launcher.",
+      playLabel:"Jugar",
+      checkingFiles:"Comprobando archivos del mod...",
+      extracting:"Extrayendo...",
+      downloadingMod:"Descargando mod",
+      downloadingUpdate:"Descargando actualización",
+      launching:"Iniciando...",
+      toastFailedStart:"No se pudo iniciar la descarga.",
+      toastDownloadingFirst:"Descargando el mod por primera vez — esto puede tardar hasta 10 minutos según tu conexión.",
+      toastDownloadingUpdate:"Descargando una actualización — esto puede tardar unos minutos.",
+      toastDontClose:"Por favor, no cierres esta ventana.",
+      toastFailedFetch:"No se pudo obtener el mod.",
+      toastCouldntCheck:"No se pudieron comprobar las actualizaciones",
+      toastGotPrefix:"Versión ",
+      toastLaunched:"Iniciado.",
+      toastCouldNotLaunch:"No se pudo iniciar.",
+      toastSettingsSaved:"Ajustes guardados." },
+    it: { navHome:"Home", navCredits:"Crediti", navSettings:"Impostazioni",
+      heroSettingsBtn:"Impostazioni", heroCreditsBtn:"Crediti", exitBtn:"Esci",
+      labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod attiva", labelLauncher:"Launcher",
+      notSet:"NON IMPOSTATO", none:"NESSUNO",
+      cardPlayTitle:"Gioca", cardPlayDesc:"Avvia Mario Kart Wii tramite Dolphin con la tua mod attiva.",
+      cardSettingsTitle:"Impostazioni", cardSettingsDesc:"Configura percorsi, risoluzione, lingua e aggiornamenti.",
+      cardCreditsTitle:"Crediti", cardCreditsDesc:"Licenza, link della community e su cosa si basa Nitro.",
+      settingsBackBtn:"← Home", settingsTitle:"Impostazioni", settingsTag:"Configurazione del launcher",
+      labelDolphinPath:"Percorso Dolphin", labelIsoPath:"Percorso ISO MKW", labelModDir:"Cartella mod",
+      labelResolution:"Risoluzione", labelLanguage:"Lingua", labelFullscreen:"Schermo intero",
+      labelAutoUpdate:"Aggiornamenti automatici", saveSettingsLabel:"Salva impostazioni", browseLabel:"Sfoglia",
+      troubleshootingLabel:"Risoluzione problemi", diagnosticsBtnLabel:"Mostra diagnostica", dolphinLogBtnLabel:"Mostra log di Dolphin",
+      setupTitle:"Configurazione", setupIntro:"Imposta i tuoi percorsi una volta. Nitro li ricorderà.",
+      labelSetupDolphin:"Installazione Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continua",
+      creditsBackBtn:"← Home", creditsTitle:"Crediti",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Launcher personalizzato — versione 1.0.0",
+      creditsLicenseTitle:"Licenza",
+      creditsLicenseText:"GNU GPL v3.0 — conserva e includi la licenza quando ridistribuisci opere derivate.",
+      creditsCommunityTitle:"Community",
+      creditsProfileTitle:"Profilo Nitro",
+      openDiscordLabel:"Apri Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul sono inclusi come input del profilo launcher attuale.",
+      playLabel:"Gioca",
+      checkingFiles:"Controllo dei file della mod...",
+      extracting:"Estrazione...",
+      downloadingMod:"Download della mod",
+      downloadingUpdate:"Download aggiornamento",
+      launching:"Avvio...",
+      toastFailedStart:"Impossibile avviare il download.",
+      toastDownloadingFirst:"Download della mod in corso per la prima volta — può richiedere fino a 10 minuti in base alla connessione.",
+      toastDownloadingUpdate:"Download di un aggiornamento in corso — può richiedere alcuni minuti.",
+      toastDontClose:"Non chiudere questa finestra.",
+      toastFailedFetch:"Impossibile recuperare la mod.",
+      toastCouldntCheck:"Impossibile controllare gli aggiornamenti",
+      toastGotPrefix:"Versione ",
+      toastLaunched:"Avviato.",
+      toastCouldNotLaunch:"Impossibile avviare.",
+      toastSettingsSaved:"Impostazioni salvate." },
+    pt: { navHome:"Início", navCredits:"Créditos", navSettings:"Config.",
+      heroSettingsBtn:"Configurações", heroCreditsBtn:"Créditos", exitBtn:"Sair",
+      labelDolphin:"Dolphin", labelIso:"ISO do MKW", labelActiveMod:"Mod ativo", labelLauncher:"Launcher",
+      notSet:"NÃO DEFINIDO", none:"NENHUM",
+      cardPlayTitle:"Jogar", cardPlayDesc:"Inicie Mario Kart Wii pelo Dolphin com seu mod ativo.",
+      cardSettingsTitle:"Configurações", cardSettingsDesc:"Configure caminhos, resolução, idioma e atualizações.",
+      cardCreditsTitle:"Créditos", cardCreditsDesc:"Licença, links da comunidade e a base do Nitro.",
+      settingsBackBtn:"← Início", settingsTitle:"Configurações", settingsTag:"Configuração do launcher",
+      labelDolphinPath:"Caminho do Dolphin", labelIsoPath:"Caminho da ISO", labelModDir:"Diretório de mods",
+      labelResolution:"Resolução", labelLanguage:"Idioma", labelFullscreen:"Tela cheia",
+      labelAutoUpdate:"Atualizações automáticas", saveSettingsLabel:"Salvar configurações", browseLabel:"Procurar",
+      troubleshootingLabel:"Solução de problemas", diagnosticsBtnLabel:"Mostrar diagnóstico", dolphinLogBtnLabel:"Mostrar log do Dolphin",
+      setupTitle:"Configuração", setupIntro:"Defina seus caminhos uma vez. O Nitro vai lembrá-los.",
+      labelSetupDolphin:"Instalação do Dolphin", labelSetupIso:"ISO do Mario Kart Wii", setupContinueLabel:"Continuar",
+      creditsBackBtn:"← Início", creditsTitle:"Créditos",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Launcher personalizado — versão 1.0.0",
+      creditsLicenseTitle:"Licença",
+      creditsLicenseText:"GNU GPL v3.0 — preserve e inclua a licença ao redistribuir trabalho derivado.",
+      creditsCommunityTitle:"Comunidade",
+      creditsProfileTitle:"Perfil Nitro",
+      openDiscordLabel:"Abrir Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul estão incluídos como entradas do perfil atual do launcher.",
+      playLabel:"Jogar",
+      checkingFiles:"Verificando arquivos do mod...",
+      extracting:"Extraindo...",
+      downloadingMod:"Baixando mod",
+      downloadingUpdate:"Baixando atualização",
+      launching:"Iniciando...",
+      toastFailedStart:"Falha ao iniciar o download.",
+      toastDownloadingFirst:"Baixando o mod pela primeira vez — isso pode levar até 10 minutos, dependendo da sua conexão.",
+      toastDownloadingUpdate:"Baixando uma atualização — isso pode levar alguns minutos.",
+      toastDontClose:"Por favor, não feche esta janela.",
+      toastFailedFetch:"Falha ao buscar o mod.",
+      toastCouldntCheck:"Não foi possível verificar atualizações",
+      toastGotPrefix:"Versão ",
+      toastLaunched:"Iniciado.",
+      toastCouldNotLaunch:"Não foi possível iniciar.",
+      toastSettingsSaved:"Configurações salvas." },
+    nl: { navHome:"Start", navCredits:"Credits", navSettings:"Instellingen",
+      heroSettingsBtn:"Instellingen", heroCreditsBtn:"Credits", exitBtn:"Afsluiten",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Actieve mod", labelLauncher:"Launcher",
+      notSet:"NIET INGESTELD", none:"GEEN",
+      cardPlayTitle:"Spelen", cardPlayDesc:"Start Mario Kart Wii via Dolphin met je actieve mod.",
+      cardSettingsTitle:"Instellingen", cardSettingsDesc:"Paden, resolutie, taal en updates configureren.",
+      cardCreditsTitle:"Credits", cardCreditsDesc:"Licentie, community-links en waar Nitro op gebouwd is.",
+      settingsBackBtn:"← Start", settingsTitle:"Instellingen", settingsTag:"Launcher-configuratie",
+      labelDolphinPath:"Dolphin-pad", labelIsoPath:"MKW ISO-pad", labelModDir:"Mod-map",
+      labelResolution:"Resolutie", labelLanguage:"Taal", labelFullscreen:"Volledig scherm",
+      labelAutoUpdate:"Automatische updates", saveSettingsLabel:"Instellingen opslaan", browseLabel:"Bladeren",
+      troubleshootingLabel:"Probleemoplossing", diagnosticsBtnLabel:"Diagnose tonen", dolphinLogBtnLabel:"Dolphin-log tonen",
+      setupTitle:"Installatie", setupIntro:"Stel je paden één keer in. Nitro onthoudt ze.",
+      labelSetupDolphin:"Dolphin-installatie", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Doorgaan",
+      creditsBackBtn:"← Start", creditsTitle:"Credits",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Eigen launcher — versie 1.0.0",
+      creditsLicenseTitle:"Licentie",
+      creditsLicenseText:"GNU GPL v3.0 — bewaar en voeg de licentie toe bij het herdistribueren van afgeleid werk.",
+      creditsCommunityTitle:"Community",
+      creditsProfileTitle:"Nitro-profiel",
+      openDiscordLabel:"Discord openen",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul zijn opgenomen als huidige launcher-profielinvoer.",
+      playLabel:"Spelen",
+      checkingFiles:"Modbestanden controleren...",
+      extracting:"Uitpakken...",
+      downloadingMod:"Mod downloaden",
+      downloadingUpdate:"Update downloaden",
+      launching:"Starten...",
+      toastFailedStart:"Kon de download niet starten.",
+      toastDownloadingFirst:"De mod wordt voor het eerst gedownload — dit kan tot 10 minuten duren, afhankelijk van je verbinding.",
+      toastDownloadingUpdate:"Update wordt gedownload — dit kan enkele minuten duren.",
+      toastDontClose:"Sluit dit venster niet.",
+      toastFailedFetch:"Kon de mod niet ophalen.",
+      toastCouldntCheck:"Kon niet controleren op updates",
+      toastGotPrefix:"Versie ",
+      toastLaunched:"Gestart.",
+      toastCouldNotLaunch:"Kon niet starten.",
+      toastSettingsSaved:"Instellingen opgeslagen." },
+    pl: { navHome:"Start", navCredits:"Twórcy", navSettings:"Ustawienia",
+      heroSettingsBtn:"Ustawienia", heroCreditsBtn:"Twórcy", exitBtn:"Wyjście",
+      labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Aktywny mod", labelLauncher:"Launcher",
+      notSet:"NIEUSTAWIONE", none:"BRAK",
+      cardPlayTitle:"Graj", cardPlayDesc:"Uruchom Mario Kart Wii przez Dolphin z aktywnym modem.",
+      cardSettingsTitle:"Ustawienia", cardSettingsDesc:"Skonfiguruj ścieżki, rozdzielczość, język i aktualizacje.",
+      cardCreditsTitle:"Twórcy", cardCreditsDesc:"Licencja, linki społeczności i na czym oparte jest Nitro.",
+      settingsBackBtn:"← Start", settingsTitle:"Ustawienia", settingsTag:"Konfiguracja launchera",
+      labelDolphinPath:"Ścieżka Dolphin", labelIsoPath:"Ścieżka ISO MKW", labelModDir:"Katalog modów",
+      labelResolution:"Rozdzielczość", labelLanguage:"Język", labelFullscreen:"Pełny ekran",
+      labelAutoUpdate:"Automatyczne aktualizacje", saveSettingsLabel:"Zapisz ustawienia", browseLabel:"Przeglądaj",
+      troubleshootingLabel:"Rozwiązywanie problemów", diagnosticsBtnLabel:"Pokaż diagnostykę", dolphinLogBtnLabel:"Pokaż log Dolphin",
+      setupTitle:"Konfiguracja", setupIntro:"Ustaw ścieżki raz. Nitro je zapamięta.",
+      labelSetupDolphin:"Instalacja Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Dalej",
+      creditsBackBtn:"← Start", creditsTitle:"Twórcy",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Własny launcher — wersja 1.0.0",
+      creditsLicenseTitle:"Licencja",
+      creditsLicenseText:"GNU GPL v3.0 — zachowaj i dołącz licencję przy redystrybucji dzieła pochodnego.",
+      creditsCommunityTitle:"Społeczność",
+      creditsProfileTitle:"Profil Nitro",
+      openDiscordLabel:"Otwórz Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul są dołączone jako bieżące dane profilu launchera.",
+      playLabel:"Graj",
+      checkingFiles:"Sprawdzanie plików moda...",
+      extracting:"Wypakowywanie...",
+      downloadingMod:"Pobieranie moda",
+      downloadingUpdate:"Pobieranie aktualizacji",
+      launching:"Uruchamianie...",
+      toastFailedStart:"Nie udało się rozpocząć pobierania.",
+      toastDownloadingFirst:"Pobieranie moda po raz pierwszy — może to potrwać do 10 minut, w zależności od połączenia.",
+      toastDownloadingUpdate:"Pobieranie aktualizacji — może to potrwać kilka minut.",
+      toastDontClose:"Proszę nie zamykać tego okna.",
+      toastFailedFetch:"Nie udało się pobrać moda.",
+      toastCouldntCheck:"Nie udało się sprawdzić aktualizacji",
+      toastGotPrefix:"Wersja ",
+      toastLaunched:"Uruchomiono.",
+      toastCouldNotLaunch:"Nie udało się uruchomić.",
+      toastSettingsSaved:"Ustawienia zapisane." },
+    tr: { navHome:"Ana Sayfa", navCredits:"Emek Verenler", navSettings:"Ayarlar",
+      heroSettingsBtn:"Ayarlar", heroCreditsBtn:"Emek Verenler", exitBtn:"Çıkış",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktif Mod", labelLauncher:"Launcher",
+      notSet:"AYARLANMADI", none:"YOK",
+      cardPlayTitle:"Oyna", cardPlayDesc:"Aktif modunla Dolphin üzerinden Mario Kart Wii'yi başlat.",
+      cardSettingsTitle:"Ayarlar", cardSettingsDesc:"Yolları, çözünürlüğü, dili ve güncellemeleri yapılandır.",
+      cardCreditsTitle:"Emek Verenler", cardCreditsDesc:"Lisans, topluluk bağlantıları ve Nitro'nun dayandığı temel.",
+      settingsBackBtn:"← Ana Sayfa", settingsTitle:"Ayarlar", settingsTag:"Launcher yapılandırması",
+      labelDolphinPath:"Dolphin yolu", labelIsoPath:"MKW ISO yolu", labelModDir:"Mod dizini",
+      labelResolution:"Çözünürlük", labelLanguage:"Dil", labelFullscreen:"Tam ekran",
+      labelAutoUpdate:"Otomatik güncellemeler", saveSettingsLabel:"Ayarları kaydet", browseLabel:"Gözat",
+      troubleshootingLabel:"Sorun giderme", diagnosticsBtnLabel:"Tanılamayı göster", dolphinLogBtnLabel:"Dolphin günlüğünü göster",
+      setupTitle:"Kurulum", setupIntro:"Yollarını bir kez ayarla. Nitro onları hatırlayacak.",
+      labelSetupDolphin:"Dolphin kurulumu", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Devam",
+      creditsBackBtn:"← Ana Sayfa", creditsTitle:"Emek Verenler",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Özel launcher — sürüm 1.0.0",
+      creditsLicenseTitle:"Lisans",
+      creditsLicenseText:"GNU GPL v3.0 — türetilmiş çalışmayı yeniden dağıtırken lisansı koruyun ve dahil edin.",
+      creditsCommunityTitle:"Topluluk",
+      creditsProfileTitle:"Nitro profili",
+      openDiscordLabel:"Discord'u Aç",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul mevcut launcher profili girdileri olarak dahil edilmiştir.",
+      playLabel:"Oyna",
+      checkingFiles:"Mod dosyaları kontrol ediliyor...",
+      extracting:"Çıkarılıyor...",
+      downloadingMod:"Mod indiriliyor",
+      downloadingUpdate:"Güncelleme indiriliyor",
+      launching:"Başlatılıyor...",
+      toastFailedStart:"İndirme başlatılamadı.",
+      toastDownloadingFirst:"Mod ilk kez indiriliyor — bağlantınıza bağlı olarak bu 10 dakikaya kadar sürebilir.",
+      toastDownloadingUpdate:"Güncelleme indiriliyor — bu birkaç dakika sürebilir.",
+      toastDontClose:"Lütfen bu pencereyi kapatmayın.",
+      toastFailedFetch:"Mod alınamadı.",
+      toastCouldntCheck:"Güncellemeler kontrol edilemedi",
+      toastGotPrefix:"Sürüm ",
+      toastLaunched:"Başlatıldı.",
+      toastCouldNotLaunch:"Başlatılamadı.",
+      toastSettingsSaved:"Ayarlar kaydedildi." },
+    ru: { navHome:"Главная", navCredits:"Авторы", navSettings:"Настройки",
+      heroSettingsBtn:"Настройки", heroCreditsBtn:"Авторы", exitBtn:"Выход",
+      labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Активный мод", labelLauncher:"Лаунчер",
+      notSet:"НЕ ЗАДАНО", none:"НЕТ",
+      cardPlayTitle:"Играть", cardPlayDesc:"Запустите Mario Kart Wii через Dolphin с активным модом.",
+      cardSettingsTitle:"Настройки", cardSettingsDesc:"Настройте пути, разрешение, язык и обновления.",
+      cardCreditsTitle:"Авторы", cardCreditsDesc:"Лицензия, ссылки сообщества и на чём основан Nitro.",
+      settingsBackBtn:"← Главная", settingsTitle:"Настройки", settingsTag:"Настройка лаунчера",
+      labelDolphinPath:"Путь к Dolphin", labelIsoPath:"Путь к ISO", labelModDir:"Папка модов",
+      labelResolution:"Разрешение", labelLanguage:"Язык", labelFullscreen:"Полноэкранный режим",
+      labelAutoUpdate:"Автоматические обновления", saveSettingsLabel:"Сохранить настройки", browseLabel:"Обзор",
+      troubleshootingLabel:"Устранение неполадок", diagnosticsBtnLabel:"Показать диагностику", dolphinLogBtnLabel:"Показать лог Dolphin",
+      setupTitle:"Настройка", setupIntro:"Задайте пути один раз. Nitro их запомнит.",
+      labelSetupDolphin:"Установка Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Продолжить",
+      creditsBackBtn:"← Главная", creditsTitle:"Авторы",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Собственный лаунчер — версия 1.0.0",
+      creditsLicenseTitle:"Лицензия",
+      creditsLicenseText:"GNU GPL v3.0 — сохраняйте и включайте лицензию при распространении производных работ.",
+      creditsCommunityTitle:"Сообщество",
+      creditsProfileTitle:"Профиль Nitro",
+      openDiscordLabel:"Открыть Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul включены как текущие входные данные профиля лаунчера.",
+      playLabel:"Играть",
+      checkingFiles:"Проверка файлов мода...",
+      extracting:"Распаковка...",
+      downloadingMod:"Загрузка мода",
+      downloadingUpdate:"Загрузка обновления",
+      launching:"Запуск...",
+      toastFailedStart:"Не удалось начать загрузку.",
+      toastDownloadingFirst:"Загрузка мода в первый раз — это может занять до 10 минут в зависимости от вашего соединения.",
+      toastDownloadingUpdate:"Загрузка обновления — это может занять несколько минут.",
+      toastDontClose:"Пожалуйста, не закрывайте это окно.",
+      toastFailedFetch:"Не удалось получить мод.",
+      toastCouldntCheck:"Не удалось проверить обновления",
+      toastGotPrefix:"Версия ",
+      toastLaunched:"Запущено.",
+      toastCouldNotLaunch:"Не удалось запустить.",
+      toastSettingsSaved:"Настройки сохранены." },
+    ja: { navHome:"ホーム", navCredits:"クレジット", navSettings:"設定",
+      heroSettingsBtn:"設定", heroCreditsBtn:"クレジット", exitBtn:"終了",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"有効なMod", labelLauncher:"ランチャー",
+      notSet:"未設定", none:"なし",
+      cardPlayTitle:"プレイ", cardPlayDesc:"Dolphinで有効なModを使ってマリオカートWiiを起動します。",
+      cardSettingsTitle:"設定", cardSettingsDesc:"パス、解像度、言語、更新を設定します。",
+      cardCreditsTitle:"クレジット", cardCreditsDesc:"ライセンス、コミュニティリンク、Nitroの構成要素。",
+      settingsBackBtn:"← ホーム", settingsTitle:"設定", settingsTag:"ランチャー設定",
+      labelDolphinPath:"Dolphinのパス", labelIsoPath:"MKW ISOのパス", labelModDir:"Modフォルダ",
+      labelResolution:"解像度", labelLanguage:"言語", labelFullscreen:"フルスクリーン",
+      labelAutoUpdate:"自動更新", saveSettingsLabel:"設定を保存", browseLabel:"参照",
+      troubleshootingLabel:"トラブルシューティング", diagnosticsBtnLabel:"診断を表示", dolphinLogBtnLabel:"Dolphinのログを表示",
+      setupTitle:"セットアップ", setupIntro:"パスを一度設定すれば、Nitroが記憶します。",
+      labelSetupDolphin:"Dolphinのインストール先", labelSetupIso:"マリオカートWii ISO", setupContinueLabel:"続ける",
+      creditsBackBtn:"← ホーム", creditsTitle:"クレジット",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"カスタムランチャー — バージョン 1.0.0",
+      creditsLicenseTitle:"ライセンス",
+      creditsLicenseText:"GNU GPL v3.0 — 派生作品を再配布する際はライセンスを保持し同梱してください。",
+      creditsCommunityTitle:"コミュニティ",
+      creditsProfileTitle:"Nitroプロファイル",
+      openDiscordLabel:"Discordを開く",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul が現在のランチャープロファイル入力として含まれています。",
+      playLabel:"プレイ",
+      checkingFiles:"Modファイルを確認中...",
+      extracting:"展開中...",
+      downloadingMod:"Modをダウンロード中",
+      downloadingUpdate:"更新をダウンロード中",
+      launching:"起動中...",
+      toastFailedStart:"ダウンロードを開始できませんでした。",
+      toastDownloadingFirst:"初回のMODダウンロード中です — 接続状況により最大10分ほどかかることがあります。",
+      toastDownloadingUpdate:"アップデートをダウンロード中です — 数分かかることがあります。",
+      toastDontClose:"このウィンドウを閉じないでください。",
+      toastFailedFetch:"MODの取得に失敗しました。",
+      toastCouldntCheck:"更新を確認できませんでした",
+      toastGotPrefix:"バージョン ",
+      toastLaunched:"起動しました。",
+      toastCouldNotLaunch:"起動できませんでした。",
+      toastSettingsSaved:"設定を保存しました。" },
+    ko: { navHome:"홈", navCredits:"크레딧", navSettings:"설정",
+      heroSettingsBtn:"설정", heroCreditsBtn:"크레딧", exitBtn:"종료",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"활성 모드", labelLauncher:"런처",
+      notSet:"설정 안 됨", none:"없음",
+      cardPlayTitle:"플레이", cardPlayDesc:"활성 모드로 Dolphin을 통해 마리오 카트 Wii를 실행합니다.",
+      cardSettingsTitle:"설정", cardSettingsDesc:"경로, 해상도, 언어 및 업데이트를 구성합니다.",
+      cardCreditsTitle:"크레딧", cardCreditsDesc:"라이선스, 커뮤니티 링크 및 Nitro의 기반.",
+      settingsBackBtn:"← 홈", settingsTitle:"설정", settingsTag:"런처 구성",
+      labelDolphinPath:"Dolphin 경로", labelIsoPath:"MKW ISO 경로", labelModDir:"모드 디렉터리",
+      labelResolution:"해상도", labelLanguage:"언어", labelFullscreen:"전체 화면",
+      labelAutoUpdate:"자동 업데이트", saveSettingsLabel:"설정 저장", browseLabel:"찾아보기",
+      troubleshootingLabel:"문제 해결", diagnosticsBtnLabel:"진단 표시", dolphinLogBtnLabel:"Dolphin 로그 표시",
+      setupTitle:"설정", setupIntro:"경로를 한 번 설정하면 Nitro가 기억합니다.",
+      labelSetupDolphin:"Dolphin 설치 경로", labelSetupIso:"마리오 카트 Wii ISO", setupContinueLabel:"계속",
+      creditsBackBtn:"← 홈", creditsTitle:"크레딧",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"커스텀 런처 — 버전 1.0.0",
+      creditsLicenseTitle:"라이선스",
+      creditsLicenseText:"GNU GPL v3.0 — 파생 저작물을 재배포할 때 라이선스를 유지하고 포함하세요.",
+      creditsCommunityTitle:"커뮤니티",
+      creditsProfileTitle:"Nitro 프로필",
+      openDiscordLabel:"Discord 열기",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul이(가) 현재 런처 프로필 입력으로 포함되어 있습니다.",
+      playLabel:"플레이",
+      checkingFiles:"모드 파일 확인 중...",
+      extracting:"압축 해제 중...",
+      downloadingMod:"모드 다운로드 중",
+      downloadingUpdate:"업데이트 다운로드 중",
+      launching:"실행 중...",
+      toastFailedStart:"다운로드를 시작하지 못했습니다.",
+      toastDownloadingFirst:"모드를 처음 다운로드하는 중입니다 — 연결 상태에 따라 최대 10분이 걸릴 수 있습니다.",
+      toastDownloadingUpdate:"업데이트를 다운로드하는 중입니다 — 몇 분 정도 걸릴 수 있습니다.",
+      toastDontClose:"이 창을 닫지 마세요.",
+      toastFailedFetch:"모드를 가져오지 못했습니다.",
+      toastCouldntCheck:"업데이트를 확인할 수 없습니다",
+      toastGotPrefix:"버전 ",
+      toastLaunched:"실행되었습니다.",
+      toastCouldNotLaunch:"실행할 수 없습니다.",
+      toastSettingsSaved:"설정이 저장되었습니다." },
+    zh: { navHome:"主页", navCredits:"鸣谢", navSettings:"设置",
+      heroSettingsBtn:"设置", heroCreditsBtn:"鸣谢", exitBtn:"退出",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"当前模组", labelLauncher:"启动器",
+      notSet:"未设置", none:"无",
+      cardPlayTitle:"开始游戏", cardPlayDesc:"通过 Dolphin 使用当前模组启动马里奥赛车 Wii。",
+      cardSettingsTitle:"设置", cardSettingsDesc:"配置路径、分辨率、语言和更新。",
+      cardCreditsTitle:"鸣谢", cardCreditsDesc:"许可证、社区链接以及 Nitro 的构建基础。",
+      settingsBackBtn:"← 主页", settingsTitle:"设置", settingsTag:"启动器配置",
+      labelDolphinPath:"Dolphin 路径", labelIsoPath:"MKW ISO 路径", labelModDir:"模组目录",
+      labelResolution:"分辨率", labelLanguage:"语言", labelFullscreen:"全屏",
+      labelAutoUpdate:"自动更新", saveSettingsLabel:"保存设置", browseLabel:"浏览",
+      troubleshootingLabel:"故障排除", diagnosticsBtnLabel:"显示诊断信息", dolphinLogBtnLabel:"显示 Dolphin 日志",
+      setupTitle:"设置向导", setupIntro:"设置一次路径，Nitro 会记住它们。",
+      labelSetupDolphin:"Dolphin 安装位置", labelSetupIso:"马里奥赛车 Wii ISO", setupContinueLabel:"继续",
+      creditsBackBtn:"← 主页", creditsTitle:"鸣谢",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"自定义启动器 — 版本 1.0.0",
+      creditsLicenseTitle:"许可证",
+      creditsLicenseText:"GNU GPL v3.0 — 重新分发衍生作品时请保留并附带此许可证。",
+      creditsCommunityTitle:"社区",
+      creditsProfileTitle:"Nitro 配置文件",
+      openDiscordLabel:"打开 Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul 已作为当前启动器配置文件输入捆绑。",
+      playLabel:"开始游戏",
+      checkingFiles:"正在检查模组文件...",
+      extracting:"正在解压...",
+      downloadingMod:"正在下载模组",
+      downloadingUpdate:"正在下载更新",
+      launching:"正在启动...",
+      toastFailedStart:"无法开始下载。",
+      toastDownloadingFirst:"正在首次下载模组 — 根据网络情况可能需要长达10分钟。",
+      toastDownloadingUpdate:"正在下载更新 — 可能需要几分钟。",
+      toastDontClose:"请不要关闭此窗口。",
+      toastFailedFetch:"获取模组失败。",
+      toastCouldntCheck:"无法检查更新",
+      toastGotPrefix:"版本 ",
+      toastLaunched:"已启动。",
+      toastCouldNotLaunch:"无法启动。",
+      toastSettingsSaved:"设置已保存。" },
+    ar: { navHome:"الرئيسية", navCredits:"الشكر والتقدير", navSettings:"الإعدادات",
+      heroSettingsBtn:"الإعدادات", heroCreditsBtn:"الشكر والتقدير", exitBtn:"خروج",
+      labelDolphin:"Dolphin", labelIso:"ISO الخاص باللعبة", labelActiveMod:"التعديل النشط", labelLauncher:"المشغّل",
+      notSet:"غير محدد", none:"لا شيء",
+      cardPlayTitle:"العب", cardPlayDesc:"شغّل ماريو كارت Wii عبر Dolphin باستخدام التعديل النشط.",
+      cardSettingsTitle:"الإعدادات", cardSettingsDesc:"تهيئة المسارات والدقة واللغة والتحديثات.",
+      cardCreditsTitle:"الشكر والتقدير", cardCreditsDesc:"الترخيص، روابط المجتمع، وأساس Nitro.",
+      settingsBackBtn:"← الرئيسية", settingsTitle:"الإعدادات", settingsTag:"تهيئة المشغّل",
+      labelDolphinPath:"مسار Dolphin", labelIsoPath:"مسار ISO", labelModDir:"مجلد التعديلات",
+      labelResolution:"الدقة", labelLanguage:"اللغة", labelFullscreen:"ملء الشاشة",
+      labelAutoUpdate:"التحديثات التلقائية", saveSettingsLabel:"حفظ الإعدادات", browseLabel:"استعراض",
+      troubleshootingLabel:"استكشاف الأخطاء", diagnosticsBtnLabel:"عرض التشخيص", dolphinLogBtnLabel:"عرض سجل Dolphin",
+      setupTitle:"الإعداد", setupIntro:"حدد مساراتك مرة واحدة. سيتذكرها Nitro.",
+      labelSetupDolphin:"تثبيت Dolphin", labelSetupIso:"ISO الخاص بماريو كارت Wii", setupContinueLabel:"متابعة",
+      creditsBackBtn:"← الرئيسية", creditsTitle:"الشكر والتقدير",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"مشغّل مخصص — الإصدار 1.0.0",
+      creditsLicenseTitle:"الترخيص",
+      creditsLicenseText:"GNU GPL v3.0 — احتفظ بالترخيص وأدرجه عند إعادة توزيع العمل المشتق.",
+      creditsCommunityTitle:"المجتمع",
+      creditsProfileTitle:"ملف Nitro الشخصي",
+      openDiscordLabel:"افتح Discord",
+      creditsProfileText:"يتم تضمين MKnitro.xml / Config.pul / Loader.pul / Code.pul كمدخلات ملف تعريف المشغّل الحالي.",
+      playLabel:"العب",
+      checkingFiles:"جارٍ التحقق من ملفات التعديل...",
+      extracting:"جارٍ الاستخراج...",
+      downloadingMod:"جارٍ تنزيل التعديل",
+      downloadingUpdate:"جارٍ تنزيل التحديث",
+      launching:"جارٍ التشغيل...",
+      toastFailedStart:"تعذّر بدء التحميل.",
+      toastDownloadingFirst:"يتم تحميل التعديل لأول مرة — قد يستغرق ذلك حتى 10 دقائق حسب سرعة اتصالك.",
+      toastDownloadingUpdate:"يتم تحميل تحديث — قد يستغرق ذلك بضع دقائق.",
+      toastDontClose:"يرجى عدم إغلاق هذه النافذة.",
+      toastFailedFetch:"تعذّر جلب التعديل.",
+      toastCouldntCheck:"تعذّر التحقق من وجود تحديثات",
+      toastGotPrefix:"الإصدار ",
+      toastLaunched:"تم التشغيل.",
+      toastCouldNotLaunch:"تعذّر التشغيل.",
+      toastSettingsSaved:"تم حفظ الإعدادات." },
+    sv: { navHome:"Hem", navCredits:"Credits", navSettings:"Inställningar",
+      heroSettingsBtn:"Inställningar", heroCreditsBtn:"Credits", exitBtn:"Avsluta",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiv mod", labelLauncher:"Launcher",
+      notSet:"EJ INSTÄLLD", none:"INGEN",
+      cardPlayTitle:"Spela", cardPlayDesc:"Starta Mario Kart Wii via Dolphin med din aktiva mod.",
+      cardSettingsTitle:"Inställningar", cardSettingsDesc:"Konfigurera sökvägar, upplösning, språk och uppdateringar.",
+      cardCreditsTitle:"Credits", cardCreditsDesc:"Licens, community-länkar och vad Nitro bygger på.",
+      settingsBackBtn:"← Hem", settingsTitle:"Inställningar", settingsTag:"Launcher-konfiguration",
+      labelDolphinPath:"Dolphin-sökväg", labelIsoPath:"MKW ISO-sökväg", labelModDir:"Mod-mapp",
+      labelResolution:"Upplösning", labelLanguage:"Språk", labelFullscreen:"Helskärm",
+      labelAutoUpdate:"Automatiska uppdateringar", saveSettingsLabel:"Spara inställningar", browseLabel:"Bläddra",
+      troubleshootingLabel:"Felsökning", diagnosticsBtnLabel:"Visa diagnostik", dolphinLogBtnLabel:"Visa Dolphin-logg",
+      setupTitle:"Konfiguration", setupIntro:"Ange dina sökvägar en gång. Nitro kommer ihåg dem.",
+      labelSetupDolphin:"Dolphin-installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Fortsätt",
+      creditsBackBtn:"← Hem", creditsTitle:"Credits",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Egen launcher — version 1.0.0",
+      creditsLicenseTitle:"Licens",
+      creditsLicenseText:"GNU GPL v3.0 — behåll och inkludera licensen vid vidaredistribution av härlett verk.",
+      creditsCommunityTitle:"Community",
+      creditsProfileTitle:"Nitro-profil",
+      openDiscordLabel:"Öppna Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul ingår som aktuella launcher-profilindata.",
+      playLabel:"Spela",
+      checkingFiles:"Kontrollerar modfiler...",
+      extracting:"Packar upp...",
+      downloadingMod:"Laddar ner mod",
+      downloadingUpdate:"Laddar ner uppdatering",
+      launching:"Startar...",
+      toastFailedStart:"Det gick inte att starta nedladdningen.",
+      toastDownloadingFirst:"Laddar ner modden för första gången — det kan ta upp till 10 minuter beroende på din anslutning.",
+      toastDownloadingUpdate:"Laddar ner en uppdatering — det kan ta några minuter.",
+      toastDontClose:"Stäng inte det här fönstret.",
+      toastFailedFetch:"Det gick inte att hämta modden.",
+      toastCouldntCheck:"Det gick inte att söka efter uppdateringar",
+      toastGotPrefix:"Version ",
+      toastLaunched:"Startad.",
+      toastCouldNotLaunch:"Det gick inte att starta.",
+      toastSettingsSaved:"Inställningar sparade." },
+    fi: { navHome:"Koti", navCredits:"Tekijät", navSettings:"Asetukset",
+      heroSettingsBtn:"Asetukset", heroCreditsBtn:"Tekijät", exitBtn:"Poistu",
+      labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiivinen modi", labelLauncher:"Käynnistin",
+      notSet:"EI ASETETTU", none:"EI MITÄÄN",
+      cardPlayTitle:"Pelaa", cardPlayDesc:"Käynnistä Mario Kart Wii Dolphinin kautta aktiivisella modilla.",
+      cardSettingsTitle:"Asetukset", cardSettingsDesc:"Määritä polut, resoluutio, kieli ja päivitykset.",
+      cardCreditsTitle:"Tekijät", cardCreditsDesc:"Lisenssi, yhteisölinkit ja mihin Nitro perustuu.",
+      settingsBackBtn:"← Koti", settingsTitle:"Asetukset", settingsTag:"Käynnistimen asetukset",
+      labelDolphinPath:"Dolphin-polku", labelIsoPath:"MKW ISO -polku", labelModDir:"Modikansio",
+      labelResolution:"Resoluutio", labelLanguage:"Kieli", labelFullscreen:"Koko näyttö",
+      labelAutoUpdate:"Automaattiset päivitykset", saveSettingsLabel:"Tallenna asetukset", browseLabel:"Selaa",
+      troubleshootingLabel:"Vianmääritys", diagnosticsBtnLabel:"Näytä diagnostiikka", dolphinLogBtnLabel:"Näytä Dolphin-loki",
+      setupTitle:"Asennus", setupIntro:"Aseta polkusi kerran. Nitro muistaa ne.",
+      labelSetupDolphin:"Dolphin-asennus", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Jatka",
+      creditsBackBtn:"← Koti", creditsTitle:"Tekijät",
+      creditsAppName:"Mario Kart Nitro",
+      creditsAppDesc:"Oma käynnistin — versio 1.0.0",
+      creditsLicenseTitle:"Lisenssi",
+      creditsLicenseText:"GNU GPL v3.0 — säilytä ja liitä lisenssi, kun jaat johdannaista teosta edelleen.",
+      creditsCommunityTitle:"Yhteisö",
+      creditsProfileTitle:"Nitro-profiili",
+      openDiscordLabel:"Avaa Discord",
+      creditsProfileText:"MKnitro.xml / Config.pul / Loader.pul / Code.pul sisältyvät nykyisinä käynnistimen profiilitietoina.",
+      playLabel:"Pelaa",
+      checkingFiles:"Tarkistetaan modin tiedostoja...",
+      extracting:"Puretaan...",
+      downloadingMod:"Ladataan modia",
+      downloadingUpdate:"Ladataan päivitystä",
+      launching:"Käynnistetään...",
+      toastFailedStart:"Latausta ei voitu käynnistää.",
+      toastDownloadingFirst:"Modia latautuu ensimmäistä kertaa — tämä voi kestää jopa 10 minuuttia yhteydestäsi riippuen.",
+      toastDownloadingUpdate:"Päivitystä latautuu — tämä voi kestää muutaman minuutin.",
+      toastDontClose:"Älä sulje tätä ikkunaa.",
+      toastFailedFetch:"Modin hakeminen epäonnistui.",
+      toastCouldntCheck:"Päivityksiä ei voitu tarkistaa",
+      toastGotPrefix:"Versio ",
+      toastLaunched:"Käynnistetty.",
+      toastCouldNotLaunch:"Käynnistys epäonnistui.",
+      toastSettingsSaved:"Asetukset tallennettu." },
+  };
+
+  function applyTranslations(langCode){
+    const t = TRANSLATIONS[langCode] || TRANSLATIONS.en;
+    for(const [id, text] of Object.entries(t)){
+      if(id === 'notSet' || id === 'none') continue; // used dynamically, not a static element
+      const el = document.getElementById(id);
+      if(el) el.textContent = text;
+    }
+    document.querySelectorAll('.browseLabel').forEach(el => el.textContent = t.browseLabel);
+    document.documentElement.setAttribute('lang', langCode);
+    document.documentElement.setAttribute('dir', langCode === 'ar' ? 'rtl' : 'ltr');
+    window._currentLang = langCode;
+  }
+
+  // ---------- state rendering ----------
+  let currentState = null;
+
+  function shortPath(p){
+    if(!p) return 'NOT SET';
+    const parts = p.replace(/\\/g,'/').split('/');
+    return parts.length > 2 ? '…/' + parts.slice(-2).join('/') : p;
+  }
+
+  function renderHome(state){
+    const t = TRANSLATIONS[state.language] || TRANSLATIONS.en;
+    const dEl = document.getElementById('statDolphin');
+    const iEl = document.getElementById('statIso');
+    const mEl = document.getElementById('statMod');
+    dEl.textContent = state.dolphin_path ? shortPath(state.dolphin_path) : t.notSet;
+    dEl.classList.toggle('dim', !state.dolphin_path);
+    iEl.textContent = state.iso_path ? shortPath(state.iso_path) : t.notSet;
+    iEl.classList.toggle('dim', !state.iso_path);
+    mEl.textContent = state.active_mod || t.none;
+    mEl.classList.toggle('dim', !state.active_mod);
+    document.getElementById('statVersion').textContent = 'v' + state.version;
+    document.getElementById('verPill').textContent = 'v' + state.version;
+  }
+
+  function renderSettings(state){
+    document.getElementById('settingsDolphinPath').value = state.dolphin_path || '';
+    document.getElementById('settingsIsoPath').value = state.iso_path || '';
+    document.getElementById('settingsModDir').value = state.mod_directory || '';
+    document.getElementById('settingsResolution').value = state.resolution || '1920x1080';
+    document.getElementById('settingsLanguage').value = state.language || 'en';
+    document.getElementById('settingsFullscreen').checked = !!state.fullscreen;
+    document.getElementById('settingsAutoUpdate').checked = !!state.auto_update;
+
+    document.getElementById('setupDolphinPath').value = state.dolphin_path || '';
+    document.getElementById('setupIsoPath').value = state.iso_path || '';
+  }
+
+  // ---------- remote seasonal theme (colors/banner pushed via manifest.json, no rebuild) ----------
+  function applyRemoteTheme(state){
+    const colors = state.theme_colors;
+    if(colors && typeof colors === 'object'){
+      for(const [k, v] of Object.entries(colors)){
+        if(k.startsWith('--')) document.documentElement.style.setProperty(k, v);
+      }
+    }
+    if(state.theme_banner_path){
+      const bannerImg = document.querySelector('.hero-banner img');
+      if(bannerImg){
+        const fileUrl = 'file:///' + state.theme_banner_path.replace(/\\/g, '/');
+        if(bannerImg.getAttribute('src') !== fileUrl) bannerImg.src = fileUrl;
+      }
+    }
+    if(state.theme_logo_path){
+      const logoImg = document.getElementById('brandLogo');
+      if(logoImg){
+        const fileUrl = 'file:///' + state.theme_logo_path.replace(/\\/g, '/');
+        if(logoImg.getAttribute('src') !== fileUrl) logoImg.src = fileUrl;
+      }
+    }
+  }
+
+  async function refreshState(){
+    currentState = await window.pywebview.api.get_state();
+    applyTranslations(currentState.language || 'en');
+    applyRemoteTheme(currentState);
+    renderHome(currentState);
+    renderSettings(currentState);
+    return currentState;
+  }
+
+  // ---------- play (checks + fetches the mod automatically, then launches) ----------
+  async function doPlay(){
+    const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
+    const btn = document.getElementById('heroPlayBtn');
+    const label = document.getElementById('heroPlayLabel');
+    btn.disabled = true;
+
+    label.textContent = t.checkingFiles;
+    const check = await window.pywebview.api.check_for_update();
+
+    if(check && check.update_available){
+      const startRes = await window.pywebview.api.start_update(check.download_url, check.latest_version);
+      if(!(startRes && startRes.ok)){
+        toast(t.toastFailedStart, true);
+        btn.disabled = false;
+        label.textContent = `▶ ${t.playLabel}`;
+        return;
+      }
+
+      const kindLabel = check.is_first_install ? t.downloadingMod : t.downloadingUpdate;
+      toast(
+        (check.is_first_install ? t.toastDownloadingFirst : t.toastDownloadingUpdate) +
+          ' ' + t.toastDontClose,
+        false, true
+      );
+
+      let finished = false;
+      while(!finished){
+        await new Promise(r => setTimeout(r, 500));
+        const p = await window.pywebview.api.get_download_progress();
+        if(p.status === 'downloading'){
+          if(p.total_bytes){
+            const pct = Math.floor((p.downloaded_bytes / p.total_bytes) * 100);
+            const mbDone = (p.downloaded_bytes / 1048576).toFixed(0);
+            const mbTotal = (p.total_bytes / 1048576).toFixed(0);
+            label.textContent = `⬇ ${kindLabel}... ${pct}% (${mbDone}/${mbTotal} MB)`;
+          } else {
+            const mbDone = (p.downloaded_bytes / 1048576).toFixed(0);
+            label.textContent = `⬇ ${kindLabel}... ${mbDone} MB`;
+          }
+        } else if(p.status === 'extracting'){
+          label.textContent = t.extracting;
+        } else if(p.status === 'done'){
+          finished = true;
+          toast(`${t.toastGotPrefix}${p.version}. ${t.launching}`);
+        } else if(p.status === 'error'){
+          finished = true;
+          toast(p.error || t.toastFailedFetch, true);
+          btn.disabled = false;
+          label.textContent = `▶ ${t.playLabel}`;
+          return;
+        }
+      }
+    } else if(check && check.error){
+      // couldn't check (e.g. offline) — proceed with whatever's
+      // already installed rather than blocking Play entirely
+      toast(`${t.toastCouldntCheck} (${check.error})`, true);
+    }
+
+    label.textContent = t.launching;
+    const res = await window.pywebview.api.launch_game();
+    btn.disabled = false;
+    label.textContent = `▶ ${t.playLabel}`;
+    if(res && res.ok){
+      toast(res.message || t.toastLaunched);
+    } else {
+      toast((res && res.error) || t.toastCouldNotLaunch, true);
+      go('setup');
+    }
+  }
+
+  document.getElementById('heroPlayBtn').addEventListener('click', doPlay);
+  document.getElementById('cardPlayBtn').addEventListener('click', doPlay);
+
+  // ---------- exit ----------
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    window.pywebview.api.quit_app();
+  });
+
+  // ---------- discord ----------
+  document.getElementById('openDiscordBtn').addEventListener('click', ()=>{
+    window.pywebview.api.open_discord();
+  });
+
+  // ---------- settings: browse buttons ----------
+  function wireBrowse(btnId, inputId, kind, fileTypes){
+    document.getElementById(btnId).addEventListener('click', async ()=>{
+      const result = await window.pywebview.api.browse_path(kind, fileTypes || null);
+      if(result && typeof result === 'string'){
+        document.getElementById(inputId).value = result;
+      }
+    });
+  }
+  wireBrowse('browseDolphinBtn', 'settingsDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
+  wireBrowse('browseIsoBtn', 'settingsIsoPath', 'file', ['Wii disc image (*.iso;*.wbfs;*.rvz)', 'All files (*.*)']);
+  wireBrowse('browseModDirBtn', 'settingsModDir', 'folder');
+  wireBrowse('setupBrowseDolphinBtn', 'setupDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
+  wireBrowse('setupBrowseIsoBtn', 'setupIsoPath', 'file', ['Wii disc image (*.iso;*.wbfs;*.rvz)', 'All files (*.*)']);
+
+  // ---------- settings: save ----------
+  document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
+    const payload = {
+      dolphin_path: document.getElementById('settingsDolphinPath').value,
+      iso_path: document.getElementById('settingsIsoPath').value,
+      mod_directory: document.getElementById('settingsModDir').value,
+      resolution: document.getElementById('settingsResolution').value,
+      language: document.getElementById('settingsLanguage').value,
+      fullscreen: document.getElementById('settingsFullscreen').checked,
+      auto_update: document.getElementById('settingsAutoUpdate').checked,
+    };
+    await window.pywebview.api.save_settings(payload);
+    await refreshState();
+    const st = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
+    toast(st.toastSettingsSaved);
+  });
+
+  // ---------- setup: continue ----------
+  document.getElementById('setupContinueBtn').addEventListener('click', async ()=>{
+    const payload = {
+      dolphin_path: document.getElementById('setupDolphinPath').value,
+      iso_path: document.getElementById('setupIsoPath').value,
+    };
+    await window.pywebview.api.save_settings(payload);
+    await refreshState();
+    go('home');
+  });
+
+  document.getElementById('diagnosticsBtn').addEventListener('click', async ()=>{
+    const panel = document.getElementById('diagnosticsPanel');
+    const text = document.getElementById('diagnosticsText');
+    if(panel.style.display === 'none'){
+      text.textContent = 'Loading...';
+      panel.style.display = 'block';
+      text.textContent = await window.pywebview.api.get_launch_diagnostics();
+    } else {
+      panel.style.display = 'none';
+    }
+  });
+
+  document.getElementById('dolphinLogBtn').addEventListener('click', async ()=>{
+    const panel = document.getElementById('diagnosticsPanel');
+    const text = document.getElementById('diagnosticsText');
+    text.textContent = 'Loading...';
+    panel.style.display = 'block';
+    text.textContent = await window.pywebview.api.get_dolphin_log_tail();
+  });
+
+  // ---------- boot ----------
+  window.addEventListener('pywebviewready', async ()=>{
+    const state = await refreshState();
+
+    // Pulls the manifest.json theme block (colors/logo/banner/default
+    // Mii) right away, instead of waiting for a Play press -- that was
+    // the bug behind "New Mii didn't get the one I wanted": this used
+    // to only run inside doPlay(), so anyone who opened the Mii tab
+    // before ever pressing Play got the plain built-in blank Mii
+    // because nothing had been fetched yet. Fire-and-forget: it must
+    // never block the UI from opening, and newMii() below also awaits
+    // its own fresh check right before building, as a second safety
+    // net in case this one is still running or the network is slow.
+    window.pywebview.api.check_for_update()
+      .then(() => refreshState())
+      .catch(() => {});
+
+    if(!state.dolphin_path || !state.iso_path){
+      go('setup');
+    }
+  });
+</script>
+</body>
+</html>
