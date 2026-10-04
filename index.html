@@ -324,10 +324,37 @@
       border-color: rgba(160,60,255,0.4);
     }
   }
+
+  /* ---------- Launcher self-update popup ---------- */
+  .launcher-update-overlay{
+    position:fixed; inset:0; z-index:90;
+    background:rgba(5,2,10,0.72);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .launcher-update-overlay.hidden{ display:none; }
+  .launcher-update-box{
+    background:var(--panel);
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius);
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    padding:28px 32px;
+    max-width:380px;
+    text-align:center;
+  }
+  .launcher-update-box p{
+    margin:0 0 18px; color:var(--text); font-size:15px; line-height:1.5;
+  }
+  .launcher-update-box .btn{ min-width:140px; }
 </style>
 </head>
 <body>
 <div class="window-glow"></div>
+<div class="launcher-update-overlay hidden" id="launcherUpdateModal">
+  <div class="launcher-update-box">
+    <p id="launcherUpdateMsg">A new launcher version is available.</p>
+    <button class="btn btn-primary" id="launcherUpdateBtn">Update!</button>
+  </div>
+</div>
 <div class="titlebar">
 <div class="brand"><img class="brand-mark" id="brandLogo" src="Untitleddesign6.png" alt="Mario Kart Nitro" />
 <div class="brand-text">MARIO KART <span>NITRO</span></div>
@@ -384,73 +411,72 @@
 <!-- REAL MII SYSTEM -->
 <section class="screen" id="mii">
 <div class="sub-head"><button class="back" onclick="go('home')" id="miiBackBtn">← Home</button>
-<h2 id="miiTitle">Mii</h2><div class="tag">Nitro Mii library · syncs on Play</div></div>
+<h2 id="miiTitle">Mii</h2><div class="tag" id="miiTag">Nitro Mii library · syncs on Play</div></div>
 <div class="mii-shell">
   <aside class="mii-list">
-    <div class="mii-list-head"><strong>Miis</strong><button class="browse" id="miiRefreshBtn">Refresh</button></div>
-    <div id="miiList"><div class="empty-panel">Set your Dolphin path in Settings first.</div></div>
+    <div class="mii-list-head"><strong id="miiListHeading">Miis</strong><button class="browse" id="miiRefreshBtn">Refresh</button></div>
+    <div id="miiList"><div class="empty-panel" id="miiEmptyHint">Set your Dolphin path in Settings first.</div></div>
   </aside>
   <div class="mii-main">
-    <div class="mii-preview" id="miiPreview"><div class="loading">Select a Mii</div></div>
+    <div class="mii-preview" id="miiPreview"><div class="loading" id="miiPreviewLoading">Select a Mii</div></div>
     <div class="mii-editor">
       <div class="mii-toolbar">
         <button class="btn btn-primary" id="miiSaveBtn">Save to Nitro</button>
         <button class="btn btn-ghost" id="miiNewBtn">New Mii</button>
         <button class="btn btn-ghost" id="miiRefresh2Btn">Reload</button>
-        <button class="btn btn-ghost" id="miiRendererBtn">Set FFL renderer</button>
       </div>
       <div class="mii-tabs">
-        <button class="mii-tab active" data-miitab="identity">Identity</button>
-        <button class="mii-tab" data-miitab="face">Face</button>
-        <button class="mii-tab" data-miitab="hair">Hair</button>
-        <button class="mii-tab" data-miitab="eyes">Eyes</button>
-        <button class="mii-tab" data-miitab="brows">Brows</button>
-        <button class="mii-tab" data-miitab="nose">Nose</button>
-        <button class="mii-tab" data-miitab="mouth">Mouth</button>
-        <button class="mii-tab" data-miitab="extras">Extras</button>
+        <button class="mii-tab active" data-miitab="identity" id="miiSubtabIdentity">Identity</button>
+        <button class="mii-tab" data-miitab="face" id="miiSubtabFace">Face</button>
+        <button class="mii-tab" data-miitab="hair" id="miiSubtabHair">Hair</button>
+        <button class="mii-tab" data-miitab="eyes" id="miiSubtabEyes">Eyes</button>
+        <button class="mii-tab" data-miitab="brows" id="miiSubtabBrows">Brows</button>
+        <button class="mii-tab" data-miitab="nose" id="miiSubtabNose">Nose</button>
+        <button class="mii-tab" data-miitab="mouth" id="miiSubtabMouth">Mouth</button>
+        <button class="mii-tab" data-miitab="extras" id="miiSubtabExtras">Extras</button>
       </div>
       <div class="mii-section active" id="miitab-identity">
-        <div class="mii-field"><label>Name</label><input type="text" id="miiName" maxlength="10"></div>
+        <div class="mii-field"><label id="miiLblName">Name</label><input type="text" id="miiName" maxlength="10"></div>
         <div class="mii-row2">
-          <div class="mii-field"><label>Gender</label><select id="miiGender"><option value="0">Male</option><option value="1">Female</option></select></div>
-          <div class="mii-field"><label>Favorite color</label><select id="miiFav"></select></div>
+          <div class="mii-field"><label id="miiLblGender">Gender</label><select id="miiGender"><option value="0" id="miiOptMale">Male</option><option value="1" id="miiOptFemale">Female</option></select></div>
+          <div class="mii-field"><label id="miiLblFav">Favorite color</label><select id="miiFav"></select></div>
         </div>
-        <div class="mii-row2"><div class="mii-field"><label>Height <span id="miiHeightV">64</span></label><input id="miiHeight" type="range" min="0" max="127"></div>
-        <div class="mii-field"><label>Weight <span id="miiWeightV">64</span></label><input id="miiWeight" type="range" min="0" max="127"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label><span id="miiLblHeight">Height</span> <span id="miiHeightV">64</span></label><input id="miiHeight" type="range" min="0" max="127"></div>
+        <div class="mii-field"><label><span id="miiLblWeight">Weight</span> <span id="miiWeightV">64</span></label><input id="miiWeight" type="range" min="0" max="127"></div></div>
       </div>
       <div class="mii-section" id="miitab-face">
-        <div class="mii-row2"><div class="mii-field"><label>Face shape</label><select id="miiFaceShape"></select></div><div class="mii-field"><label>Skin</label><select id="miiSkin"></select></div></div>
-        <div class="mii-field"><label>Facial feature</label><select id="miiFeature"></select></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblFaceShape">Face shape</label><select id="miiFaceShape"></select></div><div class="mii-field"><label id="miiLblSkin">Skin</label><select id="miiSkin"></select></div></div>
+        <div class="mii-field"><label id="miiLblFeature">Facial feature</label><select id="miiFeature"></select></div>
       </div>
       <div class="mii-section" id="miitab-hair">
-        <div class="mii-field"><label>Hair style ID <span id="hairV">1</span></label><input id="miiHair" type="range" min="0" max="127"></div>
-        <div class="mii-field"><label>Hair color</label><select id="miiHairColor"></select></div>
-        <div class="field-inline"><input type="checkbox" id="miiHairFlip"> <span>Flip hair</span></div>
+        <div class="mii-field"><label><span id="miiLblHairStyle">Hair style ID</span> <span id="hairV">1</span></label><input id="miiHair" type="range" min="0" max="127"></div>
+        <div class="mii-field"><label id="miiLblHairColor">Hair color</label><select id="miiHairColor"></select></div>
+        <div class="field-inline"><input type="checkbox" id="miiHairFlip"> <span id="miiLblHairFlip">Flip hair</span></div>
       </div>
       <div class="mii-section" id="miitab-eyes">
-        <div class="mii-field"><label>Eye style ID <span id="eyeTypeV">0</span></label><input id="miiEyeType" type="range" min="0" max="63"></div>
-        <div class="mii-row2"><div class="mii-field"><label>Color</label><select id="miiEyeColor"></select></div><div class="mii-field"><label>Rotation</label><input id="miiEyeRot" type="range" min="0" max="7"></div></div>
-        <div class="mii-row2"><div class="mii-field"><label>Vertical</label><input id="miiEyeVert" type="range" min="0" max="31"></div><div class="mii-field"><label>Size</label><input id="miiEyeSize" type="range" min="0" max="7"></div></div>
-        <div class="mii-field"><label>Spacing</label><input id="miiEyeSpace" type="range" min="0" max="15"></div>
+        <div class="mii-field"><label><span id="miiLblEyeStyle">Eye style ID</span> <span id="eyeTypeV">0</span></label><input id="miiEyeType" type="range" min="0" max="63"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblEyeColorField">Color</label><select id="miiEyeColor"></select></div><div class="mii-field"><label id="miiLblEyeRot">Rotation</label><input id="miiEyeRot" type="range" min="0" max="7"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblEyeVert">Vertical</label><input id="miiEyeVert" type="range" min="0" max="31"></div><div class="mii-field"><label id="miiLblEyeSize">Size</label><input id="miiEyeSize" type="range" min="0" max="7"></div></div>
+        <div class="mii-field"><label id="miiLblEyeSpace">Spacing</label><input id="miiEyeSpace" type="range" min="0" max="15"></div>
       </div>
       <div class="mii-section" id="miitab-brows">
-        <div class="mii-field"><label>Eyebrow style ID</label><input id="miiBrowType" type="range" min="0" max="31"></div>
-        <div class="mii-row2"><div class="mii-field"><label>Color</label><select id="miiBrowColor"></select></div><div class="mii-field"><label>Rotation</label><input id="miiBrowRot" type="range" min="0" max="15"></div></div>
-        <div class="mii-row2"><div class="mii-field"><label>Size</label><input id="miiBrowSize" type="range" min="0" max="15"></div><div class="mii-field"><label>Vertical</label><input id="miiBrowVert" type="range" min="0" max="31"></div></div>
-        <div class="mii-field"><label>Spacing</label><input id="miiBrowSpace" type="range" min="0" max="15"></div>
+        <div class="mii-field"><label id="miiLblBrowStyle">Eyebrow style ID</label><input id="miiBrowType" type="range" min="0" max="31"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblBrowColorField">Color</label><select id="miiBrowColor"></select></div><div class="mii-field"><label id="miiLblBrowRot">Rotation</label><input id="miiBrowRot" type="range" min="0" max="15"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblBrowSize">Size</label><input id="miiBrowSize" type="range" min="0" max="15"></div><div class="mii-field"><label id="miiLblBrowVert">Vertical</label><input id="miiBrowVert" type="range" min="0" max="31"></div></div>
+        <div class="mii-field"><label id="miiLblBrowSpace">Spacing</label><input id="miiBrowSpace" type="range" min="0" max="15"></div>
       </div>
       <div class="mii-section" id="miitab-nose">
-        <div class="mii-row2"><div class="mii-field"><label>Nose type</label><select id="miiNoseType"></select></div><div class="mii-field"><label>Size</label><input id="miiNoseSize" type="range" min="0" max="15"></div></div>
-        <div class="mii-field"><label>Vertical</label><input id="miiNoseVert" type="range" min="0" max="31"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblNoseType">Nose type</label><select id="miiNoseType"></select></div><div class="mii-field"><label id="miiLblNoseSize">Size</label><input id="miiNoseSize" type="range" min="0" max="15"></div></div>
+        <div class="mii-field"><label id="miiLblNoseVert">Vertical</label><input id="miiNoseVert" type="range" min="0" max="31"></div>
       </div>
       <div class="mii-section" id="miitab-mouth">
-        <div class="mii-row2"><div class="mii-field"><label>Mouth style ID</label><input id="miiLipType" type="range" min="0" max="31"></div><div class="mii-field"><label>Color</label><select id="miiLipColor"></select></div></div>
-        <div class="mii-row2"><div class="mii-field"><label>Size</label><input id="miiLipSize" type="range" min="0" max="15"></div><div class="mii-field"><label>Vertical</label><input id="miiLipVert" type="range" min="0" max="31"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblMouthStyle">Mouth style ID</label><input id="miiLipType" type="range" min="0" max="31"></div><div class="mii-field"><label id="miiLblLipColorField">Color</label><select id="miiLipColor"></select></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblLipSize">Size</label><input id="miiLipSize" type="range" min="0" max="15"></div><div class="mii-field"><label id="miiLblLipVert">Vertical</label><input id="miiLipVert" type="range" min="0" max="31"></div></div>
       </div>
       <div class="mii-section" id="miitab-extras">
-        <div class="mii-row2"><div class="mii-field"><label>Glasses</label><select id="miiGlassType"></select></div><div class="mii-field"><label>Glasses color</label><select id="miiGlassColor"></select></div></div>
-        <div class="mii-row2"><div class="mii-field"><label>Mustache</label><select id="miiMustache"></select></div><div class="mii-field"><label>Beard</label><select id="miiBeard"></select></div></div>
-        <div class="mii-field"><label>Creator name</label><input type="text" id="miiCreator" maxlength="10"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblGlasses">Glasses</label><select id="miiGlassType"></select></div><div class="mii-field"><label id="miiLblGlassesColor">Glasses color</label><select id="miiGlassColor"></select></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblMustache">Mustache</label><select id="miiMustache"></select></div><div class="mii-field"><label id="miiLblBeard">Beard</label><select id="miiBeard"></select></div></div>
+        <div class="mii-field"><label id="miiLblCreator">Creator name</label><input type="text" id="miiCreator" maxlength="10"></div>
         <div class="mii-status" id="miiStatus"></div>
       </div>
     </div>
@@ -529,7 +555,7 @@
 <p id="creditsProfileText">Included <code>MKnitro.xml</code> / <code>Config.pul</code> / <code>Loader.pul</code> / <code>Code.pul</code> are bundled as the current launcher profile inputs.</p>
 </div>
 <button class="btn btn-primary" id="openDiscordBtn"> <svg width="16" height="16" viewbox="0 0 127.14 96.36" fill="currentColor" style="flex-shrink: 0;"> <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"></path> </svg> <span id="openDiscordLabel">Open Discord</span> </button>
-<div class="credits-footnote" id="creditsFootnote">Built on WheelWizard by Patchzy &amp; WantToBeeMe — <a href="#">github.com/TeamWheelWizard/WheelWizard</a></div>
+<div class="credits-footnote" id="creditsFootnote"> </a></div>
 </div>
 </section>
 <!-- SETUP / WELCOME -->
@@ -873,60 +899,6 @@ async function ensureFFLResource() {
 }
 
 /* =========================================================
-   FFL RESOURCE SELECTOR
-   ========================================================= */
-
-async function configureFFL() {
-  if (!window.pywebview || !window.pywebview.api) {
-    setMiiStatus("Native bridge not ready.", true);
-    return;
-  }
-
-  try {
-    const result =
-      await window.pywebview.api.pick_ffl_resource();
-
-    if (result?.ok) {
-      fflResourceBytes = null;
-
-      fflResourceState = result;
-
-      setMiiStatus(
-        "FFL renderer resource selected: " +
-        (result.path || "resource")
-      );
-
-      toast("Real Mii renderer resource installed.");
-
-      if (currentMii) {
-        await renderCurrentMii();
-      }
-
-      return;
-    }
-
-    if (result?.cancelled) {
-      setMiiStatus("FFL resource selection cancelled.");
-      return;
-    }
-
-    setMiiStatus(
-      result?.error ||
-      result?.message ||
-      "Could not select FFL resource.",
-      true
-    );
-
-  } catch (e) {
-    setMiiStatus(
-      "FFL resource selection failed: " +
-      (e?.message || e),
-      true
-    );
-  }
-}
-
-/* =========================================================
    MII LIST
    ========================================================= */
 
@@ -1013,14 +985,14 @@ async function refreshMiis() {
       } else {
         setMiiStatus(
           (r.message || "Miis loaded.") +
-          " · FFL renderer resource not selected."
+          " · FFL renderer resource missing from this build."
         );
       }
 
     } catch (_) {
       setMiiStatus(
         r.message ||
-        "Miis loaded. FFL renderer resource not selected."
+        "Miis loaded."
       );
     }
 
@@ -1483,45 +1455,32 @@ async function newMii() {
     const { Mii } =
       await ensureMiiJS();
 
-    /* Make sure manifest.json's theme block has actually been checked
-       at least once before deciding there's no remote starter Mii --
-       the startup check on pywebviewready is fire-and-forget and may
-       still be in flight (or may have been offline at the time), so
-       this is the guarantee that New Mii doesn't fall back to the
-       built-in blank Mii just because of timing. Cheap either way:
-       it's a tiny manifest.json fetch, not the mod content. */
-    try {
-      await window.pywebview.api.check_for_update();
-    } catch (e) {
-      console.warn("Couldn't re-check for a remote default Mii:", e);
-    }
-
-    /* Prefer a remotely-pushed starter Mii (manifest.json's
-       theme.default_mii_url) when one has been configured -- that's
-       what every "New Mii" click should build from once it's set up.
-       Falls back to the built-in blank Mii if none is configured, or
-       if the native call/download/decode fails for any reason, so
-       New Mii always keeps working either way. */
-    let usedRemoteTemplate = false;
+    /* The starter Mii is bundled directly into the exe
+       (default_mii.mii) and served by Api.get_default_mii() -- no
+       GitHub fetch, no network needed. Falls back to the built-in
+       minimal blank Mii only if that bundled file is somehow missing
+       (e.g. a dev run without it next to main.py), so New Mii always
+       keeps working either way. */
+    let usedStarterTemplate = false;
 
     try {
-      const remote =
+      const starter =
         await window.pywebview.api.get_default_mii();
 
-      if (remote?.ok && remote.data) {
+      if (starter?.ok && starter.data) {
         currentMii = await Mii.create(
-          b64ToBytes(remote.data)
+          b64ToBytes(starter.data)
         );
-        usedRemoteTemplate = true;
+        usedStarterTemplate = true;
       }
     } catch (e) {
       console.warn(
-        "Remote default Mii unavailable, using the built-in blank Mii:",
+        "Bundled starter Mii unavailable, using the built-in blank Mii:",
         e
       );
     }
 
-    if (!usedRemoteTemplate) {
+    if (!usedStarterTemplate) {
       currentMii = await Mii.create(
         b64ToBytes(BLANK_MII_RCD_B64)
       );
@@ -1640,14 +1599,6 @@ if (miiNewBtn) {
     newMii;
 }
 
-const miiRendererBtn =
-  document.getElementById("miiRendererBtn");
-
-if (miiRendererBtn) {
-  miiRendererBtn.onclick =
-    configureFFL;
-}
-
 /* ---------- toast ---------- */
 
 let toastEl = null;
@@ -1726,7 +1677,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Got v",
       toastLaunched:"Launched.",
       toastCouldNotLaunch:"Could not launch.",
-      toastSettingsSaved:"Settings saved." },
+      toastSettingsSaved:"Settings saved.",
+      navMii:"Mii", miiBackBtn:"← Home", miiTitle:"Mii", miiTag:"Nitro Mii library · syncs on Play",
+      miiListHeading:"Miis", miiRefreshBtn:"Refresh", miiEmptyHint:"Set your Dolphin path in Settings first.",
+      miiPreviewLoading:"Select a Mii",
+      miiSaveBtn:"Save to Nitro", miiNewBtn:"New Mii", miiRefresh2Btn:"Reload",
+      miiSubtabIdentity:"Identity", miiSubtabFace:"Face", miiSubtabHair:"Hair", miiSubtabEyes:"Eyes",
+      miiSubtabBrows:"Brows", miiSubtabNose:"Nose", miiSubtabMouth:"Mouth", miiSubtabExtras:"Extras",
+      miiLblName:"Name", miiLblGender:"Gender", miiOptMale:"Male", miiOptFemale:"Female",
+      miiLblFav:"Favorite color", miiLblHeight:"Height", miiLblWeight:"Weight",
+      miiLblFaceShape:"Face shape", miiLblSkin:"Skin", miiLblFeature:"Facial feature",
+      miiLblHairStyle:"Hair style ID", miiLblHairColor:"Hair color", miiLblHairFlip:"Flip hair",
+      miiLblEyeStyle:"Eye style ID", miiLblEyeColorField:"Color", miiLblEyeRot:"Rotation",
+      miiLblEyeVert:"Vertical", miiLblEyeSize:"Size", miiLblEyeSpace:"Spacing",
+      miiLblBrowStyle:"Eyebrow style ID", miiLblBrowColorField:"Color", miiLblBrowRot:"Rotation",
+      miiLblBrowSize:"Size", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Spacing",
+      miiLblNoseType:"Nose type", miiLblNoseSize:"Size", miiLblNoseVert:"Vertical",
+      miiLblMouthStyle:"Mouth style ID", miiLblLipColorField:"Color", miiLblLipSize:"Size", miiLblLipVert:"Vertical",
+      miiLblGlasses:"Glasses", miiLblGlassesColor:"Glasses color", miiLblMustache:"Mustache", miiLblBeard:"Beard",
+      miiLblCreator:"Creator name",
+      launcherUpdateMsg:"A new launcher version is available.", launcherUpdateBtn:"Update!",
+      launcherUpdateInstalling:"Downloading and installing — this window will restart automatically.",
+      launcherUpdateFailed:"Update failed. You can keep using this version for now." },
     de: { navHome:"Start", navCredits:"Credits", navSettings:"Einstellungen",
       heroSettingsBtn:"Einstellungen", heroCreditsBtn:"Credits", exitBtn:"Beenden",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiver Mod", labelLauncher:"Launcher",
@@ -1765,7 +1737,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Version ",
       toastLaunched:"Gestartet.",
       toastCouldNotLaunch:"Konnte nicht gestartet werden.",
-      toastSettingsSaved:"Einstellungen gespeichert." },
+      toastSettingsSaved:"Einstellungen gespeichert.",
+      navMii:"Mii", miiBackBtn:"← Start", miiTitle:"Mii", miiTag:"Nitro-Mii-Bibliothek · synchronisiert bei Play",
+      miiListHeading:"Miis", miiRefreshBtn:"Aktualisieren", miiEmptyHint:"Lege zuerst deinen Dolphin-Pfad in den Einstellungen fest.",
+      miiPreviewLoading:"Wähle einen Mii",
+      miiSaveBtn:"In Nitro speichern", miiNewBtn:"Neuer Mii", miiRefresh2Btn:"Neu laden",
+      miiSubtabIdentity:"Identität", miiSubtabFace:"Gesicht", miiSubtabHair:"Haare", miiSubtabEyes:"Augen",
+      miiSubtabBrows:"Augenbrauen", miiSubtabNose:"Nase", miiSubtabMouth:"Mund", miiSubtabExtras:"Extras",
+      miiLblName:"Name", miiLblGender:"Geschlecht", miiOptMale:"Männlich", miiOptFemale:"Weiblich",
+      miiLblFav:"Lieblingsfarbe", miiLblHeight:"Größe", miiLblWeight:"Gewicht",
+      miiLblFaceShape:"Gesichtsform", miiLblSkin:"Hautfarbe", miiLblFeature:"Gesichtsmerkmal",
+      miiLblHairStyle:"Frisur-ID", miiLblHairColor:"Haarfarbe", miiLblHairFlip:"Haare spiegeln",
+      miiLblEyeStyle:"Augen-ID", miiLblEyeColorField:"Farbe", miiLblEyeRot:"Drehung",
+      miiLblEyeVert:"Vertikal", miiLblEyeSize:"Größe", miiLblEyeSpace:"Abstand",
+      miiLblBrowStyle:"Augenbrauen-ID", miiLblBrowColorField:"Farbe", miiLblBrowRot:"Drehung",
+      miiLblBrowSize:"Größe", miiLblBrowVert:"Vertikal", miiLblBrowSpace:"Abstand",
+      miiLblNoseType:"Nasentyp", miiLblNoseSize:"Größe", miiLblNoseVert:"Vertikal",
+      miiLblMouthStyle:"Mund-ID", miiLblLipColorField:"Farbe", miiLblLipSize:"Größe", miiLblLipVert:"Vertikal",
+      miiLblGlasses:"Brille", miiLblGlassesColor:"Brillenfarbe", miiLblMustache:"Schnurrbart", miiLblBeard:"Bart",
+      miiLblCreator:"Ersteller-Name",
+      launcherUpdateMsg:"Eine neue Launcher-Version ist verfügbar.", launcherUpdateBtn:"Aktualisieren!",
+      launcherUpdateInstalling:"Wird heruntergeladen und installiert — dieses Fenster startet automatisch neu.",
+      launcherUpdateFailed:"Update fehlgeschlagen. Du kannst diese Version vorerst weiter benutzen." },
     fr: { navHome:"Accueil", navCredits:"Crédits", navSettings:"Paramètres",
       heroSettingsBtn:"Paramètres", heroCreditsBtn:"Crédits", exitBtn:"Quitter",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod actif", labelLauncher:"Launcher",
@@ -1804,7 +1797,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Version ",
       toastLaunched:"Lancé.",
       toastCouldNotLaunch:"Impossible de lancer.",
-      toastSettingsSaved:"Paramètres enregistrés." },
+      toastSettingsSaved:"Paramètres enregistrés.",
+      navMii:"Mii", miiBackBtn:"← Accueil", miiTitle:"Mii", miiTag:"Bibliothèque de Miis Nitro · synchronisée au lancement",
+      miiListHeading:"Miis", miiRefreshBtn:"Actualiser", miiEmptyHint:"Définissez d'abord votre chemin Dolphin dans les Paramètres.",
+      miiPreviewLoading:"Sélectionnez un Mii",
+      miiSaveBtn:"Enregistrer dans Nitro", miiNewBtn:"Nouveau Mii", miiRefresh2Btn:"Recharger",
+      miiSubtabIdentity:"Identité", miiSubtabFace:"Visage", miiSubtabHair:"Cheveux", miiSubtabEyes:"Yeux",
+      miiSubtabBrows:"Sourcils", miiSubtabNose:"Nez", miiSubtabMouth:"Bouche", miiSubtabExtras:"Extras",
+      miiLblName:"Nom", miiLblGender:"Genre", miiOptMale:"Homme", miiOptFemale:"Femme",
+      miiLblFav:"Couleur préférée", miiLblHeight:"Taille", miiLblWeight:"Poids",
+      miiLblFaceShape:"Forme du visage", miiLblSkin:"Peau", miiLblFeature:"Trait du visage",
+      miiLblHairStyle:"ID de coiffure", miiLblHairColor:"Couleur des cheveux", miiLblHairFlip:"Retourner les cheveux",
+      miiLblEyeStyle:"ID des yeux", miiLblEyeColorField:"Couleur", miiLblEyeRot:"Rotation",
+      miiLblEyeVert:"Vertical", miiLblEyeSize:"Taille", miiLblEyeSpace:"Espacement",
+      miiLblBrowStyle:"ID des sourcils", miiLblBrowColorField:"Couleur", miiLblBrowRot:"Rotation",
+      miiLblBrowSize:"Taille", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espacement",
+      miiLblNoseType:"Type de nez", miiLblNoseSize:"Taille", miiLblNoseVert:"Vertical",
+      miiLblMouthStyle:"ID de bouche", miiLblLipColorField:"Couleur", miiLblLipSize:"Taille", miiLblLipVert:"Vertical",
+      miiLblGlasses:"Lunettes", miiLblGlassesColor:"Couleur des lunettes", miiLblMustache:"Moustache", miiLblBeard:"Barbe",
+      miiLblCreator:"Nom du créateur",
+      launcherUpdateMsg:"Une nouvelle version du launcher est disponible.", launcherUpdateBtn:"Mettre à jour !",
+      launcherUpdateInstalling:"Téléchargement et installation en cours — cette fenêtre redémarrera automatiquement.",
+      launcherUpdateFailed:"Mise à jour échouée. Vous pouvez continuer à utiliser cette version pour l'instant." },
     es: { navHome:"Inicio", navCredits:"Créditos", navSettings:"Ajustes",
       heroSettingsBtn:"Ajustes", heroCreditsBtn:"Créditos", exitBtn:"Salir",
       labelDolphin:"Dolphin", labelIso:"ISO de MKW", labelActiveMod:"Mod activo", labelLauncher:"Launcher",
@@ -1843,7 +1857,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Versión ",
       toastLaunched:"Iniciado.",
       toastCouldNotLaunch:"No se pudo iniciar.",
-      toastSettingsSaved:"Ajustes guardados." },
+      toastSettingsSaved:"Ajustes guardados.",
+      navMii:"Mii", miiBackBtn:"← Inicio", miiTitle:"Mii", miiTag:"Biblioteca de Miis de Nitro · se sincroniza al jugar",
+      miiListHeading:"Miis", miiRefreshBtn:"Actualizar", miiEmptyHint:"Primero configura tu ruta de Dolphin en Ajustes.",
+      miiPreviewLoading:"Selecciona un Mii",
+      miiSaveBtn:"Guardar en Nitro", miiNewBtn:"Nuevo Mii", miiRefresh2Btn:"Recargar",
+      miiSubtabIdentity:"Identidad", miiSubtabFace:"Rostro", miiSubtabHair:"Cabello", miiSubtabEyes:"Ojos",
+      miiSubtabBrows:"Cejas", miiSubtabNose:"Nariz", miiSubtabMouth:"Boca", miiSubtabExtras:"Extras",
+      miiLblName:"Nombre", miiLblGender:"Género", miiOptMale:"Masculino", miiOptFemale:"Femenino",
+      miiLblFav:"Color favorito", miiLblHeight:"Altura", miiLblWeight:"Peso",
+      miiLblFaceShape:"Forma del rostro", miiLblSkin:"Piel", miiLblFeature:"Rasgo facial",
+      miiLblHairStyle:"ID de peinado", miiLblHairColor:"Color de cabello", miiLblHairFlip:"Invertir cabello",
+      miiLblEyeStyle:"ID de ojos", miiLblEyeColorField:"Color", miiLblEyeRot:"Rotación",
+      miiLblEyeVert:"Vertical", miiLblEyeSize:"Tamaño", miiLblEyeSpace:"Espaciado",
+      miiLblBrowStyle:"ID de cejas", miiLblBrowColorField:"Color", miiLblBrowRot:"Rotación",
+      miiLblBrowSize:"Tamaño", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espaciado",
+      miiLblNoseType:"Tipo de nariz", miiLblNoseSize:"Tamaño", miiLblNoseVert:"Vertical",
+      miiLblMouthStyle:"ID de boca", miiLblLipColorField:"Color", miiLblLipSize:"Tamaño", miiLblLipVert:"Vertical",
+      miiLblGlasses:"Gafas", miiLblGlassesColor:"Color de gafas", miiLblMustache:"Bigote", miiLblBeard:"Barba",
+      miiLblCreator:"Nombre del creador",
+      launcherUpdateMsg:"Hay una nueva versión del launcher disponible.", launcherUpdateBtn:"¡Actualizar!",
+      launcherUpdateInstalling:"Descargando e instalando — esta ventana se reiniciará automáticamente.",
+      launcherUpdateFailed:"Error al actualizar. Por ahora puedes seguir usando esta versión." },
     it: { navHome:"Home", navCredits:"Crediti", navSettings:"Impostazioni",
       heroSettingsBtn:"Impostazioni", heroCreditsBtn:"Crediti", exitBtn:"Esci",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod attiva", labelLauncher:"Launcher",
@@ -1882,7 +1917,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Versione ",
       toastLaunched:"Avviato.",
       toastCouldNotLaunch:"Impossibile avviare.",
-      toastSettingsSaved:"Impostazioni salvate." },
+      toastSettingsSaved:"Impostazioni salvate.",
+      navMii:"Mii", miiBackBtn:"← Home", miiTitle:"Mii", miiTag:"Libreria Mii di Nitro · si sincronizza al Play",
+      miiListHeading:"Mii", miiRefreshBtn:"Aggiorna", miiEmptyHint:"Imposta prima il percorso di Dolphin nelle Impostazioni.",
+      miiPreviewLoading:"Seleziona un Mii",
+      miiSaveBtn:"Salva in Nitro", miiNewBtn:"Nuovo Mii", miiRefresh2Btn:"Ricarica",
+      miiSubtabIdentity:"Identità", miiSubtabFace:"Viso", miiSubtabHair:"Capelli", miiSubtabEyes:"Occhi",
+      miiSubtabBrows:"Sopracciglia", miiSubtabNose:"Naso", miiSubtabMouth:"Bocca", miiSubtabExtras:"Extra",
+      miiLblName:"Nome", miiLblGender:"Genere", miiOptMale:"Maschio", miiOptFemale:"Femmina",
+      miiLblFav:"Colore preferito", miiLblHeight:"Altezza", miiLblWeight:"Peso",
+      miiLblFaceShape:"Forma del viso", miiLblSkin:"Pelle", miiLblFeature:"Tratto del viso",
+      miiLblHairStyle:"ID acconciatura", miiLblHairColor:"Colore capelli", miiLblHairFlip:"Rifletti capelli",
+      miiLblEyeStyle:"ID occhi", miiLblEyeColorField:"Colore", miiLblEyeRot:"Rotazione",
+      miiLblEyeVert:"Verticale", miiLblEyeSize:"Dimensione", miiLblEyeSpace:"Distanza",
+      miiLblBrowStyle:"ID sopracciglia", miiLblBrowColorField:"Colore", miiLblBrowRot:"Rotazione",
+      miiLblBrowSize:"Dimensione", miiLblBrowVert:"Verticale", miiLblBrowSpace:"Distanza",
+      miiLblNoseType:"Tipo di naso", miiLblNoseSize:"Dimensione", miiLblNoseVert:"Verticale",
+      miiLblMouthStyle:"ID bocca", miiLblLipColorField:"Colore", miiLblLipSize:"Dimensione", miiLblLipVert:"Verticale",
+      miiLblGlasses:"Occhiali", miiLblGlassesColor:"Colore occhiali", miiLblMustache:"Baffi", miiLblBeard:"Barba",
+      miiLblCreator:"Nome del creatore",
+      launcherUpdateMsg:"È disponibile una nuova versione del launcher.", launcherUpdateBtn:"Aggiorna!",
+      launcherUpdateInstalling:"Download e installazione in corso — questa finestra si riavvierà automaticamente.",
+      launcherUpdateFailed:"Aggiornamento non riuscito. Per ora puoi continuare a usare questa versione." },
     pt: { navHome:"Início", navCredits:"Créditos", navSettings:"Config.",
       heroSettingsBtn:"Configurações", heroCreditsBtn:"Créditos", exitBtn:"Sair",
       labelDolphin:"Dolphin", labelIso:"ISO do MKW", labelActiveMod:"Mod ativo", labelLauncher:"Launcher",
@@ -1921,7 +1977,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Versão ",
       toastLaunched:"Iniciado.",
       toastCouldNotLaunch:"Não foi possível iniciar.",
-      toastSettingsSaved:"Configurações salvas." },
+      toastSettingsSaved:"Configurações salvas.",
+      navMii:"Mii", miiBackBtn:"← Início", miiTitle:"Mii", miiTag:"Biblioteca de Miis do Nitro · sincroniza ao jogar",
+      miiListHeading:"Miis", miiRefreshBtn:"Atualizar", miiEmptyHint:"Defina primeiro o caminho do Dolphin nas Configurações.",
+      miiPreviewLoading:"Selecione um Mii",
+      miiSaveBtn:"Salvar no Nitro", miiNewBtn:"Novo Mii", miiRefresh2Btn:"Recarregar",
+      miiSubtabIdentity:"Identidade", miiSubtabFace:"Rosto", miiSubtabHair:"Cabelo", miiSubtabEyes:"Olhos",
+      miiSubtabBrows:"Sobrancelhas", miiSubtabNose:"Nariz", miiSubtabMouth:"Boca", miiSubtabExtras:"Extras",
+      miiLblName:"Nome", miiLblGender:"Gênero", miiOptMale:"Masculino", miiOptFemale:"Feminino",
+      miiLblFav:"Cor favorita", miiLblHeight:"Altura", miiLblWeight:"Peso",
+      miiLblFaceShape:"Formato do rosto", miiLblSkin:"Pele", miiLblFeature:"Traço facial",
+      miiLblHairStyle:"ID do penteado", miiLblHairColor:"Cor do cabelo", miiLblHairFlip:"Inverter cabelo",
+      miiLblEyeStyle:"ID dos olhos", miiLblEyeColorField:"Cor", miiLblEyeRot:"Rotação",
+      miiLblEyeVert:"Vertical", miiLblEyeSize:"Tamanho", miiLblEyeSpace:"Espaçamento",
+      miiLblBrowStyle:"ID das sobrancelhas", miiLblBrowColorField:"Cor", miiLblBrowRot:"Rotação",
+      miiLblBrowSize:"Tamanho", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espaçamento",
+      miiLblNoseType:"Tipo de nariz", miiLblNoseSize:"Tamanho", miiLblNoseVert:"Vertical",
+      miiLblMouthStyle:"ID da boca", miiLblLipColorField:"Cor", miiLblLipSize:"Tamanho", miiLblLipVert:"Vertical",
+      miiLblGlasses:"Óculos", miiLblGlassesColor:"Cor dos óculos", miiLblMustache:"Bigode", miiLblBeard:"Barba",
+      miiLblCreator:"Nome do criador",
+      launcherUpdateMsg:"Uma nova versão do launcher está disponível.", launcherUpdateBtn:"Atualizar!",
+      launcherUpdateInstalling:"Baixando e instalando — esta janela será reiniciada automaticamente.",
+      launcherUpdateFailed:"Falha na atualização. Você pode continuar usando esta versão por agora." },
     nl: { navHome:"Start", navCredits:"Credits", navSettings:"Instellingen",
       heroSettingsBtn:"Instellingen", heroCreditsBtn:"Credits", exitBtn:"Afsluiten",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Actieve mod", labelLauncher:"Launcher",
@@ -1960,7 +2037,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Versie ",
       toastLaunched:"Gestart.",
       toastCouldNotLaunch:"Kon niet starten.",
-      toastSettingsSaved:"Instellingen opgeslagen." },
+      toastSettingsSaved:"Instellingen opgeslagen.",
+      navMii:"Mii", miiBackBtn:"← Start", miiTitle:"Mii", miiTag:"Nitro Mii-bibliotheek · synchroniseert bij Play",
+      miiListHeading:"Miis", miiRefreshBtn:"Vernieuwen", miiEmptyHint:"Stel eerst je Dolphin-pad in bij Instellingen.",
+      miiPreviewLoading:"Selecteer een Mii",
+      miiSaveBtn:"Opslaan in Nitro", miiNewBtn:"Nieuwe Mii", miiRefresh2Btn:"Herladen",
+      miiSubtabIdentity:"Identiteit", miiSubtabFace:"Gezicht", miiSubtabHair:"Haar", miiSubtabEyes:"Ogen",
+      miiSubtabBrows:"Wenkbrauwen", miiSubtabNose:"Neus", miiSubtabMouth:"Mond", miiSubtabExtras:"Extra's",
+      miiLblName:"Naam", miiLblGender:"Geslacht", miiOptMale:"Man", miiOptFemale:"Vrouw",
+      miiLblFav:"Favoriete kleur", miiLblHeight:"Lengte", miiLblWeight:"Gewicht",
+      miiLblFaceShape:"Gezichtsvorm", miiLblSkin:"Huid", miiLblFeature:"Gezichtskenmerk",
+      miiLblHairStyle:"Kapsel-ID", miiLblHairColor:"Haarkleur", miiLblHairFlip:"Haar spiegelen",
+      miiLblEyeStyle:"Ogen-ID", miiLblEyeColorField:"Kleur", miiLblEyeRot:"Rotatie",
+      miiLblEyeVert:"Verticaal", miiLblEyeSize:"Grootte", miiLblEyeSpace:"Afstand",
+      miiLblBrowStyle:"Wenkbrauw-ID", miiLblBrowColorField:"Kleur", miiLblBrowRot:"Rotatie",
+      miiLblBrowSize:"Grootte", miiLblBrowVert:"Verticaal", miiLblBrowSpace:"Afstand",
+      miiLblNoseType:"Neustype", miiLblNoseSize:"Grootte", miiLblNoseVert:"Verticaal",
+      miiLblMouthStyle:"Mond-ID", miiLblLipColorField:"Kleur", miiLblLipSize:"Grootte", miiLblLipVert:"Verticaal",
+      miiLblGlasses:"Bril", miiLblGlassesColor:"Brilkleur", miiLblMustache:"Snor", miiLblBeard:"Baard",
+      miiLblCreator:"Naam maker",
+      launcherUpdateMsg:"Er is een nieuwe launcherversie beschikbaar.", launcherUpdateBtn:"Updaten!",
+      launcherUpdateInstalling:"Downloaden en installeren — dit venster herstart automatisch.",
+      launcherUpdateFailed:"Update mislukt. Je kunt deze versie voorlopig blijven gebruiken." },
     pl: { navHome:"Start", navCredits:"Twórcy", navSettings:"Ustawienia",
       heroSettingsBtn:"Ustawienia", heroCreditsBtn:"Twórcy", exitBtn:"Wyjście",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Aktywny mod", labelLauncher:"Launcher",
@@ -1999,7 +2097,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Wersja ",
       toastLaunched:"Uruchomiono.",
       toastCouldNotLaunch:"Nie udało się uruchomić.",
-      toastSettingsSaved:"Ustawienia zapisane." },
+      toastSettingsSaved:"Ustawienia zapisane.",
+      navMii:"Mii", miiBackBtn:"← Start", miiTitle:"Mii", miiTag:"Biblioteka Mii Nitro · synchronizuje się przy Play",
+      miiListHeading:"Mii", miiRefreshBtn:"Odśwież", miiEmptyHint:"Najpierw ustaw ścieżkę Dolphin w Ustawieniach.",
+      miiPreviewLoading:"Wybierz Mii",
+      miiSaveBtn:"Zapisz w Nitro", miiNewBtn:"Nowy Mii", miiRefresh2Btn:"Przeładuj",
+      miiSubtabIdentity:"Tożsamość", miiSubtabFace:"Twarz", miiSubtabHair:"Włosy", miiSubtabEyes:"Oczy",
+      miiSubtabBrows:"Brwi", miiSubtabNose:"Nos", miiSubtabMouth:"Usta", miiSubtabExtras:"Dodatki",
+      miiLblName:"Imię", miiLblGender:"Płeć", miiOptMale:"Mężczyzna", miiOptFemale:"Kobieta",
+      miiLblFav:"Ulubiony kolor", miiLblHeight:"Wzrost", miiLblWeight:"Waga",
+      miiLblFaceShape:"Kształt twarzy", miiLblSkin:"Skóra", miiLblFeature:"Rys twarzy",
+      miiLblHairStyle:"ID fryzury", miiLblHairColor:"Kolor włosów", miiLblHairFlip:"Odwróć włosy",
+      miiLblEyeStyle:"ID oczu", miiLblEyeColorField:"Kolor", miiLblEyeRot:"Obrót",
+      miiLblEyeVert:"Pionowo", miiLblEyeSize:"Rozmiar", miiLblEyeSpace:"Odstęp",
+      miiLblBrowStyle:"ID brwi", miiLblBrowColorField:"Kolor", miiLblBrowRot:"Obrót",
+      miiLblBrowSize:"Rozmiar", miiLblBrowVert:"Pionowo", miiLblBrowSpace:"Odstęp",
+      miiLblNoseType:"Typ nosa", miiLblNoseSize:"Rozmiar", miiLblNoseVert:"Pionowo",
+      miiLblMouthStyle:"ID ust", miiLblLipColorField:"Kolor", miiLblLipSize:"Rozmiar", miiLblLipVert:"Pionowo",
+      miiLblGlasses:"Okulary", miiLblGlassesColor:"Kolor okularów", miiLblMustache:"Wąsy", miiLblBeard:"Broda",
+      miiLblCreator:"Nazwa twórcy",
+      launcherUpdateMsg:"Dostępna jest nowa wersja launchera.", launcherUpdateBtn:"Zaktualizuj!",
+      launcherUpdateInstalling:"Pobieranie i instalowanie — to okno uruchomi się ponownie automatycznie.",
+      launcherUpdateFailed:"Aktualizacja nie powiodła się. Możesz na razie korzystać z tej wersji." },
     tr: { navHome:"Ana Sayfa", navCredits:"Emek Verenler", navSettings:"Ayarlar",
       heroSettingsBtn:"Ayarlar", heroCreditsBtn:"Emek Verenler", exitBtn:"Çıkış",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktif Mod", labelLauncher:"Launcher",
@@ -2038,7 +2157,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Sürüm ",
       toastLaunched:"Başlatıldı.",
       toastCouldNotLaunch:"Başlatılamadı.",
-      toastSettingsSaved:"Ayarlar kaydedildi." },
+      toastSettingsSaved:"Ayarlar kaydedildi.",
+      navMii:"Mii", miiBackBtn:"← Ana Sayfa", miiTitle:"Mii", miiTag:"Nitro Mii kitaplığı · Play ile senkronize olur",
+      miiListHeading:"Miiler", miiRefreshBtn:"Yenile", miiEmptyHint:"Önce Ayarlar'da Dolphin yolunu belirleyin.",
+      miiPreviewLoading:"Bir Mii seçin",
+      miiSaveBtn:"Nitro'ya kaydet", miiNewBtn:"Yeni Mii", miiRefresh2Btn:"Yeniden yükle",
+      miiSubtabIdentity:"Kimlik", miiSubtabFace:"Yüz", miiSubtabHair:"Saç", miiSubtabEyes:"Gözler",
+      miiSubtabBrows:"Kaşlar", miiSubtabNose:"Burun", miiSubtabMouth:"Ağız", miiSubtabExtras:"Ekstralar",
+      miiLblName:"İsim", miiLblGender:"Cinsiyet", miiOptMale:"Erkek", miiOptFemale:"Kadın",
+      miiLblFav:"Favori renk", miiLblHeight:"Boy", miiLblWeight:"Kilo",
+      miiLblFaceShape:"Yüz şekli", miiLblSkin:"Ten", miiLblFeature:"Yüz özelliği",
+      miiLblHairStyle:"Saç stili ID", miiLblHairColor:"Saç rengi", miiLblHairFlip:"Saçı çevir",
+      miiLblEyeStyle:"Göz stili ID", miiLblEyeColorField:"Renk", miiLblEyeRot:"Döndürme",
+      miiLblEyeVert:"Dikey", miiLblEyeSize:"Boyut", miiLblEyeSpace:"Aralık",
+      miiLblBrowStyle:"Kaş stili ID", miiLblBrowColorField:"Renk", miiLblBrowRot:"Döndürme",
+      miiLblBrowSize:"Boyut", miiLblBrowVert:"Dikey", miiLblBrowSpace:"Aralık",
+      miiLblNoseType:"Burun tipi", miiLblNoseSize:"Boyut", miiLblNoseVert:"Dikey",
+      miiLblMouthStyle:"Ağız stili ID", miiLblLipColorField:"Renk", miiLblLipSize:"Boyut", miiLblLipVert:"Dikey",
+      miiLblGlasses:"Gözlük", miiLblGlassesColor:"Gözlük rengi", miiLblMustache:"Bıyık", miiLblBeard:"Sakal",
+      miiLblCreator:"Oluşturan adı",
+      launcherUpdateMsg:"Yeni bir launcher sürümü mevcut.", launcherUpdateBtn:"Güncelle!",
+      launcherUpdateInstalling:"İndiriliyor ve kuruluyor — bu pencere otomatik olarak yeniden başlayacak.",
+      launcherUpdateFailed:"Güncelleme başarısız oldu. Şimdilik bu sürümü kullanmaya devam edebilirsiniz." },
     ru: { navHome:"Главная", navCredits:"Авторы", navSettings:"Настройки",
       heroSettingsBtn:"Настройки", heroCreditsBtn:"Авторы", exitBtn:"Выход",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Активный мод", labelLauncher:"Лаунчер",
@@ -2077,7 +2217,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Версия ",
       toastLaunched:"Запущено.",
       toastCouldNotLaunch:"Не удалось запустить.",
-      toastSettingsSaved:"Настройки сохранены." },
+      toastSettingsSaved:"Настройки сохранены.",
+      navMii:"Mii", miiBackBtn:"← Главная", miiTitle:"Mii", miiTag:"Библиотека Mii Nitro · синхронизируется при запуске",
+      miiListHeading:"Mii", miiRefreshBtn:"Обновить", miiEmptyHint:"Сначала укажите путь к Dolphin в Настройках.",
+      miiPreviewLoading:"Выберите Mii",
+      miiSaveBtn:"Сохранить в Nitro", miiNewBtn:"Новый Mii", miiRefresh2Btn:"Перезагрузить",
+      miiSubtabIdentity:"Личность", miiSubtabFace:"Лицо", miiSubtabHair:"Волосы", miiSubtabEyes:"Глаза",
+      miiSubtabBrows:"Брови", miiSubtabNose:"Нос", miiSubtabMouth:"Рот", miiSubtabExtras:"Дополнительно",
+      miiLblName:"Имя", miiLblGender:"Пол", miiOptMale:"Мужской", miiOptFemale:"Женский",
+      miiLblFav:"Любимый цвет", miiLblHeight:"Рост", miiLblWeight:"Вес",
+      miiLblFaceShape:"Форма лица", miiLblSkin:"Кожа", miiLblFeature:"Черта лица",
+      miiLblHairStyle:"ID причёски", miiLblHairColor:"Цвет волос", miiLblHairFlip:"Отразить волосы",
+      miiLblEyeStyle:"ID глаз", miiLblEyeColorField:"Цвет", miiLblEyeRot:"Поворот",
+      miiLblEyeVert:"Вертикаль", miiLblEyeSize:"Размер", miiLblEyeSpace:"Расстояние",
+      miiLblBrowStyle:"ID бровей", miiLblBrowColorField:"Цвет", miiLblBrowRot:"Поворот",
+      miiLblBrowSize:"Размер", miiLblBrowVert:"Вертикаль", miiLblBrowSpace:"Расстояние",
+      miiLblNoseType:"Тип носа", miiLblNoseSize:"Размер", miiLblNoseVert:"Вертикаль",
+      miiLblMouthStyle:"ID рта", miiLblLipColorField:"Цвет", miiLblLipSize:"Размер", miiLblLipVert:"Вертикаль",
+      miiLblGlasses:"Очки", miiLblGlassesColor:"Цвет очков", miiLblMustache:"Усы", miiLblBeard:"Борода",
+      miiLblCreator:"Имя создателя",
+      launcherUpdateMsg:"Доступна новая версия лаунчера.", launcherUpdateBtn:"Обновить!",
+      launcherUpdateInstalling:"Загрузка и установка — это окно перезапустится автоматически.",
+      launcherUpdateFailed:"Обновление не удалось. Пока можно продолжать использовать эту версию." },
     ja: { navHome:"ホーム", navCredits:"クレジット", navSettings:"設定",
       heroSettingsBtn:"設定", heroCreditsBtn:"クレジット", exitBtn:"終了",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"有効なMod", labelLauncher:"ランチャー",
@@ -2116,7 +2277,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"バージョン ",
       toastLaunched:"起動しました。",
       toastCouldNotLaunch:"起動できませんでした。",
-      toastSettingsSaved:"設定を保存しました。" },
+      toastSettingsSaved:"設定を保存しました。",
+      navMii:"Mii", miiBackBtn:"← ホーム", miiTitle:"Mii", miiTag:"Nitro Miiライブラリ · プレイ時に同期",
+      miiListHeading:"Mii", miiRefreshBtn:"更新", miiEmptyHint:"まず設定でDolphinのパスを設定してください。",
+      miiPreviewLoading:"Miiを選択してください",
+      miiSaveBtn:"Nitroに保存", miiNewBtn:"新しいMii", miiRefresh2Btn:"再読み込み",
+      miiSubtabIdentity:"基本情報", miiSubtabFace:"顔", miiSubtabHair:"髪", miiSubtabEyes:"目",
+      miiSubtabBrows:"眉", miiSubtabNose:"鼻", miiSubtabMouth:"口", miiSubtabExtras:"その他",
+      miiLblName:"名前", miiLblGender:"性別", miiOptMale:"男性", miiOptFemale:"女性",
+      miiLblFav:"好きな色", miiLblHeight:"身長", miiLblWeight:"体重",
+      miiLblFaceShape:"顔の形", miiLblSkin:"肌の色", miiLblFeature:"顔の特徴",
+      miiLblHairStyle:"髪型ID", miiLblHairColor:"髪の色", miiLblHairFlip:"髪を反転",
+      miiLblEyeStyle:"目のID", miiLblEyeColorField:"色", miiLblEyeRot:"回転",
+      miiLblEyeVert:"縦位置", miiLblEyeSize:"大きさ", miiLblEyeSpace:"間隔",
+      miiLblBrowStyle:"眉のID", miiLblBrowColorField:"色", miiLblBrowRot:"回転",
+      miiLblBrowSize:"大きさ", miiLblBrowVert:"縦位置", miiLblBrowSpace:"間隔",
+      miiLblNoseType:"鼻のタイプ", miiLblNoseSize:"大きさ", miiLblNoseVert:"縦位置",
+      miiLblMouthStyle:"口のID", miiLblLipColorField:"色", miiLblLipSize:"大きさ", miiLblLipVert:"縦位置",
+      miiLblGlasses:"メガネ", miiLblGlassesColor:"メガネの色", miiLblMustache:"口ひげ", miiLblBeard:"ひげ",
+      miiLblCreator:"作成者名",
+      launcherUpdateMsg:"新しいランチャーのバージョンが利用可能です。", launcherUpdateBtn:"更新する！",
+      launcherUpdateInstalling:"ダウンロードしてインストール中です — このウィンドウは自動的に再起動します。",
+      launcherUpdateFailed:"更新に失敗しました。今はこのバージョンを使い続けられます。" },
     ko: { navHome:"홈", navCredits:"크레딧", navSettings:"설정",
       heroSettingsBtn:"설정", heroCreditsBtn:"크레딧", exitBtn:"종료",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"활성 모드", labelLauncher:"런처",
@@ -2155,7 +2337,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"버전 ",
       toastLaunched:"실행되었습니다.",
       toastCouldNotLaunch:"실행할 수 없습니다.",
-      toastSettingsSaved:"설정이 저장되었습니다." },
+      toastSettingsSaved:"설정이 저장되었습니다.",
+      navMii:"Mii", miiBackBtn:"← 홈", miiTitle:"Mii", miiTag:"Nitro Mii 라이브러리 · Play 시 동기화",
+      miiListHeading:"Mii", miiRefreshBtn:"새로고침", miiEmptyHint:"먼저 설정에서 Dolphin 경로를 지정하세요.",
+      miiPreviewLoading:"Mii를 선택하세요",
+      miiSaveBtn:"Nitro에 저장", miiNewBtn:"새 Mii", miiRefresh2Btn:"다시 불러오기",
+      miiSubtabIdentity:"신원", miiSubtabFace:"얼굴", miiSubtabHair:"머리", miiSubtabEyes:"눈",
+      miiSubtabBrows:"눈썹", miiSubtabNose:"코", miiSubtabMouth:"입", miiSubtabExtras:"기타",
+      miiLblName:"이름", miiLblGender:"성별", miiOptMale:"남성", miiOptFemale:"여성",
+      miiLblFav:"좋아하는 색", miiLblHeight:"키", miiLblWeight:"몸무게",
+      miiLblFaceShape:"얼굴형", miiLblSkin:"피부색", miiLblFeature:"얼굴 특징",
+      miiLblHairStyle:"머리 스타일 ID", miiLblHairColor:"머리 색", miiLblHairFlip:"머리 반전",
+      miiLblEyeStyle:"눈 스타일 ID", miiLblEyeColorField:"색상", miiLblEyeRot:"회전",
+      miiLblEyeVert:"수직", miiLblEyeSize:"크기", miiLblEyeSpace:"간격",
+      miiLblBrowStyle:"눈썹 스타일 ID", miiLblBrowColorField:"색상", miiLblBrowRot:"회전",
+      miiLblBrowSize:"크기", miiLblBrowVert:"수직", miiLblBrowSpace:"간격",
+      miiLblNoseType:"코 유형", miiLblNoseSize:"크기", miiLblNoseVert:"수직",
+      miiLblMouthStyle:"입 스타일 ID", miiLblLipColorField:"색상", miiLblLipSize:"크기", miiLblLipVert:"수직",
+      miiLblGlasses:"안경", miiLblGlassesColor:"안경 색상", miiLblMustache:"콧수염", miiLblBeard:"턱수염",
+      miiLblCreator:"작성자 이름",
+      launcherUpdateMsg:"새 런처 버전을 사용할 수 있습니다.", launcherUpdateBtn:"업데이트!",
+      launcherUpdateInstalling:"다운로드 및 설치 중입니다 — 이 창은 자동으로 재시작됩니다.",
+      launcherUpdateFailed:"업데이트에 실패했습니다. 지금은 이 버전을 계속 사용할 수 있습니다." },
     zh: { navHome:"主页", navCredits:"鸣谢", navSettings:"设置",
       heroSettingsBtn:"设置", heroCreditsBtn:"鸣谢", exitBtn:"退出",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"当前模组", labelLauncher:"启动器",
@@ -2194,7 +2397,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"版本 ",
       toastLaunched:"已启动。",
       toastCouldNotLaunch:"无法启动。",
-      toastSettingsSaved:"设置已保存。" },
+      toastSettingsSaved:"设置已保存。",
+      navMii:"Mii", miiBackBtn:"← 主页", miiTitle:"Mii", miiTag:"Nitro Mii 库 · 游戏时同步",
+      miiListHeading:"Mii", miiRefreshBtn:"刷新", miiEmptyHint:"请先在设置中设置 Dolphin 路径。",
+      miiPreviewLoading:"选择一个 Mii",
+      miiSaveBtn:"保存到 Nitro", miiNewBtn:"新建 Mii", miiRefresh2Btn:"重新加载",
+      miiSubtabIdentity:"身份", miiSubtabFace:"脸型", miiSubtabHair:"头发", miiSubtabEyes:"眼睛",
+      miiSubtabBrows:"眉毛", miiSubtabNose:"鼻子", miiSubtabMouth:"嘴巴", miiSubtabExtras:"其他",
+      miiLblName:"名称", miiLblGender:"性别", miiOptMale:"男性", miiOptFemale:"女性",
+      miiLblFav:"喜欢的颜色", miiLblHeight:"身高", miiLblWeight:"体重",
+      miiLblFaceShape:"脸型", miiLblSkin:"肤色", miiLblFeature:"面部特征",
+      miiLblHairStyle:"发型 ID", miiLblHairColor:"发色", miiLblHairFlip:"翻转头发",
+      miiLblEyeStyle:"眼型 ID", miiLblEyeColorField:"颜色", miiLblEyeRot:"旋转",
+      miiLblEyeVert:"垂直位置", miiLblEyeSize:"大小", miiLblEyeSpace:"间距",
+      miiLblBrowStyle:"眉型 ID", miiLblBrowColorField:"颜色", miiLblBrowRot:"旋转",
+      miiLblBrowSize:"大小", miiLblBrowVert:"垂直位置", miiLblBrowSpace:"间距",
+      miiLblNoseType:"鼻型", miiLblNoseSize:"大小", miiLblNoseVert:"垂直位置",
+      miiLblMouthStyle:"嘴型 ID", miiLblLipColorField:"颜色", miiLblLipSize:"大小", miiLblLipVert:"垂直位置",
+      miiLblGlasses:"眼镜", miiLblGlassesColor:"眼镜颜色", miiLblMustache:"胡子", miiLblBeard:"胡须",
+      miiLblCreator:"创建者名称",
+      launcherUpdateMsg:"有新的启动器版本可用。", launcherUpdateBtn:"更新！",
+      launcherUpdateInstalling:"正在下载并安装——此窗口将自动重启。",
+      launcherUpdateFailed:"更新失败。你可以暂时继续使用此版本。" },
     ar: { navHome:"الرئيسية", navCredits:"الشكر والتقدير", navSettings:"الإعدادات",
       heroSettingsBtn:"الإعدادات", heroCreditsBtn:"الشكر والتقدير", exitBtn:"خروج",
       labelDolphin:"Dolphin", labelIso:"ISO الخاص باللعبة", labelActiveMod:"التعديل النشط", labelLauncher:"المشغّل",
@@ -2233,7 +2457,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"الإصدار ",
       toastLaunched:"تم التشغيل.",
       toastCouldNotLaunch:"تعذّر التشغيل.",
-      toastSettingsSaved:"تم حفظ الإعدادات." },
+      toastSettingsSaved:"تم حفظ الإعدادات.",
+      navMii:"Mii", miiBackBtn:"← الرئيسية", miiTitle:"Mii", miiTag:"مكتبة Mii الخاصة بـ Nitro · تتزامن عند التشغيل",
+      miiListHeading:"Mii", miiRefreshBtn:"تحديث", miiEmptyHint:"حدد مسار Dolphin أولاً في الإعدادات.",
+      miiPreviewLoading:"اختر Mii",
+      miiSaveBtn:"حفظ في Nitro", miiNewBtn:"Mii جديد", miiRefresh2Btn:"إعادة التحميل",
+      miiSubtabIdentity:"الهوية", miiSubtabFace:"الوجه", miiSubtabHair:"الشعر", miiSubtabEyes:"العينان",
+      miiSubtabBrows:"الحواجب", miiSubtabNose:"الأنف", miiSubtabMouth:"الفم", miiSubtabExtras:"إضافات",
+      miiLblName:"الاسم", miiLblGender:"الجنس", miiOptMale:"ذكر", miiOptFemale:"أنثى",
+      miiLblFav:"اللون المفضل", miiLblHeight:"الطول", miiLblWeight:"الوزن",
+      miiLblFaceShape:"شكل الوجه", miiLblSkin:"لون البشرة", miiLblFeature:"ملامح الوجه",
+      miiLblHairStyle:"معرّف تصفيفة الشعر", miiLblHairColor:"لون الشعر", miiLblHairFlip:"عكس الشعر",
+      miiLblEyeStyle:"معرّف العينين", miiLblEyeColorField:"اللون", miiLblEyeRot:"الدوران",
+      miiLblEyeVert:"عمودي", miiLblEyeSize:"الحجم", miiLblEyeSpace:"التباعد",
+      miiLblBrowStyle:"معرّف الحواجب", miiLblBrowColorField:"اللون", miiLblBrowRot:"الدوران",
+      miiLblBrowSize:"الحجم", miiLblBrowVert:"عمودي", miiLblBrowSpace:"التباعد",
+      miiLblNoseType:"نوع الأنف", miiLblNoseSize:"الحجم", miiLblNoseVert:"عمودي",
+      miiLblMouthStyle:"معرّف الفم", miiLblLipColorField:"اللون", miiLblLipSize:"الحجم", miiLblLipVert:"عمودي",
+      miiLblGlasses:"النظارات", miiLblGlassesColor:"لون النظارات", miiLblMustache:"الشنب", miiLblBeard:"اللحية",
+      miiLblCreator:"اسم المنشئ",
+      launcherUpdateMsg:"يتوفر إصدار جديد من المشغّل.", launcherUpdateBtn:"تحديث!",
+      launcherUpdateInstalling:"جاري التنزيل والتثبيت — ستُعاد تشغيل هذه النافذة تلقائيًا.",
+      launcherUpdateFailed:"فشل التحديث. يمكنك الاستمرار في استخدام هذا الإصدار الآن." },
     sv: { navHome:"Hem", navCredits:"Credits", navSettings:"Inställningar",
       heroSettingsBtn:"Inställningar", heroCreditsBtn:"Credits", exitBtn:"Avsluta",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiv mod", labelLauncher:"Launcher",
@@ -2272,7 +2517,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Version ",
       toastLaunched:"Startad.",
       toastCouldNotLaunch:"Det gick inte att starta.",
-      toastSettingsSaved:"Inställningar sparade." },
+      toastSettingsSaved:"Inställningar sparade.",
+      navMii:"Mii", miiBackBtn:"← Hem", miiTitle:"Mii", miiTag:"Nitro Mii-bibliotek · synkas vid Play",
+      miiListHeading:"Miis", miiRefreshBtn:"Uppdatera", miiEmptyHint:"Ange din Dolphin-sökväg i Inställningar först.",
+      miiPreviewLoading:"Välj en Mii",
+      miiSaveBtn:"Spara till Nitro", miiNewBtn:"Ny Mii", miiRefresh2Btn:"Ladda om",
+      miiSubtabIdentity:"Identitet", miiSubtabFace:"Ansikte", miiSubtabHair:"Hår", miiSubtabEyes:"Ögon",
+      miiSubtabBrows:"Ögonbryn", miiSubtabNose:"Näsa", miiSubtabMouth:"Mun", miiSubtabExtras:"Extra",
+      miiLblName:"Namn", miiLblGender:"Kön", miiOptMale:"Man", miiOptFemale:"Kvinna",
+      miiLblFav:"Favoritfärg", miiLblHeight:"Längd", miiLblWeight:"Vikt",
+      miiLblFaceShape:"Ansiktsform", miiLblSkin:"Hud", miiLblFeature:"Ansiktsdrag",
+      miiLblHairStyle:"Frisyr-ID", miiLblHairColor:"Hårfärg", miiLblHairFlip:"Spegla hår",
+      miiLblEyeStyle:"Ögon-ID", miiLblEyeColorField:"Färg", miiLblEyeRot:"Rotation",
+      miiLblEyeVert:"Vertikal", miiLblEyeSize:"Storlek", miiLblEyeSpace:"Avstånd",
+      miiLblBrowStyle:"Ögonbryn-ID", miiLblBrowColorField:"Färg", miiLblBrowRot:"Rotation",
+      miiLblBrowSize:"Storlek", miiLblBrowVert:"Vertikal", miiLblBrowSpace:"Avstånd",
+      miiLblNoseType:"Näsa-typ", miiLblNoseSize:"Storlek", miiLblNoseVert:"Vertikal",
+      miiLblMouthStyle:"Mun-ID", miiLblLipColorField:"Färg", miiLblLipSize:"Storlek", miiLblLipVert:"Vertikal",
+      miiLblGlasses:"Glasögon", miiLblGlassesColor:"Glasögonfärg", miiLblMustache:"Mustasch", miiLblBeard:"Skägg",
+      miiLblCreator:"Skaparens namn",
+      launcherUpdateMsg:"En ny launcher-version är tillgänglig.", launcherUpdateBtn:"Uppdatera!",
+      launcherUpdateInstalling:"Laddar ner och installerar — det här fönstret startar om automatiskt.",
+      launcherUpdateFailed:"Uppdateringen misslyckades. Du kan fortsätta använda den här versionen för nu." },
     fi: { navHome:"Koti", navCredits:"Tekijät", navSettings:"Asetukset",
       heroSettingsBtn:"Asetukset", heroCreditsBtn:"Tekijät", exitBtn:"Poistu",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiivinen modi", labelLauncher:"Käynnistin",
@@ -2311,7 +2577,28 @@ function toast(msg, isError, sticky) {
       toastGotPrefix:"Versio ",
       toastLaunched:"Käynnistetty.",
       toastCouldNotLaunch:"Käynnistys epäonnistui.",
-      toastSettingsSaved:"Asetukset tallennettu." },
+      toastSettingsSaved:"Asetukset tallennettu.",
+      navMii:"Mii", miiBackBtn:"← Koti", miiTitle:"Mii", miiTag:"Nitro Mii -kirjasto · synkronoituu Play-painikkeella",
+      miiListHeading:"Miit", miiRefreshBtn:"Päivitä", miiEmptyHint:"Aseta ensin Dolphin-polku Asetuksissa.",
+      miiPreviewLoading:"Valitse Mii",
+      miiSaveBtn:"Tallenna Nitroon", miiNewBtn:"Uusi Mii", miiRefresh2Btn:"Lataa uudelleen",
+      miiSubtabIdentity:"Identiteetti", miiSubtabFace:"Kasvot", miiSubtabHair:"Hiukset", miiSubtabEyes:"Silmät",
+      miiSubtabBrows:"Kulmakarvat", miiSubtabNose:"Nenä", miiSubtabMouth:"Suu", miiSubtabExtras:"Muut",
+      miiLblName:"Nimi", miiLblGender:"Sukupuoli", miiOptMale:"Mies", miiOptFemale:"Nainen",
+      miiLblFav:"Lempiväri", miiLblHeight:"Pituus", miiLblWeight:"Paino",
+      miiLblFaceShape:"Kasvojen muoto", miiLblSkin:"Ihonväri", miiLblFeature:"Kasvonpiirre",
+      miiLblHairStyle:"Kampauksen ID", miiLblHairColor:"Hiusväri", miiLblHairFlip:"Peilaa hiukset",
+      miiLblEyeStyle:"Silmien ID", miiLblEyeColorField:"Väri", miiLblEyeRot:"Kierto",
+      miiLblEyeVert:"Pysty", miiLblEyeSize:"Koko", miiLblEyeSpace:"Väli",
+      miiLblBrowStyle:"Kulmakarvojen ID", miiLblBrowColorField:"Väri", miiLblBrowRot:"Kierto",
+      miiLblBrowSize:"Koko", miiLblBrowVert:"Pysty", miiLblBrowSpace:"Väli",
+      miiLblNoseType:"Nenän tyyppi", miiLblNoseSize:"Koko", miiLblNoseVert:"Pysty",
+      miiLblMouthStyle:"Suun ID", miiLblLipColorField:"Väri", miiLblLipSize:"Koko", miiLblLipVert:"Pysty",
+      miiLblGlasses:"Silmälasit", miiLblGlassesColor:"Silmälasien väri", miiLblMustache:"Viikset", miiLblBeard:"Parta",
+      miiLblCreator:"Luojan nimi",
+      launcherUpdateMsg:"Uusi launcher-versio on saatavilla.", launcherUpdateBtn:"Päivitä!",
+      launcherUpdateInstalling:"Ladataan ja asennetaan — tämä ikkuna käynnistyy automaattisesti uudelleen.",
+      launcherUpdateFailed:"Päivitys epäonnistui. Voit jatkaa tämän version käyttöä toistaiseksi." },
   };
 
   function applyTranslations(langCode){
@@ -2544,21 +2831,55 @@ function toast(msg, isError, sticky) {
     text.textContent = await window.pywebview.api.get_dolphin_log_tail();
   });
 
+  // ---------- launcher self-update popup ----------
+  function showLauncherUpdatePopup(downloadUrl){
+    const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
+    const modal = document.getElementById('launcherUpdateModal');
+    const btn = document.getElementById('launcherUpdateBtn');
+    const msg = document.getElementById('launcherUpdateMsg');
+    if(!modal || !btn || !msg) return;
+    msg.textContent = t.launcherUpdateMsg;
+    btn.textContent = t.launcherUpdateBtn;
+    btn.disabled = false;
+    modal.classList.remove('hidden');
+    btn.onclick = async () => {
+      btn.disabled = true;
+      msg.textContent = t.launcherUpdateInstalling;
+      try {
+        const res = await window.pywebview.api.start_launcher_update(downloadUrl);
+        if(!res?.ok){
+          msg.textContent = (res && res.error) || t.launcherUpdateFailed;
+          btn.disabled = false;
+          btn.textContent = t.launcherUpdateBtn;
+        }
+        // On success the backend closes this window itself once the
+        // swap is staged -- nothing left to do here but wait.
+      } catch (e) {
+        msg.textContent = t.launcherUpdateFailed;
+        btn.disabled = false;
+      }
+    };
+  }
+
   // ---------- boot ----------
   window.addEventListener('pywebviewready', async ()=>{
     const state = await refreshState();
 
-    // Pulls the manifest.json theme block (colors/logo/banner/default
-    // Mii) right away, instead of waiting for a Play press -- that was
-    // the bug behind "New Mii didn't get the one I wanted": this used
-    // to only run inside doPlay(), so anyone who opened the Mii tab
-    // before ever pressing Play got the plain built-in blank Mii
-    // because nothing had been fetched yet. Fire-and-forget: it must
-    // never block the UI from opening, and newMii() below also awaits
-    // its own fresh check right before building, as a second safety
-    // net in case this one is still running or the network is slow.
+    // Pulls the manifest.json theme block (colors/logo/banner/icon)
+    // right away, instead of waiting for a Play press, and also
+    // checks whether a whole new launcher build (manifest.json's
+    // top-level "launcher_nitro" field) has been published -- if so,
+    // a small popup offers to update instead of silently doing it,
+    // since that one replaces the running .exe itself and needs the
+    // app to restart. Fire-and-forget: must never block the UI from
+    // opening.
     window.pywebview.api.check_for_update()
-      .then(() => refreshState())
+      .then((check) => {
+        refreshState();
+        if(check?.launcher_update_available && check.launcher_download_url){
+          showLauncherUpdatePopup(check.launcher_download_url);
+        }
+      })
       .catch(() => {});
 
     if(!state.dolphin_path || !state.iso_path){

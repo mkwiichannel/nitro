@@ -1,0 +1,2055 @@
+"""
+Mario Kart Nitro — Launcher
+
+Desktop shell around index.html (pywebview), with a real Python
+backend behind it:
+  - persists your Dolphin path / ISO path / preferences to disk
+  - real native file/folder browse dialogs
+  - imports and tracks Riivolution mod profiles (.xml), one "active"
+    at a time
+  - Play stages the active mod into Dolphin's Riivolution folder and
+    actually launches Dolphin with your ISO
+  - Open Discord opens your real invite link in the system browser
+
+Run directly with:  python main.py
+Build a Windows .exe with:  build.bat   (see README.txt)
+"""
+
+import base64
+import configparser
+import hashlib
+import http.cookiejar
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+import urllib.request
+import uuid
+import webbrowser
+import xml.etree.ElementTree as ET
+import zipfile
+
+import webview
+
+DISCORD_URL = "https://discord.com/invite/wbU8vw8vJq"
+APP_VERSION = "1.0.0"
+WEBVIEW2_DOWNLOAD_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+BUILD_STAMP = "v1.0.0"
+
+# Update manifest — a tiny JSON file YOU control on GitHub, containing
+# {"version": "0.0.1", "download_url": "<google drive link>"}. Edit
+# this file's CONTENT anytime (version bump + swap the drive link if
+# you ever get a new one) and every copy of this exe picks it up
+# automatically — no rebuild, no redistributing the app.
+MANIFEST_URL = "https://raw.githubusercontent.com/mkwiichannel/nitro/main/manifest.json"
+
+
+def resource_path(relative_path: str) -> str:
+    """Path to a bundled read-only resource (works from source and
+    from a PyInstaller onefile exe, which unpacks to sys._MEIPASS)."""
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+
+def app_data_dir() -> str:
+    """Writable per-user folder for config + imported mods (separate
+    from the read-only bundle, since a onefile exe unpacks to a temp
+    folder each run and can't persist data next to itself)."""
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    path = os.path.join(base, "MarioKartNitro")
+    os.makedirs(path, exist_ok=True)
+    os.makedirs(os.path.join(path, "mods"), exist_ok=True)
+    return path
+
+
+CONFIG_PATH = os.path.join(app_data_dir(), "config.json")
+
+DEFAULT_CONFIG = {
+    "dolphin_path": "",
+    "iso_path": "",
+    "mod_directory": os.path.join(app_data_dir(), "mods"),
+    "resolution": "1920x1080",
+    "language": "en",
+    "fullscreen": False,
+    "auto_update": True,
+    "active_mod": "Nitro Pack",
+    "content_version": "0.0.1",
+    "installed_from_url": "",
+    "installed_launcher_url": "",
+    "theme_season": "",
+    "theme_colors": {},
+    "theme_banner_url": "",
+    "theme_banner_path": "",
+    "theme_logo_url": "",
+    "theme_logo_path": "",
+    "ui_html_url": "",
+    "ui_html_path": "",
+    "icon_url": "",
+    "icon_path": "",
+    "icon_applied_hash": "",
+    "ffl_resource_path": "",
+    "mods": [
+        {
+            "name": "Nitro Pack",
+            "builtin": True,
+            "xml_path": "",
+            "content_root": "",
+        }
+    ],
+}
+
+
+def load_config() -> dict:
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            merged = {**DEFAULT_CONFIG, **data}
+            _repair_stale_builtin_mod(merged)
+            return merged
+        except (json.JSONDecodeError, OSError):
+            pass
+    return dict(DEFAULT_CONFIG)
+
+
+def _repair_stale_builtin_mod(cfg: dict) -> None:
+    """Self-heal: a saved config.json from an OLDER build can carry
+    forward an xml_path/content_root pointing at a location that no
+    longer exists. If the built-in entry's xml_path is missing on
+    disk, re-point it (and content_root, if not customized) at the
+    permanent app-data location — but only if something was actually
+    installed there before; otherwise leave it empty so the app
+    correctly shows 'Install' rather than silently pointing at
+    nothing."""
+    permanent_content = os.path.join(app_data_dir(), "mods", "Nitro Pack", "content")
+    good_xml = os.path.join(permanent_content, "riivolution", "MKnitro.xml")
+    for m in cfg.get("mods", []):
+        if not m.get("builtin"):
+            continue
+        xml_missing = not m.get("xml_path") or not os.path.exists(m["xml_path"])
+        if xml_missing and os.path.exists(good_xml):
+            m["xml_path"] = good_xml
+        content_missing = not m.get("content_root") or not os.path.isdir(m["content_root"])
+        if content_missing and os.path.isdir(permanent_content):
+            m["content_root"] = permanent_content
+
+
+def save_config(cfg: dict) -> None:
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+
+
+def seed_builtin_mod() -> None:
+    """No local content bundled into the exe anymore — everything
+    comes from the manifest.json + Drive link, exactly like an
+    update. This just makes sure the "Nitro Pack" mod entry exists in
+    config with an empty content_root, so the app knows to show
+    'Install' (same mechanism as 'Update') until the first fetch
+    happens."""
+    pass  # DEFAULT_CONFIG already has the Nitro Pack entry with an
+          # empty content_root — nothing to seed from disk anymore.
+
+
+def _parse_riivolution_options(xml_path):
+    """Read a Riivolution XML and pick a choice for every <option>,
+    matching the user's own proven-working manual configuration
+    exactly (confirmed via screenshot of Dolphin's own 'Start with
+    Riivolution Patches' dialog: Pack=Enabled, My Stuff=From Pack) —
+    not a generic default, since this specific mod's textures depend
+    on My Stuff being explicitly set to "From Pack", not left
+    disabled.
+
+    Dolphin matches by option-name (this XML has no id="..."
+    attributes), and choice indices are 1-based (0 = disabled,
+    confirmed in DiscIO/RiivolutionParser.cpp).
+    """
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    options_out = []
+    for section in root.findall("./options/section"):
+        section_name = section.get("name", "")
+        for option in section.findall("option"):
+            option_name = option.get("name", "")
+            choices = option.findall("choice")
+            if not choices:
+                continue
+            if len(choices) == 1:
+                chosen_index = 1  # only choice — unambiguous, enable it
+            else:
+                # prefer whichever choice matches the user's own
+                # proven-working selection ("From Pack") over any
+                # other option (e.g. "From CTGP-r")
+                chosen_index = 1  # fallback: first choice, 1-indexed
+                for idx, choice in enumerate(choices):
+                    if "pack" in choice.get("name", "").lower():
+                        chosen_index = idx + 1  # +1: Dolphin choices are 1-indexed
+                        break
+            options_out.append({
+                "section-name": section_name,
+                "option-name": option_name,
+                "choice": chosen_index,
+            })
+    return options_out
+
+
+def write_riivolution_preset(iso_path, xml_path, riivolution_root, display_name, out_path):
+    """Write a Dolphin 'dolphin-game-mod-descriptor' preset JSON —
+    the same format Dolphin itself writes via "Start with Riivolution
+    Patches > Save as Preset", and the format frontends like
+    EmulationStation-DE / Steam ROM Manager launch directly via
+    `dolphin.exe -e <preset.json>` to auto-boot a patched game with no
+    GUI interaction needed."""
+    options = _parse_riivolution_options(xml_path)
+    preset = {
+        "base-file": iso_path,
+        "display-name": display_name,
+        "riivolution": {
+            "patches": [
+                {
+                    "options": options,
+                    "root": riivolution_root,
+                    "xml": xml_path,
+                }
+            ]
+        },
+        "type": "dolphin-game-mod-descriptor",
+        "version": 1,
+    }
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(preset, f, indent=2)
+    return preset
+
+
+_BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+
+def _browser_request(url):
+    """Build a request with a normal browser User-Agent — Python's
+    default identifies itself as 'Python-urllib/x.y', which several
+    hosts (Google Drive, GitHub's release-asset CDN, etc.) can treat
+    very differently from a real browser for exactly this kind of
+    scripted download: silent stalls, unusual redirect handling, or
+    an outright 403. Used for every outgoing download, not just
+    Drive's."""
+    return urllib.request.Request(url, headers={"User-Agent": _BROWSER_USER_AGENT})
+
+
+def _extract_gdrive_file_id(url):
+    """Pull the file ID out of any common Google Drive share link
+    format: /file/d/ID/view, ?id=ID, or a bare ID already."""
+    match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
+    if match:
+        return match.group(1)
+    match = re.search(r"[?&]id=([a-zA-Z0-9_-]+)", url)
+    if match:
+        return match.group(1)
+    if re.fullmatch(r"[a-zA-Z0-9_-]{20,}", url.strip()):
+        return url.strip()
+    return None
+
+
+def _resolve_gdrive_confirm_url(html, base, file_id):
+    """Google Drive's large-file warning page HTML has changed format
+    multiple times over the years, and a single regex guess at one
+    field name is fragile. This parses EVERY hidden form field on the
+    page and the form's real action URL, reconstructing the exact
+    request Drive itself expects — the same approach robust
+    Drive-downloader tools use. Falls back to the classic 'confirm=t'
+    bypass token if no form fields are found at all."""
+    action_match = re.search(r'<form[^>]+action="([^"]+)"', html)
+    action_url = action_match.group(1).replace("&amp;", "&") if action_match else base
+
+    fields = dict(re.findall(r'<input[^>]+type="hidden"[^>]+name="([^"]+)"[^>]+value="([^"]*)"', html))
+    # some pages order value before name in the tag — catch that too
+    if not fields:
+        fields = dict(re.findall(r'<input[^>]+type="hidden"[^>]+value="([^"]*)"[^>]+name="([^"]+)"', html))
+        fields = {name: value for value, name in fields.items()}
+
+    if fields:
+        query = urllib.parse.urlencode(fields)
+        separator = "&" if "?" in action_url else "?"
+        return f"{action_url}{separator}{query}"
+
+    # last resort: the long-standing generic bypass token
+    return f"{base}&confirm=t"
+
+
+def fetch_url_bytes(url, timeout=30):
+    """Fetch raw bytes from any URL, with proper handling for Google
+    Drive links (both small files like a manifest.json and large
+    files like a multi-GB zip) — Drive serves an HTML warning page
+    instead of the real content for some links/sizes, so a plain
+    fetch can silently return that warning page's HTML instead of
+    your actual file. Falls through to a plain fetch for any
+    non-Drive URL (GitHub, direct links, etc.)."""
+    file_id = _extract_gdrive_file_id(url)
+    if file_id is None:
+        with urllib.request.urlopen(_browser_request(url), timeout=timeout) as response:
+            return response.read()
+
+    cookie_jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+    base = f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    with opener.open(_browser_request(base), timeout=timeout) as response:
+        content_type = response.headers.get("Content-Type", "")
+        data = response.read()
+        if "text/html" not in content_type:
+            return data
+        html = data.decode("utf-8", errors="ignore")
+
+    confirm_url = _resolve_gdrive_confirm_url(html, base, file_id)
+    with opener.open(_browser_request(confirm_url), timeout=timeout) as response:
+        return response.read()
+
+
+def download_file(url, dest_path, progress_callback=None):
+    """Download a file (any size) to dest_path, with the same
+    Google-Drive-aware handling as fetch_url_bytes — streams to disk
+    rather than holding a multi-GB file in memory. Uses a long
+    per-read timeout (any brief stall on a multi-GB transfer shouldn't
+    kill the whole download) and verifies the downloaded size against
+    what the server reported, when available. Calls
+    progress_callback(bytes_downloaded, total_bytes) periodically if
+    provided, for showing a real progress bar."""
+    file_id = _extract_gdrive_file_id(url)
+    read_timeout = 600  # 10 minutes of no data at all before giving up, not a total-transfer limit
+
+    def _stream_to_disk(response):
+        expected_size = response.headers.get("Content-Length")
+        total = int(expected_size) if expected_size else None
+        downloaded = 0
+        chunk_size = 1024 * 1024  # 1 MB chunks — frequent enough for a smooth progress bar
+        with open(dest_path, "wb") as f:
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                f.write(chunk)
+                downloaded += len(chunk)
+                if progress_callback:
+                    progress_callback(downloaded, total)
+        if expected_size is not None:
+            actual_size = os.path.getsize(dest_path)
+            if int(expected_size) != actual_size:
+                raise OSError(
+                    f"Download incomplete: got {actual_size} bytes, expected {expected_size}. "
+                    "This usually means the connection dropped partway through — try again."
+                )
+
+    if file_id is None:
+        with urllib.request.urlopen(_browser_request(url), timeout=read_timeout) as response:
+            _stream_to_disk(response)
+        return
+
+    cookie_jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+    base = f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    with opener.open(_browser_request(base), timeout=30) as response:
+        content_type = response.headers.get("Content-Type", "")
+        if "text/html" not in content_type:
+            _stream_to_disk(response)
+            return
+        html = response.read().decode("utf-8", errors="ignore")
+
+    confirm_url = _resolve_gdrive_confirm_url(html, base, file_id)
+    with opener.open(_browser_request(confirm_url), timeout=read_timeout) as response:
+        _stream_to_disk(response)
+
+
+_download_progress = {
+    "status": "idle",  # idle | downloading | extracting | done | error
+    "downloaded_bytes": 0,
+    "total_bytes": None,
+    "error": None,
+    "version": None,
+}
+_progress_lock = threading.Lock()
+
+
+def _set_progress(**kwargs):
+    with _progress_lock:
+        _download_progress.update(kwargs)
+
+
+class Api:
+    def __init__(self):
+        self.window = None  # set after window creation, needed for dialogs
+
+    # ---------- state ----------
+    def get_state(self):
+        cfg = load_config()
+        cfg["version"] = APP_VERSION
+        cfg["build_stamp"] = BUILD_STAMP
+        cfg["discord_url"] = DISCORD_URL
+        return cfg
+
+    def save_settings(self, payload):
+        cfg = load_config()
+        for key in ("dolphin_path", "iso_path", "mod_directory", "resolution",
+                    "language", "fullscreen", "auto_update", "ffl_resource_path",
+                    "content_drive_url", "version_drive_url"):
+            if key in payload:
+                cfg[key] = payload[key]
+        save_config(cfg)
+        return {"ok": True}
+
+    # ---------- Real Mii renderer resource ----------
+    def get_ffl_resource_state(self):
+        cfg = load_config()
+        path = cfg.get("ffl_resource_path", "")
+        candidates = []
+        if path:
+            candidates.append(path)
+        base = app_data_dir()
+        candidates += [
+            os.path.join(base, "FFLResHigh.dat"),
+            os.path.join(base, "AFLResHigh_2_3.dat"),
+            os.path.join(os.path.dirname(sys.executable), "FFLResHigh.dat"),
+            os.path.join(os.path.dirname(sys.executable), "AFLResHigh_2_3.dat"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "FFLResHigh.dat"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "AFLResHigh_2_3.dat"),
+            # Bundled directly in the exe now that it's properly
+            # licensed for redistribution -- checked last so a resource
+            # file manually dropped next to the exe/in app-data still
+            # wins if one exists, but this means the real Mii renderer
+            # just works out of the box for everyone with no setup step.
+            resource_path("RFL_Res.dat"),
+        ]
+        for candidate in candidates:
+            if candidate and os.path.isfile(candidate):
+                try:
+                    size = os.path.getsize(candidate)
+                    if size > 1024 * 1024:
+                        return {"ok": True, "path": candidate, "size": size}
+                except OSError:
+                    pass
+        return {"ok": False, "path": path, "size": 0,
+                "message": "No FFL resource found, including the one that should be bundled in this build."}
+
+    def get_ffl_resource(self):
+        state = self.get_ffl_resource_state()
+        if not state.get("ok"):
+            return state
+        try:
+            with open(state["path"], "rb") as f:
+                data = f.read()
+            return {"ok": True, "path": state["path"], "size": len(data),
+                    "data": base64.b64encode(data).decode("ascii")}
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+
+    def get_default_mii(self):
+        """Returns the starter Mii that "New Mii" builds from -- a real
+        74-byte Wii Mii record (default_mii.mii) bundled directly into
+        the exe, not fetched from anywhere, so it works offline and
+        the very first time the app is ever run. The frontend falls
+        back to its own minimal blank-Mii buffer only if this file is
+        somehow missing (e.g. a dev run without it next to main.py)."""
+        path = resource_path("default_mii.mii")
+        if not os.path.isfile(path):
+            return {"ok": False, "error": "default_mii.mii is not bundled."}
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+            return {"ok": True, "size": len(data),
+                    "data": base64.b64encode(data).decode("ascii")}
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+
+    # ---------- Dolphin's own logging (for real diagnostics) ----------
+    def _enable_dolphin_file_logging(self, user_dir):
+        """Force Dolphin to write its own internal log to a file, so we
+        can read back exactly what Dolphin itself thinks happened
+        during boot/Riivolution patching — real data instead of
+        guesses. Config key confirmed directly against Dolphin's
+        source (Common/Logging/LogManager.cpp): [Options] WriteToFile
+        under Config/Logger.ini in the user folder."""
+        try:
+            config_dir = os.path.join(user_dir, "Config")
+            os.makedirs(config_dir, exist_ok=True)
+            logger_ini = os.path.join(config_dir, "Logger.ini")
+            parser = configparser.ConfigParser()
+            parser.optionxform = str  # preserve key case
+            if os.path.exists(logger_ini):
+                parser.read(logger_ini, encoding="utf-8")
+            if "Options" not in parser:
+                parser["Options"] = {}
+            parser["Options"]["WriteToFile"] = "True"
+            parser["Options"]["WriteToConsole"] = "True"
+            parser["Options"]["Verbosity"] = "4"
+            if "Logs" not in parser:
+                parser["Logs"] = {}
+            for category in ("CORE", "BOOT", "DISCIO", "IOS_FS", "FILEMON", "MASTER_LOG"):
+                parser["Logs"][category] = "True"
+            with open(logger_ini, "w", encoding="utf-8") as f:
+                parser.write(f)
+        except OSError:
+            pass  # non-critical — launch still proceeds without forced logging
+
+    def get_dolphin_log_tail(self, lines=80):
+        """Read back the end of Dolphin's own log file after a launch
+        attempt, so we can see what Dolphin itself reported instead of
+        guessing from the outside."""
+        cfg = load_config()
+        dolphin_path = cfg.get("dolphin_path", "")
+        if not dolphin_path:
+            return "Dolphin path not set."
+        user_dir = self._dolphin_user_dir(dolphin_path)
+        log_path = os.path.join(user_dir, "Logs", "dolphin.log")
+        if not os.path.exists(log_path):
+            return f"No log file found yet at {log_path}\n(Play at least once first — logging is now forced on automatically.)"
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                all_lines = f.readlines()
+            return f"({log_path})\n\n" + "".join(all_lines[-lines:])
+        except OSError as e:
+            return f"Couldn't read log: {e}"
+
+
+    # ---------- Nitro Mii library + Dolphin sync ----------
+    # Miis are edited/stored in Nitro first. They are merged into the selected
+    # Dolphin NAND immediately before Play launches the game.
+    MII_DB_CRC_OFFSET = 0x1F1DE
+    MII_DB_HEADER_OFFSET = 0x04
+    MII_BLOCK_SIZE = 74
+    MII_SLOT_COUNT = 100
+
+    def _mii_db_path(self):
+        cfg = load_config()
+        dolphin = cfg.get("dolphin_path", "")
+        if not dolphin:
+            return None
+        user_dir = self._dolphin_user_dir(dolphin)
+        return os.path.join(user_dir, "Wii", "shared2", "menu", "FaceLib", "RFL_DB.dat")
+
+    def _mii_library_path(self):
+        return os.path.join(app_data_dir(), "mii_library.json")
+
+    def _read_mii_library(self):
+        try:
+            with open(self._mii_library_path(), "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except (OSError, json.JSONDecodeError):
+            return []
+
+    def _write_mii_library(self, items):
+        path = self._mii_library_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(items, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+
+    @staticmethod
+    def _crc16_ccitt(buf, length):
+        crc = 0
+        for b in buf[:length]:
+            crc ^= b << 8
+            for _ in range(8):
+                crc = (((crc << 1) ^ 0x1021) & 0xFFFF) if crc & 0x8000 else ((crc << 1) & 0xFFFF)
+        return crc
+
+    @staticmethod
+    def _mii_name(block):
+        try:
+            raw = block[2:22].decode("utf-16-be", "ignore").rstrip("\x00")
+            return raw or "Unnamed Mii"
+        except Exception:
+            return "Unnamed Mii"
+
+    @staticmethod
+    def _mii_id(block):
+        return int.from_bytes(block[0x18:0x1C], "big") if len(block) >= 0x1C else 0
+
+    def _create_empty_mii_db(self, db_path):
+        # Same Wii database structure used by WheelWizard: 100 74-byte
+        # blocks begin at 0x04, RNOD/RNHD headers, CRC-16/CCITT at 0x1F1DE.
+        raw = bytearray(779_968)
+        raw[0:4] = b"RNOD"
+        raw[0x1CE0 + 0x0C] = 0x80
+        raw[0x1D00:0x1D04] = b"RNHD"
+        raw[0x1D04:0x1D08] = b"\xFF\xFF\xFF\xFF"
+        crc = self._crc16_ccitt(raw, self.MII_DB_CRC_OFFSET)
+        raw[self.MII_DB_CRC_OFFSET] = (crc >> 8) & 0xFF
+        raw[self.MII_DB_CRC_OFFSET + 1] = crc & 0xFF
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        with open(db_path, "wb") as f:
+            f.write(raw)
+
+    def get_miis(self):
+        db = self._mii_db_path()
+        staged = self._read_mii_library()
+        records = []
+        if db and os.path.isfile(db):
+            try:
+                raw = open(db, "rb").read()
+                if len(raw) >= self.MII_DB_CRC_OFFSET + 2:
+                    for slot in range(self.MII_SLOT_COUNT):
+                        off = self.MII_DB_HEADER_OFFSET + slot * self.MII_BLOCK_SIZE
+                        block = raw[off:off + self.MII_BLOCK_SIZE]
+                        if len(block) != self.MII_BLOCK_SIZE or not any(block):
+                            continue
+                        records.append({
+                            "slot": slot, "source_slot": slot, "stage_id": None,
+                            "name": self._mii_name(block),
+                            "data": base64.b64encode(block).decode("ascii"),
+                            "origin": "Dolphin"
+                        })
+            except OSError as e:
+                return {"ok": False, "error": f"Couldn't read Dolphin's Mii database: {e}"}
+
+        # Overlay staged edits onto the slot they came from, and append newly
+        # created Miis. This lets the editor work before touching Dolphin.
+        for item in staged:
+            try:
+                block = base64.b64decode(item.get("data", ""), validate=True)
+                if len(block) != self.MII_BLOCK_SIZE:
+                    continue
+                source_slot = item.get("source_slot")
+                rec = {
+                    "slot": int(source_slot) if source_slot is not None else -1,
+                    "source_slot": source_slot,
+                    "stage_id": item.get("stage_id"),
+                    "name": self._mii_name(block),
+                    "data": base64.b64encode(block).decode("ascii"),
+                    "origin": "Nitro library"
+                }
+                existing_index = next((i for i, x in enumerate(records) if source_slot is not None and x["slot"] == int(source_slot)), None)
+                if existing_index is not None:
+                    records[existing_index] = rec
+                else:
+                    records.append(rec)
+            except (ValueError, TypeError):
+                continue
+
+        return {"ok": True, "path": db or "", "miis": records,
+                "message": "Miis are saved in Nitro and sync to Dolphin when Play is pressed."}
+
+    def save_mii(self, slot, block_b64, stage_id=None):
+        """Save into Nitro's persistent library, not directly into Dolphin."""
+        try:
+            slot = int(slot)
+            block = base64.b64decode(block_b64, validate=True)
+            if len(block) != self.MII_BLOCK_SIZE:
+                raise ValueError("Invalid Wii Mii record. Expected 74 bytes.")
+            items = self._read_mii_library()
+            existing = next((x for x in items if stage_id and x.get("stage_id") == stage_id), None)
+            source_slot = existing.get("source_slot") if existing else (slot if slot >= 0 else None)
+            source_mii_id = existing.get("source_mii_id") if existing else None
+
+            # Remember the identity of the original slot, so sync won't overwrite
+            # a different Mii if the Dolphin database changes before Play.
+            db = self._mii_db_path()
+            if source_slot is not None and source_mii_id is None and db and os.path.isfile(db):
+                try:
+                    raw_db = open(db, "rb").read()
+                    off = self.MII_DB_HEADER_OFFSET + int(source_slot) * self.MII_BLOCK_SIZE
+                    old_block = raw_db[off:off + self.MII_BLOCK_SIZE]
+                    if len(old_block) == self.MII_BLOCK_SIZE and any(old_block):
+                        source_mii_id = self._mii_id(old_block)
+                except OSError:
+                    pass
+
+            stage_id = existing.get("stage_id") if existing else uuid.uuid4().hex
+            item = {
+                "stage_id": stage_id,
+                "source_slot": source_slot,
+                "source_mii_id": source_mii_id,
+                "name": self._mii_name(block),
+                "data": base64.b64encode(block).decode("ascii")
+            }
+            if existing:
+                items[items.index(existing)] = item
+            else:
+                items.append(item)
+            self._write_mii_library(items)
+            return {"ok": True, "slot": source_slot if source_slot is not None else -1,
+                    "stage_id": stage_id, "name": item["name"],
+                    "message": "Saved to Nitro. It will be written to Dolphin when you press Play."}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _sync_miis_to_dolphin(self):
+        items = self._read_mii_library()
+        if not items:
+            return {"ok": True, "synced": 0, "message": "No staged Mii changes."}
+        db = self._mii_db_path()
+        if not db:
+            return {"ok": False, "error": "Choose your Dolphin executable in Settings before syncing Miis."}
+        try:
+            if not os.path.isfile(db):
+                self._create_empty_mii_db(db)
+            raw = bytearray(open(db, "rb").read())
+            crc_offset = self.MII_DB_CRC_OFFSET
+            if len(raw) < crc_offset + 2:
+                raise ValueError(f"RFL_DB.dat is too small to be a valid Wii Mii database: {db}")
+            stored = (raw[crc_offset] << 8) | raw[crc_offset + 1]
+            calculated = self._crc16_ccitt(raw, crc_offset)
+            if stored != calculated:
+                raise ValueError(f"Dolphin's Mii database CRC is invalid (stored {stored:04X}, expected {calculated:04X}). No changes were written.")
+
+            changed = 0
+            for item in items:
+                block = base64.b64decode(item.get("data", ""), validate=True)
+                if len(block) != self.MII_BLOCK_SIZE:
+                    continue
+                block_id = self._mii_id(block)
+                source_slot = item.get("source_slot")
+                source_id = item.get("source_mii_id")
+                chosen = None
+
+                if source_slot is not None and 0 <= int(source_slot) < self.MII_SLOT_COUNT:
+                    slot = int(source_slot)
+                    off = self.MII_DB_HEADER_OFFSET + slot * self.MII_BLOCK_SIZE
+                    current = bytes(raw[off:off + self.MII_BLOCK_SIZE])
+                    current_id = self._mii_id(current)
+                    if not any(current) or current == block or source_id is None or current_id == int(source_id) or (block_id and current_id == block_id):
+                        chosen = slot
+
+                # If the original slot moved, find the same Mii by its client ID.
+                if chosen is None and source_id:
+                    for slot in range(self.MII_SLOT_COUNT):
+                        off = self.MII_DB_HEADER_OFFSET + slot * self.MII_BLOCK_SIZE
+                        current = bytes(raw[off:off + self.MII_BLOCK_SIZE])
+                        if any(current) and self._mii_id(current) == int(source_id):
+                            chosen = slot
+                            break
+
+                # New Mii or original slot is now occupied by a different Mii:
+                # update an exact-ID match, otherwise use the first empty slot.
+                if chosen is None and block_id:
+                    for slot in range(self.MII_SLOT_COUNT):
+                        off = self.MII_DB_HEADER_OFFSET + slot * self.MII_BLOCK_SIZE
+                        current = bytes(raw[off:off + self.MII_BLOCK_SIZE])
+                        if any(current) and self._mii_id(current) == block_id:
+                            chosen = slot
+                            break
+                if chosen is None:
+                    for slot in range(self.MII_SLOT_COUNT):
+                        off = self.MII_DB_HEADER_OFFSET + slot * self.MII_BLOCK_SIZE
+                        if not any(raw[off:off + self.MII_BLOCK_SIZE]):
+                            chosen = slot
+                            break
+                if chosen is None:
+                    raise ValueError("Dolphin's Mii database is full (100 slots). No further Miis can be added.")
+
+                off = self.MII_DB_HEADER_OFFSET + chosen * self.MII_BLOCK_SIZE
+                raw[off:off + self.MII_BLOCK_SIZE] = block
+                item["source_slot"] = chosen
+                item["source_mii_id"] = block_id or source_id
+                item["name"] = self._mii_name(block)
+                changed += 1
+
+            new_crc = self._crc16_ccitt(raw, crc_offset)
+            raw[crc_offset] = (new_crc >> 8) & 0xFF
+            raw[crc_offset + 1] = new_crc & 0xFF
+            # Backup the exact original database before the first write in this run.
+            backup = db + ".nitro-backup"
+            if not os.path.exists(backup):
+                shutil.copy2(db, backup)
+            tmp = db + ".nitro.tmp"
+            with open(tmp, "wb") as f:
+                f.write(raw)
+            os.replace(tmp, db)
+            self._write_mii_library(items)
+            return {"ok": True, "synced": changed, "path": db}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    # ---------- file dialogs ----------
+    def browse_path(self, kind, file_types=None):
+        if self.window is None:
+            return None
+        try:
+            if kind == "folder":
+                result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+            else:
+                types = tuple(file_types) if file_types else ()
+                result = self.window.create_file_dialog(
+                    webview.OPEN_DIALOG, allow_multiple=False, file_types=types
+                )
+            if result:
+                return result[0]
+        except Exception as e:
+            return {"error": str(e)}
+        return None
+
+    # ---------- mods ----------
+    def import_mod(self):
+        if self.window is None:
+            return {"error": "Window not ready"}
+        result = self.window.create_file_dialog(
+            webview.OPEN_DIALOG, allow_multiple=False,
+            file_types=("Riivolution XML (*.xml)", "All files (*.*)"),
+        )
+        if not result:
+            return {"ok": False, "cancelled": True}
+
+        src = result[0]
+        name = os.path.splitext(os.path.basename(src))[0]
+        cfg = load_config()
+
+        # avoid clobbering an existing mod with the same name
+        existing_names = {m["name"] for m in cfg["mods"]}
+        final_name = name
+        i = 2
+        while final_name in existing_names:
+            final_name = f"{name} ({i})"
+            i += 1
+
+        dest_dir = os.path.join(app_data_dir(), "mods", final_name)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_xml = os.path.join(dest_dir, os.path.basename(src))
+        shutil.copy2(src, dest_xml)
+
+        cfg["mods"].append({
+            "name": final_name, "builtin": False,
+            "xml_path": dest_xml, "content_root": "",
+        })
+        save_config(cfg)
+        return {"ok": True, "mods": cfg["mods"], "name": final_name}
+
+    def set_mod_content_root(self, name):
+        """Point a mod at the folder containing its actual asset
+        folders (e.g. MKWiiTwo, ctgpr) — wherever they already live on
+        disk. No copying: Dolphin's preset just reads directly from
+        here at launch, so this is a one-time pointer, not a transfer."""
+        if self.window is None:
+            return {"error": "Window not ready"}
+        result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        if not result:
+            return {"ok": False, "cancelled": True}
+
+        cfg = load_config()
+        for m in cfg["mods"]:
+            if m["name"] == name:
+                m["content_root"] = result[0]
+        save_config(cfg)
+        return {"ok": True, "mods": cfg["mods"]}
+
+    def set_active_mod(self, name):
+        cfg = load_config()
+        if any(m["name"] == name for m in cfg["mods"]):
+            cfg["active_mod"] = name
+            save_config(cfg)
+        return {"ok": True, "active_mod": cfg["active_mod"]}
+
+    def remove_mod(self, name):
+        cfg = load_config()
+        cfg["mods"] = [m for m in cfg["mods"] if not (m["name"] == name and not m.get("builtin"))]
+        if cfg["active_mod"] == name:
+            cfg["active_mod"] = cfg["mods"][0]["name"] if cfg["mods"] else ""
+        mod_dir = os.path.join(app_data_dir(), "mods", name)
+        if os.path.isdir(mod_dir):
+            shutil.rmtree(mod_dir, ignore_errors=True)
+        save_config(cfg)
+        return {"ok": True, "mods": cfg["mods"], "active_mod": cfg["active_mod"]}
+
+    # ---------- launch ----------
+    def _is_portable_dolphin(self, dolphin_dir):
+        """Real Dolphin portable-mode detection, matching WheelWizard's
+        PathManager.cs TryFindPortableUserFolderPath exactly. This was
+        the actual root cause of everything: my earlier version treated
+        the mere EXISTENCE of a 'User' folder next to the exe as proof
+        of portable mode, but that's wrong — a User folder can exist
+        for other reasons (leftover data, earlier testing, etc.)
+        without Dolphin actually being in portable mode. The real
+        trigger is a 'portable.txt' marker file, or a specific
+        registry flag. Since neither existed here, real Dolphin (and
+        the real WheelWizard, confirmed via its own settings screen)
+        correctly use AppData — but my code was wrongly treating the
+        leftover User folder as portable and force-pointing -u at the
+        wrong place on every single launch."""
+        if os.path.exists(os.path.join(dolphin_dir, "portable.txt")):
+            return True
+        if sys.platform == "win32":
+            try:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Dolphin Emulator") as key:
+                    value, _ = winreg.QueryValueEx(key, "LocalUserConfig")
+                    if str(value) == "1":
+                        return True
+            except OSError:
+                pass
+        return False
+
+    def _dolphin_user_dir(self, dolphin_path):
+        """Find Dolphin's actual User folder, matching WheelWizard's
+        exact priority order (PathManager.cs TryFindUserFolderPath):
+          1. Portable — ONLY if portable.txt exists (or the registry
+             LocalUserConfig flag is set), not just because a 'User'
+             folder happens to be present.
+          2. Windows Registry (HKCU\\Software\\Dolphin Emulator\\UserConfigPath)
+          3. Documents\\Dolphin Emulator
+          4. AppData\\Dolphin Emulator (last-resort fallback)
+        """
+        dolphin_dir = os.path.dirname(dolphin_path)
+        portable_user = os.path.join(dolphin_dir, "User")
+        # If a Dolphin user folder already contains the Mii database, prefer
+        # that exact NAND. The launcher also passes this path with -u, so reads,
+        # writes and the game all use the same data directory.
+        if os.path.isdir(portable_user) and os.path.isfile(os.path.join(portable_user, "Wii", "shared2", "menu", "FaceLib", "RFL_DB.dat")):
+            return portable_user
+        if self._is_portable_dolphin(dolphin_dir) and os.path.isdir(portable_user):
+            return portable_user
+
+        if sys.platform == "win32":
+            try:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Dolphin Emulator") as key:
+                    value, _ = winreg.QueryValueEx(key, "UserConfigPath")
+                    if value:
+                        normalized = value.replace("/", os.sep)
+                        if os.path.isdir(normalized):
+                            return normalized
+            except OSError:
+                pass  # key/value doesn't exist — fall through to other checks
+
+        documents = os.path.join(os.path.expanduser("~"), "Documents", "Dolphin Emulator")
+        if os.path.isdir(documents):
+            return documents
+
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            appdata_path = os.path.join(appdata, "Dolphin Emulator")
+            if os.path.isdir(appdata_path):
+                return appdata_path
+
+        return portable_user  # last resort, matches the old behavior
+
+    def get_launch_diagnostics(self):
+        """Everything needed to see exactly what Play will do, without
+        digging through AppData manually — shown directly in the app."""
+        cfg = load_config()
+        active_name = cfg.get("active_mod", "")
+        mod_entry = next((m for m in cfg["mods"] if m["name"] == active_name), None)
+        lines = [f"BUILD: {BUILD_STAMP}  (if this looks old/wrong, you're not running the latest rebuild)"]
+        lines.append(f"Dolphin: {cfg.get('dolphin_path') or '(not set)'}")
+        lines.append(f"ISO: {cfg.get('iso_path') or '(not set)'}")
+        lines.append(f"Active mod: {active_name or '(none)'}")
+        dolphin_path = cfg.get("dolphin_path", "")
+        if dolphin_path:
+            user_dir = self._dolphin_user_dir(dolphin_path)
+            lines.append(f"Dolphin user folder: {user_dir}")
+            riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
+            lines.append(f"Riivolution folder: {riivolution_root}")
+            if os.path.isdir(riivolution_root):
+                lines.append(f"  Contents: {os.listdir(riivolution_root)}")
+            else:
+                lines.append("  MISSING — doesn't exist yet")
+        if mod_entry:
+            xml_path = mod_entry.get("xml_path", "")
+            content_root = mod_entry.get("content_root", "")
+            lines.append(f"XML: {xml_path} [{'found' if os.path.exists(xml_path) else 'MISSING'}]")
+            if content_root:
+                lines.append(f"Content folder: {content_root} [{'found' if os.path.isdir(content_root) else 'MISSING'}]")
+                if os.path.isdir(content_root):
+                    lines.append(f"  Contents: {os.listdir(content_root)}")
+            else:
+                lines.append("Content folder: NOT SET")
+        else:
+            lines.append("No mod entry found for the active mod.")
+        preset_path = os.path.join(app_data_dir(), "presets", f"{active_name}.json")
+        if os.path.exists(preset_path):
+            with open(preset_path, "r", encoding="utf-8") as f:
+                lines.append(f"Last generated preset ({preset_path}):")
+                lines.append(f.read())
+        else:
+            lines.append(f"No preset generated yet at {preset_path}")
+        return "\n".join(lines)
+
+    def _kill_dolphin(self, dolphin_path):
+        """Kill any already-running Dolphin process before launching a
+        new one — matches WheelWizard's own DolphinLaunchHelper.KillDolphin()
+        exactly. If Dolphin is already open from an earlier test, a new
+        launch pointed at the mod preset may not actually take effect
+        (single-instance behavior, or a second window in a stale state)
+        — this was very likely happening throughout testing, since
+        Dolphin got launched many times in a row without ever being
+        closed first."""
+        exe_name = os.path.basename(dolphin_path)
+        try:
+            if sys.platform == "win32":
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", exe_name],
+                    capture_output=True, timeout=5,
+                )
+            else:
+                proc_name = os.path.splitext(exe_name)[0]
+                subprocess.run(["pkill", "-f", proc_name], capture_output=True, timeout=5)
+            time.sleep(0.5)  # give the OS a moment to actually release the process
+        except (OSError, subprocess.SubprocessError):
+            pass  # non-critical — proceed with launch either way
+
+    def _link_or_copy_into(self, src_dir, dest_dir):
+        """Copy src_dir's contents to dest_dir inside Dolphin's own
+        folder tree. Uses a plain, guaranteed-to-work copy rather than
+        a junction — junctions add an extra unverified failure point
+        (cmd invocation, permissions), and reliability matters more
+        here than the extra time a first copy takes."""
+        if os.path.exists(dest_dir):
+            try:
+                already_has_content = os.path.isdir(dest_dir) and len(os.listdir(dest_dir)) > 0
+            except OSError:
+                already_has_content = False
+            if already_has_content:
+                return
+            try:
+                os.rmdir(dest_dir)
+            except OSError as e:
+                raise OSError(f"couldn't clear stale empty folder at {dest_dir}: {e}")
+        shutil.copytree(src_dir, dest_dir, dirs_exist_ok=True)
+
+    def launch_game(self):
+        cfg = load_config()
+        dolphin_path = cfg.get("dolphin_path", "")
+        iso_path = cfg.get("iso_path", "")
+
+        if not dolphin_path or not os.path.isfile(dolphin_path):
+            return {"ok": False, "error": "Dolphin path isn't set (or the file doesn't exist). Set it in Settings first."}
+        if not iso_path or not os.path.isfile(iso_path):
+            return {"ok": False, "error": "MKW ISO path isn't set (or the file doesn't exist). Set it in Settings first."}
+
+        self._kill_dolphin(dolphin_path)
+
+        # Flush Nitro-created/edited Miis into the same Dolphin user folder
+        # passed to Dolphin via -u, before the game starts reading its NAND.
+        mii_sync = self._sync_miis_to_dolphin()
+        if not mii_sync.get("ok"):
+            return {"ok": False, "error": "Mii sync failed; Dolphin was not launched. " + mii_sync.get("error", "Unknown Mii sync error.")}
+
+        active_name = cfg.get("active_mod", "")
+        mod_entry = next((m for m in cfg["mods"] if m["name"] == active_name), None)
+        launch_target = iso_path
+        note = ""
+        diagnostic_detail = ""
+        user_dir = self._dolphin_user_dir(dolphin_path)
+
+        if mod_entry and mod_entry.get("xml_path") and os.path.exists(mod_entry["xml_path"]):
+            xml_path = mod_entry["xml_path"]
+            content_root = mod_entry.get("content_root", "")
+
+            if content_root and os.path.isdir(content_root):
+                # Link every subfolder from your content folder directly
+                # into Dolphin's OWN Load/Riivolution folder — this is
+                # what actually matches your proven manual test (files
+                # physically present there) and how WheelWizard does it
+                # too. Uses a junction so nothing gets copied — instant,
+                # regardless of how large the mod content is.
+                try:
+                    riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
+                    os.makedirs(riivolution_root, exist_ok=True)
+                    linked = []
+                    for entry in os.listdir(content_root):
+                        src = os.path.join(content_root, entry)
+                        if not os.path.isdir(src):
+                            continue  # skip stray files like the placeholder .txt
+                        dest = os.path.join(riivolution_root, entry)
+                        self._link_or_copy_into(src, dest)
+                        linked.append(entry)
+
+                    existing_xmls = []
+                    for dirpath, _dirnames, filenames in os.walk(riivolution_root):
+                        for fname in filenames:
+                            if fname.lower().endswith(".xml"):
+                                existing_xmls.append(os.path.join(dirpath, fname))
+                    if existing_xmls:
+                        xml_path = existing_xmls[0]
+                    else:
+                        riivolution_xml_dir = os.path.join(riivolution_root, "riivolution")
+                        os.makedirs(riivolution_xml_dir, exist_ok=True)
+                        staged_xml = os.path.join(riivolution_xml_dir, os.path.basename(xml_path))
+                        shutil.copy2(xml_path, staged_xml)
+                        xml_path = staged_xml
+
+                    asset_folders = [f for f in linked if f != "riivolution"]
+                    assets_found = len(asset_folders) > 0
+                    if not assets_found:
+                        note = " ⚠ No asset folders found alongside riivolution — mod may not apply correctly."
+                    diagnostic_detail = (
+                        f"Linked into {riivolution_root}: {linked} | Using xml: {xml_path} | "
+                        f"Asset folders found: {asset_folders if assets_found else 'NONE'}"
+                    )
+                except OSError as e:
+                    riivolution_root = None
+                    note = " ⚠ Couldn't link the content folder into Dolphin's folder — see diagnostics."
+                    diagnostic_detail = f"Link error: {e}"
+            else:
+                # No content_root set yet: fall back to staging just
+                # the xml into Dolphin's own folder. This only works
+                # fully if the mod has no external asset folders, or
+                # if you've placed them there yourself already.
+                try:
+                    riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
+                    riivolution_xml_dir = os.path.join(riivolution_root, "riivolution")
+                    os.makedirs(riivolution_xml_dir, exist_ok=True)
+                    staged_xml = os.path.join(riivolution_xml_dir, os.path.basename(xml_path))
+                    shutil.copy2(xml_path, staged_xml)
+                    xml_path = staged_xml
+                    note = " ⚠ No content folder set — set one in the Mods tab for the mod to fully apply."
+                    diagnostic_detail = f"Staged xml only at {staged_xml}, no content_root set."
+                except OSError as e:
+                    riivolution_root = None
+                    note = " ⚠ Couldn't stage the mod profile — see diagnostics."
+                    diagnostic_detail = f"Stage error: {e}"
+
+            if riivolution_root:
+                try:
+                    presets_dir = os.path.join(app_data_dir(), "presets")
+                    os.makedirs(presets_dir, exist_ok=True)
+                    preset_path = os.path.join(presets_dir, f"{active_name}.json")
+                    write_riivolution_preset(
+                        iso_path=iso_path,
+                        xml_path=xml_path,
+                        riivolution_root=riivolution_root,
+                        display_name=f"Mario Kart Wii — {active_name}",
+                        out_path=preset_path,
+                    )
+                    launch_target = preset_path
+                except (OSError, ET.ParseError) as e:
+                    note = " ⚠ Couldn't build the mod preset, launching the plain ISO instead."
+                    diagnostic_detail = f"Preset error: {e}"
+                    launch_target = iso_path
+
+        launch_args = [
+            dolphin_path, "-e", launch_target, "-u", user_dir,
+            "--config=Dolphin.Core.EnableCheats=False",
+            "--config=Achievements.Achievements.Enabled=False",
+            "--config=Graphics.Settings.HiresTextures=True",
+        ]
+        if cfg.get("fullscreen"):
+            launch_args.append("--config=Dolphin.Display.Fullscreen=True")
+            resolution = cfg.get("resolution", "").strip()
+            if resolution:
+                launch_args.append(f"--config=Dolphin.Display.FullscreenDisplayRes={resolution}")
+        else:
+            launch_args.append("--config=Dolphin.Display.Fullscreen=False")
+        self._enable_dolphin_file_logging(user_dir)
+        manual_command = " ".join(f'"{a}"' if " " in a else a for a in launch_args)
+        try:
+            subprocess.Popen(launch_args)
+        except OSError as e:
+            return {"ok": False, "error": f"Couldn't launch Dolphin: {e}"}
+
+        # short message for the toast; full detail stays available via
+        # get_launch_diagnostics() for whenever it's actually needed
+        display_message = "Launching..." + (note if note.strip().startswith("⚠") else "")
+        return {"ok": True, "message": display_message, "manual_command": manual_command, "detail": diagnostic_detail}
+
+    # ---------- remote seasonal theme (colors / logo / banner / Mii / UI, no rebuild) ----------
+    @staticmethod
+    def _download_and_cache(cfg, url, url_key, path_key, cache_filename, keep_ext=False):
+        """Shared helper for every "fetch this URL, cache it locally"
+        field in the theme block below (banner/logo/default Mii). Always
+        re-fetches when a URL is present -- these are small files
+        checked once per Play press at most, so the cost of always
+        checking is trivial, and it means overwriting the SAME file at
+        the SAME GitHub URL (the normal way to push a changed image) is
+        picked up with nothing else to touch. Comparing cfg[url_key]
+        against the URL text, instead, would miss exactly that case:
+        the URL string wouldn't have changed even though the file
+        behind it did. Returns True only if the downloaded bytes are
+        actually different from what's already cached (caller is
+        responsible for saving cfg). Leaves the previous cached file in
+        place if the new one can't be reached, so a bad/offline URL
+        never removes something that was already working."""
+        url = str(url or "").strip()
+        if not url:
+            return False
+        try:
+            data = fetch_url_bytes(url, timeout=20)
+            filename = cache_filename
+            if keep_ext:
+                ext = os.path.splitext(url)[1] or ".bin"
+                filename = f"{cache_filename}{ext}"
+            path = os.path.join(app_data_dir(), filename)
+
+            existing = None
+            if os.path.isfile(path):
+                try:
+                    with open(path, "rb") as f:
+                        existing = f.read()
+                except OSError:
+                    existing = None
+            if existing == data and cfg.get(url_key) == url:
+                return False  # nothing actually changed, skip the write
+
+            with open(path, "wb") as f:
+                f.write(data)
+            cfg[url_key] = url
+            cfg[path_key] = path
+            return True
+        except OSError:
+            return False  # keep whatever was cached before if the download fails
+
+    def _apply_remote_theme(self, manifest, cfg):
+        """Reads an optional "theme" block from manifest.json and applies
+        it locally — no exe rebuild needed to push new seasonal colors,
+        a new top-left logo, a new hero banner, or even a new index.html
+        layout to every installed copy. Schema:
+          "theme": {
+            "season": "halloween",
+            "colors": { "--bg": "#0a0512", "--blue": "#ff8c00", "--cyan": "#c084fc" },
+            "logo_url": "https://raw.githubusercontent.com/.../logo.png",
+            "banner_url": "https://raw.githubusercontent.com/.../banner.png",
+            "ui_html_url": "https://raw.githubusercontent.com/.../index.html",
+            "icon_url": "https://raw.githubusercontent.com/.../icon.ico"
+          }
+        (The "New Mii" starter template is no longer a remote field --
+        it's default_mii.mii, bundled straight into the exe. See
+        Api.get_default_mii().)
+        Only CSS custom-property names (the "--xxx" keys already used in
+        index.html's :root) are accepted as color keys — anything else is
+        ignored so a bad manifest can't inject arbitrary CSS.
+
+        Every field, including ui_html_url and icon_url, is checked by
+        comparing the actual downloaded bytes against whatever is already
+        cached, not a version number -- overwriting a file at the SAME
+        url is all it takes for everyone to pick it up, no version bump
+        needed anywhere in this file. ui_html_url and icon_url are the
+        two exceptions to "nothing code-ish updates live right away" in
+        how they're wired up, not in how they're detected:
+          - ui_html_url: see _apply_remote_ui() below, called from
+            main() before the window is even created (since swapping
+            the page has to happen before pywebview loads it, not
+            after) and again periodically from a background thread
+            while the app is already running, which hot-swaps the open
+            window onto the new page the moment a change is seen -- no
+            restart needed.
+          - icon_url: Windows reads the .exe's own taskbar/Explorer icon
+            out of the compiled binary's resource section, not from a
+            file sitting next to it, so it can never be swapped into an
+            already-running process the way the in-app logo can. What
+            this DOES do: cache the new .ico (same content-hash check as
+            everything else) and, the next time the app is closed,
+            silently patch that icon into the .exe file on disk (using a
+            bundled copy of rcedit, see _maybe_apply_pending_icon())
+            before the file would be opened again. So: no reinstall, no
+            manual download, no new exe handed out -- just close the
+            app once and the NEXT time it's opened, the taskbar icon is
+            already the new one. See _maybe_apply_pending_icon()'s own
+            docstring for the exact mechanics and its honest limits.
+        """
+        # If "theme" is missing entirely (e.g. a manifest.json that only
+        # has version/content_url/launcher_nitro, no image-pushing at
+        # all), treat it exactly like an empty theme block below --
+        # clear out any override cached from an EARLIER manifest that
+        # did have one, rather than silently leaving it in place
+        # forever. That silent leftover was the actual bug behind "the
+        # banner always loads a black .png" -- once banner_url was
+        # ever set, nothing removing it from the manifest later could
+        # ever un-cache it, so it kept reapplying a stale/broken file
+        # indefinitely. Every theme field now actively resets to the
+        # bundled default the moment the manifest stops providing it.
+        theme = manifest.get("theme")
+        if not isinstance(theme, dict):
+            theme = {}
+        changed = False
+
+        season = str(theme.get("season", "")).strip()
+        if season != cfg.get("theme_season", ""):
+            cfg["theme_season"] = season
+            changed = True
+
+        colors = theme.get("colors")
+        clean_colors = {}
+        if isinstance(colors, dict):
+            clean_colors = {k: v for k, v in colors.items() if isinstance(k, str) and k.startswith("--") and isinstance(v, str)}
+        if clean_colors != cfg.get("theme_colors", {}):
+            cfg["theme_colors"] = clean_colors
+            changed = True
+
+        if self._download_or_clear(cfg, theme.get("logo_url"), "theme_logo_url", "theme_logo_path", "theme_logo", keep_ext=True):
+            changed = True
+
+        if self._download_or_clear(cfg, theme.get("banner_url"), "theme_banner_url", "theme_banner_path", "theme_banner", keep_ext=True):
+            changed = True
+
+        if self._download_or_clear(cfg, theme.get("icon_url"), "icon_url", "icon_path", "pending_icon", keep_ext=True):
+            changed = True
+
+        if changed:
+            save_config(cfg)
+
+    @staticmethod
+    def _download_or_clear(cfg, url, url_key, path_key, cache_filename, keep_ext=False):
+        """Wraps _download_and_cache with the missing half: when url is
+        empty (the field isn't in this manifest, or "theme" isn't in
+        it at all) but something was cached from an earlier manifest
+        that DID set it, clears the cached file and the cfg keys so
+        the app falls back to its own bundled default instead of
+        keeping a stale remote override forever. Returns True if
+        anything actually changed (new file OR a clear), same
+        contract as _download_and_cache."""
+        url = str(url or "").strip()
+        if url:
+            return Api._download_and_cache(cfg, url, url_key, path_key, cache_filename, keep_ext=keep_ext)
+
+        had_override = bool(cfg.get(url_key)) or bool(cfg.get(path_key))
+        if not had_override:
+            return False
+        old_path = cfg.get(path_key, "")
+        if old_path and os.path.isfile(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+        cfg[url_key] = ""
+        cfg[path_key] = ""
+        return True
+
+    @staticmethod
+    def _apply_remote_ui(cfg):
+        """Checks theme.ui_html_url and returns (path_to_load, changed) --
+        changed is True only when the downloaded page is actually
+        different from what's already cached, same content-based check
+        as logo/banner/default Mii (no manual version number needed
+        here either anymore). path_to_load is the freshly-cached remote
+        page if one is configured and reachable, the already-cached one
+        from an earlier run if the network/GitHub is unreachable right
+        now, or the bundled default if neither applies.
+
+        Called only from the background update thread (never from
+        main() before the window exists anymore -- that used to mean
+        the window couldn't appear at all until this network call
+        either succeeded or timed out, which looked exactly like a
+        startup freeze on a slow connection; see _initial_ui_path()).
+        A few seconds after the window opens with whatever was already
+        cached or bundled, this runs and the caller uses "changed" to
+        decide whether to hot-swap the already-open window onto a
+        newly-pushed page with window.load_url() -- no restart needed.
+
+        This is riskier than the other theme fields: a pushed index.html
+        calls window.pywebview.api.* methods that only exist in whatever
+        main.py the person already has installed. Pushing a new page
+        that calls a method older installs don't have will break this
+        for anyone who hasn't also picked up a matching main.py update.
+        Keep pushed index.html changes limited to things every already
+        -shipped main.py can already answer, or ship a real app update
+        for anything that needs new Python-side support.
+        """
+        bundled = resource_path("index.html")
+        cached_path = cfg.get("ui_html_path", "")
+        fallback = cached_path if cached_path and os.path.isfile(cached_path) else bundled
+
+        try:
+            manifest = json.loads(fetch_url_bytes(MANIFEST_URL, timeout=6).decode("utf-8"))
+        except (OSError, ValueError):
+            return fallback, False  # offline or GitHub unreachable -- use whatever we already have
+
+        theme = manifest.get("theme")
+        if not isinstance(theme, dict):
+            theme = {}
+
+        ui_url = str(theme.get("ui_html_url", "")).strip()
+        if not ui_url:
+            # No ui_html_url in THIS manifest (or no "theme" block at
+            # all) -- if an earlier manifest had pushed one, forget it
+            # and go back to the bundled index.html, instead of
+            # reloading a stale cached page forever just because
+            # nothing ever told the app the push was withdrawn.
+            if cached_path:
+                try:
+                    if os.path.isfile(cached_path):
+                        os.remove(cached_path)
+                except OSError:
+                    pass
+                cfg["ui_html_path"] = ""
+                cfg["ui_html_url"] = ""
+                save_config(cfg)
+                return bundled, True
+            return bundled, False
+
+        try:
+            html_bytes = fetch_url_bytes(ui_url, timeout=15)
+            if b"<html" not in html_bytes[:2000].lower():
+                return fallback, False  # didn't look like a real page -- don't risk it
+
+            ui_dir = app_data_dir()
+            ui_path = os.path.join(ui_dir, "remote_index.html")
+            existing = None
+            if os.path.isfile(ui_path):
+                try:
+                    with open(ui_path, "rb") as f:
+                        existing = f.read()
+                except OSError:
+                    existing = None
+            if existing == html_bytes and cfg.get("ui_html_url") == ui_url and cached_path == ui_path:
+                return ui_path, False  # nothing actually changed
+
+            with open(ui_path, "wb") as f:
+                f.write(html_bytes)
+            # A page cached here sits in a different folder than the
+            # bundled index.html, so its relative asset paths (the logo,
+            # the default hero image, mii_renderer/...) need those same
+            # files sitting right next to IT too, or every one of those
+            # would 404. Mirror whatever the bundle currently ships so a
+            # pushed page can keep referencing them by the same
+            # filenames; anything genuinely new still needs its own
+            # logo_url/banner_url-style remote field to be fetched.
+            for name in ("Untitleddesign.png", "Untitleddesign6.png", "Untitleddesign_season1.png"):
+                src = resource_path(name)
+                if os.path.isfile(src):
+                    shutil.copyfile(src, os.path.join(ui_dir, name))
+            renderer_src = resource_path("mii_renderer")
+            if os.path.isdir(renderer_src):
+                shutil.copytree(renderer_src, os.path.join(ui_dir, "mii_renderer"), dirs_exist_ok=True)
+            cfg["ui_html_path"] = ui_path
+            cfg["ui_html_url"] = ui_url
+            save_config(cfg)
+            return ui_path, True
+        except OSError:
+            return fallback, False
+
+    # ---------- mod content updates ----------
+    def check_for_update(self):
+        """Fetch the manifest.json (hardcoded GitHub URL, controlled
+        entirely by editing that file's content — never needs an app
+        rebuild) and compare its version against what's installed.
+        Format: {"version": "0.0.1", "content_url": "<drive link>"}"""
+        try:
+            manifest = json.loads(fetch_url_bytes(MANIFEST_URL, timeout=10).decode("utf-8"))
+        except (OSError, ValueError) as e:
+            return {"update_available": False, "error": f"Couldn't check for updates: {e}"}
+
+        latest_version = str(manifest.get("version", "")).strip()
+        content_url = str(manifest.get("content_url", "")).strip()
+        if not latest_version or not content_url:
+            return {"update_available": False, "error": "manifest.json is missing 'version' or 'content_url'."}
+
+        cfg = load_config()
+        self._apply_remote_theme(manifest, cfg)
+        current_version = cfg.get("content_version", "0")
+        installed_from_url = cfg.get("installed_from_url", "")
+
+        nitro_pack = next((m for m in cfg["mods"] if m["name"] == "Nitro Pack"), None)
+        content_installed = bool(
+            nitro_pack
+            and nitro_pack.get("content_root")
+            and os.path.isdir(nitro_pack["content_root"])
+        )
+
+        url_changed = bool(installed_from_url) and installed_from_url != content_url
+        update_available = (not content_installed) or (latest_version != current_version) or url_changed
+
+        # A whole new launcher build (not just the mod content) --
+        # manifest.json's top-level "launcher_nitro" field, a link to
+        # a zipped MarioKartNitro.exe (Drive or a direct .zip URL both
+        # work -- see start_launcher_update()). Unlike content_url
+        # this is never applied silently, since it means replacing the
+        # running .exe itself. The popup shows whenever the live
+        # manifest's launcher_nitro differs from the last version we
+        # actually installed; if the field is cleared from the
+        # manifest again, the popup simply stops showing until it's
+        # set again.
+        launcher_url = str(manifest.get("launcher_nitro", "")).strip()
+        installed_launcher_url = cfg.get("installed_launcher_url", "")
+        launcher_update_available = bool(
+            launcher_url and launcher_url != installed_launcher_url
+        )
+
+        return {
+            "update_available": update_available,
+            "is_first_install": not content_installed,
+            "latest_version": latest_version,
+            "current_version": current_version,
+            "download_url": content_url,
+            "launcher_update_available": launcher_update_available,
+            "launcher_download_url": launcher_url,
+        }
+
+    def start_update(self, download_url, latest_version):
+        """Kick off the download+install in a background thread and
+        return immediately — the UI polls get_download_progress() to
+        show a real progress bar (bytes downloaded, percentage)
+        instead of a single opaque blocking call."""
+        _set_progress(status="downloading", downloaded_bytes=0, total_bytes=None,
+                       error=None, version=latest_version)
+        thread = threading.Thread(
+            target=self._apply_update_worker, args=(download_url, latest_version), daemon=True
+        )
+        thread.start()
+        return {"ok": True, "started": True}
+
+    def get_download_progress(self):
+        with _progress_lock:
+            return dict(_download_progress)
+
+    def _apply_update_worker(self, download_url, latest_version):
+        """The actual download+extract+install work, run on a
+        background thread by start_update(). Reports progress via the
+        module-level _download_progress dict as it goes."""
+        cfg = load_config()
+        permanent_content = os.path.join(app_data_dir(), "mods", "Nitro Pack", "content")
+        tmp_zip = os.path.join(app_data_dir(), "_update_download.zip")
+        tmp_extract = os.path.join(app_data_dir(), "_update_extract")
+
+        def on_progress(downloaded, total):
+            _set_progress(status="downloading", downloaded_bytes=downloaded, total_bytes=total)
+
+        try:
+            download_file(download_url, tmp_zip, progress_callback=on_progress)
+        except OSError as e:
+            _set_progress(status="error", error=f"Download failed: {e}")
+            return
+
+        _set_progress(status="extracting")
+        try:
+            if os.path.isdir(tmp_extract):
+                shutil.rmtree(tmp_extract)
+            os.makedirs(tmp_extract, exist_ok=True)
+            with zipfile.ZipFile(tmp_zip, "r") as zf:
+                bad_file = zf.testzip()
+                if bad_file is not None:
+                    raise OSError(
+                        f"Downloaded zip is corrupted (bad file: {bad_file}) — "
+                        "the download likely got cut short. Try again."
+                    )
+                zf.extractall(tmp_extract)
+
+            # Anchor the search on "riivolution" only — that's a fixed
+            # Dolphin/Riivolution convention, not something that gets
+            # renamed. Whatever OTHER folder(s) sit alongside it
+            # (currently "MKWiiTwo", might be renamed later) get
+            # copied automatically along with it, whatever they're
+            # called — nothing here depends on that specific name.
+            # No folder-name assumptions at all — just unwrap a single
+            # top-level wrapper folder if the zip has one, otherwise
+            # use its contents directly. Whatever's actually in there
+            # gets installed as-is.
+            entries = os.listdir(tmp_extract)
+            if len(entries) == 1 and os.path.isdir(os.path.join(tmp_extract, entries[0])):
+                extracted_root = os.path.join(tmp_extract, entries[0])
+            else:
+                extracted_root = tmp_extract
+
+            if os.path.isdir(permanent_content):
+                shutil.rmtree(permanent_content)
+            os.makedirs(os.path.dirname(permanent_content), exist_ok=True)
+            shutil.copytree(extracted_root, permanent_content)
+        except (OSError, zipfile.BadZipFile) as e:
+            _set_progress(status="error", error=f"Update extraction failed: {e}")
+            return
+        finally:
+            for p in (tmp_zip, tmp_extract):
+                try:
+                    if os.path.isfile(p):
+                        os.remove(p)
+                    elif os.path.isdir(p):
+                        shutil.rmtree(p, ignore_errors=True)
+                except OSError:
+                    pass
+
+        dolphin_path = cfg.get("dolphin_path", "")
+        if dolphin_path and os.path.isfile(dolphin_path):
+            user_dir = self._dolphin_user_dir(dolphin_path)
+            riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
+            if os.path.isdir(riivolution_root):
+                for entry in os.listdir(riivolution_root):
+                    entry_path = os.path.join(riivolution_root, entry)
+                    if os.path.isdir(entry_path):
+                        shutil.rmtree(entry_path, ignore_errors=True)
+
+        cfg["content_version"] = latest_version
+        cfg["installed_from_url"] = download_url
+        version_txt_path = os.path.join(permanent_content, "version.txt")
+        if os.path.exists(version_txt_path):
+            try:
+                with open(version_txt_path, "r", encoding="utf-8") as f:
+                    actual_installed_version = f.read().strip()
+                if actual_installed_version:
+                    cfg["content_version"] = actual_installed_version
+            except OSError:
+                pass
+        for m in cfg["mods"]:
+            if m.get("name") == "Nitro Pack":
+                m["content_root"] = permanent_content
+                xml_candidate = None
+                for dirpath, _dirnames, filenames in os.walk(permanent_content):
+                    for fname in filenames:
+                        if fname.lower().endswith(".xml"):
+                            xml_candidate = os.path.join(dirpath, fname)
+                            break
+                    if xml_candidate:
+                        break
+                if xml_candidate and os.path.exists(xml_candidate):
+                    m["xml_path"] = xml_candidate
+        save_config(cfg)
+        _set_progress(status="done", version=cfg["content_version"])
+
+    # ---------- misc ----------
+    def open_discord(self):
+        webbrowser.open(DISCORD_URL)
+        return {"ok": True}
+
+    def quit_app(self):
+        if self.window is not None:
+            self.window.destroy()
+        return {"ok": True}
+
+    # ---------- whole-launcher self-update (manifest.json's launcher_nitro) ----------
+    def start_launcher_update(self, download_url):
+        """Downloads a full new launcher build -- manifest.json's
+        top-level "launcher_nitro" field, a Drive link to a zipped
+        MarioKartNitro.exe -- and swaps it in for the one currently
+        running. Unlike every other remote field, this one is never
+        applied silently: check_for_update() only reports it as
+        available, and the frontend shows a popup with an explicit
+        "Update!" button (see showLauncherUpdatePopup() in index.html)
+        before this is ever called.
+
+        Runs the actual work on a background thread and returns right
+        away, since a multi-hundred-MB download shouldn't block the
+        UI call. See _launcher_update_worker() for the mechanics of
+        how the swap itself happens (it's the same "can't overwrite a
+        file that's currently running" problem as the .exe icon, just
+        for the whole binary instead of one resource)."""
+        download_url = str(download_url or "").strip()
+        if not download_url:
+            return {"ok": False, "error": "No launcher download URL given."}
+        if os.name != "nt" or not getattr(sys, "frozen", False):
+            return {"ok": False, "error": "Launcher self-update only works in an installed Windows .exe, not a dev run."}
+
+        thread = threading.Thread(
+            target=self._launcher_update_worker, args=(download_url,), daemon=True
+        )
+        thread.start()
+        return {"ok": True, "started": True}
+
+    def _launcher_update_worker(self, download_url):
+        """Downloads+extracts the new build, finds its .exe, stages a
+        detached helper script to perform the actual swap, then closes
+        this window -- which is this process's one chance to let go of
+        its own file lock so the swap can happen. The swap itself runs
+        in cmd.exe (a genuinely separate binary, not another copy of
+        this exe, which would just re-lock the file the same way):
+        it waits for this process to fully exit, renames the old exe
+        out of the way, copies the new one into place, deletes the
+        backup, and relaunches -- so from the person's side: click
+        Update, the window closes, and it reopens moments later
+        already on the new version. No reinstall, nothing to click
+        through, no uninstall step.
+
+        If anything fails before the window is closed, the error is
+        pushed back into the still-open page via evaluate_js (the
+        same cross-thread technique _background_remote_update_loop
+        already uses) so the popup shows a real message instead of
+        hanging on "Installing..." forever."""
+        def fail(message):
+            if self.window is not None:
+                try:
+                    safe = json.dumps(str(message))
+                    self.window.evaluate_js(
+                        "(function(){ var m=document.getElementById('launcherUpdateMsg'); "
+                        "var b=document.getElementById('launcherUpdateBtn'); "
+                        f"if(m) m.textContent = {safe}; if(b) b.disabled=false; }})();"
+                    )
+                except Exception:
+                    pass
+
+        tmp_zip = os.path.join(app_data_dir(), "_launcher_update.zip")
+        tmp_extract = os.path.join(app_data_dir(), "_launcher_extract")
+
+        try:
+            download_file(download_url, tmp_zip)
+        except OSError as e:
+            fail(f"Download failed: {e}")
+            return
+
+        try:
+            if os.path.isdir(tmp_extract):
+                shutil.rmtree(tmp_extract, ignore_errors=True)
+            os.makedirs(tmp_extract, exist_ok=True)
+            with zipfile.ZipFile(tmp_zip, "r") as zf:
+                bad_file = zf.testzip()
+                if bad_file is not None:
+                    raise OSError(f"Downloaded zip is corrupted (bad file: {bad_file}).")
+                zf.extractall(tmp_extract)
+        except (OSError, zipfile.BadZipFile) as e:
+            fail(f"Couldn't unpack the update: {e}")
+            return
+        finally:
+            try:
+                os.remove(tmp_zip)
+            except OSError:
+                pass
+
+        # Prefer an exe with the SAME filename as the one currently
+        # running (handles a zip with extra files/folders alongside
+        # it); fall back to just the first .exe found anywhere inside.
+        new_exe = None
+        exe_basename = os.path.basename(sys.executable)
+        for dirpath, _dirnames, filenames in os.walk(tmp_extract):
+            for fname in filenames:
+                if fname.lower() == exe_basename.lower():
+                    new_exe = os.path.join(dirpath, fname)
+                    break
+            if new_exe:
+                break
+        if not new_exe:
+            for dirpath, _dirnames, filenames in os.walk(tmp_extract):
+                for fname in filenames:
+                    if fname.lower().endswith(".exe"):
+                        new_exe = os.path.join(dirpath, fname)
+                        break
+                if new_exe:
+                    break
+        if not new_exe:
+            fail("The downloaded update doesn't contain an .exe.")
+            return
+
+        exe_path = sys.executable
+        old_backup = exe_path + ".old.exe"
+        bat_path = os.path.join(app_data_dir(), "apply_launcher_update.bat")
+        try:
+            with open(bat_path, "w", encoding="utf-8") as f:
+                f.write(
+                    "@echo off\r\n"
+                    "setlocal\r\n"
+                    "set OLDEXE=%~1\r\n"
+                    "set NEWEXE=%~2\r\n"
+                    "set BACKUP=%~3\r\n"
+                    "set EXTRACTDIR=%~4\r\n"
+                    "for /l %%i in (1,1,15) do (\r\n"
+                    "  move /y \"%OLDEXE%\" \"%BACKUP%\" >nul 2>nul\r\n"
+                    "  if exist \"%BACKUP%\" goto moved\r\n"
+                    "  timeout /t 2 /nobreak >nul\r\n"
+                    ")\r\n"
+                    "rem Couldn't safely swap the exe in time -- reopen the\r\n"
+                    "rem old version untouched rather than leave nothing open.\r\n"
+                    "start \"\" \"%OLDEXE%\"\r\n"
+                    "goto cleanup\r\n"
+                    ":moved\r\n"
+                    "copy /y \"%NEWEXE%\" \"%OLDEXE%\" >nul\r\n"
+                    "del /f /q \"%BACKUP%\" >nul 2>nul\r\n"
+                    "start \"\" \"%OLDEXE%\"\r\n"
+                    ":cleanup\r\n"
+                    "rmdir /s /q \"%EXTRACTDIR%\" >nul 2>nul\r\n"
+                    "endlocal\r\n"
+                )
+            subprocess.Popen(
+                ["cmd", "/c", bat_path, exe_path, new_exe, old_backup, tmp_extract],
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                close_fds=True,
+            )
+        except OSError as e:
+            fail(f"Couldn't stage the update: {e}")
+            return
+
+        cfg = load_config()
+        cfg["installed_launcher_url"] = download_url
+        save_config(cfg)
+
+        # A short head start before this process actually disappears
+        # and frees up the exe file for the waiting helper -- it'll
+        # keep retrying regardless, this just avoids a near-certain
+        # first failed attempt in the common case.
+        time.sleep(0.5)
+        if self.window is not None:
+            try:
+                self.window.destroy()
+            except Exception:
+                pass
+
+
+def _background_remote_update_loop(api, interval_seconds=120):
+    """Keeps every remotely-pushable thing (colors/logo/banner/default
+    Mii/index.html -- everything except the .exe icon, which genuinely
+    can't be done this way) in sync with whatever's currently on GitHub
+    for as long as the app stays open, not just at startup or on Play.
+    Runs on a daemon thread so it can never block the UI; every check
+    is wrapped so one failed/offline cycle just gets retried next
+    interval instead of killing the loop.
+    """
+    first = True
+    while True:
+        if first:
+            first = False
+            time.sleep(5)  # let the window actually finish opening first
+        else:
+            time.sleep(interval_seconds)
+        try:
+            cfg = load_config()
+
+            try:
+                manifest = json.loads(fetch_url_bytes(MANIFEST_URL, timeout=10).decode("utf-8"))
+            except (OSError, ValueError):
+                continue  # offline / GitHub unreachable this cycle -- try again next interval
+
+            api._apply_remote_theme(manifest, cfg)
+            # Re-read: _apply_remote_theme may have just saved new
+            # colors/logo/banner/default-Mii paths to disk above.
+            cfg = load_config()
+
+            ui_path, ui_changed = Api._apply_remote_ui(cfg)
+
+            if api.window is not None:
+                if ui_changed:
+                    # A real layout push -- swap the already-open
+                    # window straight onto the new page. No restart.
+                    api.window.load_url(ui_path)
+                else:
+                    # Colors/logo/banner/default Mii don't need a page
+                    # reload -- just ask the page already open to
+                    # re-pull state and re-apply them live, the same
+                    # function it already calls on its own startup.
+                    try:
+                        api.window.evaluate_js("typeof refreshState === 'function' && refreshState()")
+                    except Exception:
+                        pass
+        except Exception:
+            continue  # never let one bad cycle take the background loop down
+
+
+def _ensure_rcedit():
+    """Copies the bundled rcedit.exe (electron/rcedit, MIT-licensed --
+    the same tool countless Electron apps use to set a .exe's icon
+    without rebuilding it) out of PyInstaller's temp extraction folder
+    into the permanent app-data folder, so it still exists after this
+    process exits and its _MEIPASS temp copy gets cleaned up. Returns
+    its path, or "" if rcedit wasn't bundled (e.g. running from source
+    during development)."""
+    dst = os.path.join(app_data_dir(), "rcedit.exe")
+    if not os.path.isfile(dst):
+        src = resource_path("rcedit.exe")
+        if os.path.isfile(src):
+            try:
+                shutil.copyfile(src, dst)
+            except OSError:
+                return ""
+    return dst if os.path.isfile(dst) else ""
+
+
+def _maybe_apply_pending_icon():
+    """Patches a newly-pushed icon_url .ico into the .exe's own Windows
+    resources -- the one remote-theme field that genuinely can't be
+    swapped into an already-running process, since Windows reads the
+    taskbar/Explorer icon straight out of the compiled binary, and a
+    running .exe can't be overwritten while it's the one running.
+
+    So this can only happen after the app has fully exited and let go
+    of its own file lock. It's called as the very last thing main()
+    does, right after webview.start() returns (i.e. the moment the
+    window was just closed) -- at that point this process is about to
+    end anyway, so it spawns a short-lived, fully separate helper
+    (cmd.exe running a tiny retry script, NOT another copy of this
+    exe, which would just re-lock the file) that waits a couple of
+    seconds for this process to actually disappear, then runs rcedit
+    against the now-unlocked .exe file.
+
+    Net effect for the person using the app: no reinstall, no manual
+    download, nothing to click -- close the app once, and the *next*
+    time it's opened, the icon is already the new one. Two honest
+    limits worth knowing: (1) it only ever applies on the NEXT launch
+    after a close, never into the currently-open window, since that's
+    a hard Windows restriction, not a choice; (2) File Explorer/the
+    taskbar sometimes keep a cached icon bitmap for a file and can lag
+    a refresh even after the resource itself is updated -- the running
+    app's own window icon next launch is correct regardless, since
+    Windows reads that fresh from the exe at process start."""
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return  # only meaningful for an installed Windows .exe
+
+    cfg = load_config()
+    ico_path = cfg.get("icon_path", "")
+    if not ico_path or not os.path.isfile(ico_path):
+        return
+    try:
+        with open(ico_path, "rb") as f:
+            ico_hash = hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return
+    if cfg.get("icon_applied_hash") == ico_hash:
+        return  # this exact icon was already applied
+
+    exe_path = sys.executable
+    if not exe_path or not os.path.isfile(exe_path):
+        return
+    rcedit_path = _ensure_rcedit()
+    if not rcedit_path:
+        return
+
+    try:
+        bat_path = os.path.join(app_data_dir(), "apply_icon.bat")
+        with open(bat_path, "w", encoding="utf-8") as f:
+            f.write(
+                "@echo off\r\n"
+                "setlocal\r\n"
+                "set RCEDIT=%~1\r\n"
+                "set EXE=%~2\r\n"
+                "set ICO=%~3\r\n"
+                "for /l %%i in (1,1,6) do (\r\n"
+                "  \"%RCEDIT%\" \"%EXE%\" --set-icon \"%ICO%\" >nul 2>nul\r\n"
+                "  if not errorlevel 1 goto done\r\n"
+                "  timeout /t 2 /nobreak >nul\r\n"
+                ")\r\n"
+                ":done\r\n"
+                "endlocal\r\n"
+            )
+        subprocess.Popen(
+            ["cmd", "/c", bat_path, rcedit_path, exe_path, ico_path],
+            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+            close_fds=True,
+        )
+        # Optimistic: we can't wait around for the detached helper's
+        # result without blocking this process's exit (which is the
+        # whole point -- it needs us gone). Worst case on a rare
+        # failure, this just quietly retries on the next icon change
+        # rather than every close; not worth stalling shutdown over.
+        cfg["icon_applied_hash"] = ico_hash
+        save_config(cfg)
+    except OSError:
+        pass
+
+
+def _show_windows_message(title, message):
+    """A plain native Windows message box via ctypes -- no extra
+    dependency, works even if the webview itself never manages to
+    open. Silently does nothing on any failure (e.g. running on a
+    non-Windows dev machine), since this is a best-effort diagnostic,
+    never something the app depends on to function."""
+    if os.name != "nt":
+        print(f"{title}: {message}")
+        return
+    try:
+        import ctypes
+        MB_ICONWARNING = 0x30
+        ctypes.windll.user32.MessageBoxW(0, message, title, MB_ICONWARNING)
+    except Exception:
+        pass
+
+
+def _start_webview_with_webview2_check():
+    """Forces pywebview to use the modern Microsoft Edge WebView2
+    engine (gui="edgechromium") instead of letting it silently fall
+    back to the ancient IE/mshtml engine when the WebView2 Runtime
+    isn't installed on a given PC.
+
+    That silent fallback is the most likely real explanation behind
+    "the app often freezes and I have to close and reopen it" on SOME
+    machines but not others: mshtml cannot run most of the JavaScript
+    this app's index.html uses (async/await, optional chaining `?.`,
+    template literals, arrow functions are all unsupported by it), so
+    on a PC without WebView2, scripts fail silently and the window
+    simply stops responding to clicks -- which looks exactly like a
+    freeze, not a crash, and explains why it's inconsistent across
+    "all devices": it only happens on PCs missing that one runtime.
+
+    WebView2 itself ships with Windows 10 (1803+) and Windows 11 via
+    Windows Update on the vast majority of real-world PCs, but a
+    locked-down, offline, or minimal/LTSC install can be missing it.
+    Forcing edgechromium turns that from a confusing freeze into one
+    clear message with a direct download link, the moment it happens,
+    instead of degrading to a broken renderer with no explanation."""
+    try:
+        webview.start(gui="edgechromium")
+    except Exception as e:
+        _show_windows_message(
+            "Mario Kart Nitro",
+            "Mario Kart Nitro needs the Microsoft Edge WebView2 Runtime "
+            "to display its window, and it looks like it isn't "
+            "installed on this PC (this is also the real cause behind "
+            "the app seeming to randomly freeze on some computers).\n\n"
+            "Download it here (free, about a minute):\n"
+            f"{WEBVIEW2_DOWNLOAD_URL}\n\n"
+            "After installing it, just reopen Mario Kart Nitro.\n\n"
+            f"(Technical detail: {e})"
+        )
+
+
+def _initial_ui_path(cfg):
+    """Picks which index.html to open with at startup WITHOUT touching
+    the network -- just the already-cached remote page if one exists
+    from an earlier run, otherwise the bundled one. The network-
+    checking version (_apply_remote_ui) now only ever runs from the
+    background update thread, a few seconds after the window is
+    already open and responsive.
+
+    Fetching manifest.json before the window even existed used to mean
+    a slow connection, a flaky GitHub response, or no network at all
+    could keep the window from appearing for several seconds -- which
+    looks exactly like "it freezes right when I open it" to someone
+    watching for the window, especially on a slower PC. This makes the
+    window appear immediately every time, network or no network; any
+    pushed index.html change still gets picked up moments later, just
+    live-swapped into the open window instead of decided before it
+    opens."""
+    bundled = resource_path("index.html")
+    cached_path = cfg.get("ui_html_path", "")
+    return cached_path if cached_path and os.path.isfile(cached_path) else bundled
+
+
+def _centered_window_xy(width, height):
+    """Computes a centered position for the window instead of leaving
+    it to whatever default spot the OS/WebView2 picks -- which is the
+    "it opens in a random position every time" complaint. Returns
+    (None, None) on anything but Windows, or if the screen size can't
+    be read for any reason, so pywebview just falls back to its own
+    normal default rather than erroring."""
+    if os.name != "nt":
+        return None, None
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        screen_w = user32.GetSystemMetrics(0)   # SM_CXSCREEN
+        screen_h = user32.GetSystemMetrics(1)   # SM_CYSCREEN
+        if screen_w <= 0 or screen_h <= 0:
+            return None, None
+        x = max(0, (screen_w - width) // 2)
+        y = max(0, (screen_h - height) // 2)
+        return x, y
+    except Exception:
+        return None, None
+
+
+def main():
+    seed_builtin_mod()
+    _ensure_rcedit()
+    api = Api()
+    cfg = load_config()
+    index_file = _initial_ui_path(cfg)
+    win_width, win_height = 1180, 820
+    win_x, win_y = _centered_window_xy(win_width, win_height)
+    window = webview.create_window(
+        "Mario Kart Nitro — Launcher",
+        index_file,
+        x=win_x,
+        y=win_y,
+        width=win_width,
+        height=win_height,
+        min_size=(900, 640),
+        background_color="#060a13",
+        js_api=api,
+    )
+    api.window = window
+
+    # Keeps checking GitHub for changes the whole time the app is open,
+    # not just at startup -- so a push while someone already has the
+    # app running still reaches them, in the background, with nothing
+    # for them to click.
+    updater = threading.Thread(
+        target=_background_remote_update_loop, args=(api,), daemon=True
+    )
+    updater.start()
+
+    _start_webview_with_webview2_check()
+
+    # The window just closed -- this process is about to exit, which
+    # is the one safe moment to patch a pending icon_url change into
+    # the .exe file on disk (see _maybe_apply_pending_icon()'s own
+    # docstring for why it can't happen any earlier).
+    _maybe_apply_pending_icon()
+
+
+if __name__ == "__main__":
+    main()
