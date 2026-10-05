@@ -1645,18 +1645,27 @@ class Api:
         return {"ok": True, "started": True}
 
     def _launcher_update_worker(self, download_url):
-        """Downloads+extracts the new build, finds its .exe, stages a
-        detached helper script to perform the actual swap, then closes
-        this window -- which is this process's one chance to let go of
-        its own file lock so the swap can happen. The swap itself runs
-        in cmd.exe (a genuinely separate binary, not another copy of
-        this exe, which would just re-lock the file the same way):
-        it waits for this process to fully exit, renames the old exe
-        out of the way, copies the new one into place, deletes the
-        backup, and relaunches -- so from the person's side: click
-        Update, the window closes, and it reopens moments later
-        already on the new version. No reinstall, nothing to click
-        through, no uninstall step.
+        """Downloads the new build and stages a detached helper script
+        to perform the actual swap, then closes this window -- which
+        is this process's one chance to let go of its own file lock
+        so the swap can happen. The swap itself runs in cmd.exe (a
+        genuinely separate binary, not another copy of this exe,
+        which would just re-lock the file the same way): it waits for
+        this process to fully exit, renames the old exe out of the
+        way, copies the new one into place, deletes the backup, and
+        relaunches -- so from the person's side: click Update, the
+        window closes, and it reopens moments later already on the
+        new version. No reinstall, nothing to click through, no
+        uninstall step.
+
+        download_url can point at EITHER a zipped build (same as
+        before -- it's unpacked and searched for an .exe) OR a bare
+        .exe GitHub Release asset uploaded directly, with no zip step
+        needed on your end at all. Which one it is isn't decided by
+        the URL or file extension (GitHub's download link doesn't
+        reliably reflect either) -- the downloaded file itself is
+        checked with zipfile.is_zipfile(), which looks at the file's
+        actual bytes, not its name.
 
         If anything fails before the window is closed, the error is
         pushed back into the still-open page via evaluate_js (the
@@ -1675,56 +1684,78 @@ class Api:
                 except Exception:
                     pass
 
-        tmp_zip = os.path.join(app_data_dir(), "_launcher_update.zip")
+        tmp_download = os.path.join(app_data_dir(), "_launcher_update.download")
         tmp_extract = os.path.join(app_data_dir(), "_launcher_extract")
 
         try:
-            download_file(download_url, tmp_zip)
+            download_file(download_url, tmp_download)
         except OSError as e:
             fail(f"Download failed: {e}")
             return
 
-        try:
-            if os.path.isdir(tmp_extract):
-                shutil.rmtree(tmp_extract, ignore_errors=True)
-            os.makedirs(tmp_extract, exist_ok=True)
-            with zipfile.ZipFile(tmp_zip, "r") as zf:
-                bad_file = zf.testzip()
-                if bad_file is not None:
-                    raise OSError(f"Downloaded zip is corrupted (bad file: {bad_file}).")
-                zf.extractall(tmp_extract)
-        except (OSError, zipfile.BadZipFile) as e:
-            fail(f"Couldn't unpack the update: {e}")
-            return
-        finally:
-            try:
-                os.remove(tmp_zip)
-            except OSError:
-                pass
-
-        # Prefer an exe with the SAME filename as the one currently
-        # running (handles a zip with extra files/folders alongside
-        # it); fall back to just the first .exe found anywhere inside.
         new_exe = None
-        exe_basename = os.path.basename(sys.executable)
-        for dirpath, _dirnames, filenames in os.walk(tmp_extract):
-            for fname in filenames:
-                if fname.lower() == exe_basename.lower():
-                    new_exe = os.path.join(dirpath, fname)
-                    break
-            if new_exe:
-                break
-        if not new_exe:
+        is_zip = False
+        try:
+            is_zip = zipfile.is_zipfile(tmp_download)
+        except OSError:
+            is_zip = False
+
+        if is_zip:
+            try:
+                if os.path.isdir(tmp_extract):
+                    shutil.rmtree(tmp_extract, ignore_errors=True)
+                os.makedirs(tmp_extract, exist_ok=True)
+                with zipfile.ZipFile(tmp_download, "r") as zf:
+                    bad_file = zf.testzip()
+                    if bad_file is not None:
+                        raise OSError(f"Downloaded zip is corrupted (bad file: {bad_file}).")
+                    zf.extractall(tmp_extract)
+            except (OSError, zipfile.BadZipFile) as e:
+                fail(f"Couldn't unpack the update: {e}")
+                return
+            finally:
+                try:
+                    os.remove(tmp_download)
+                except OSError:
+                    pass
+
+            # Prefer an exe with the SAME filename as the one currently
+            # running (handles a zip with extra files/folders alongside
+            # it); fall back to just the first .exe found anywhere inside.
+            exe_basename = os.path.basename(sys.executable)
             for dirpath, _dirnames, filenames in os.walk(tmp_extract):
                 for fname in filenames:
-                    if fname.lower().endswith(".exe"):
+                    if fname.lower() == exe_basename.lower():
                         new_exe = os.path.join(dirpath, fname)
                         break
                 if new_exe:
                     break
-        if not new_exe:
-            fail("The downloaded update doesn't contain an .exe.")
-            return
+            if not new_exe:
+                for dirpath, _dirnames, filenames in os.walk(tmp_extract):
+                    for fname in filenames:
+                        if fname.lower().endswith(".exe"):
+                            new_exe = os.path.join(dirpath, fname)
+                            break
+                    if new_exe:
+                        break
+            if not new_exe:
+                fail("The downloaded update doesn't contain an .exe.")
+                return
+        else:
+            # Not a zip at all -- treat the download itself as the new
+            # exe directly (a bare .exe uploaded straight to a GitHub
+            # Release, no zip step on the publishing end). Rename it
+            # to something clearly an .exe so Explorer/AV scanners
+            # dealing with the temp file don't choke on a missing
+            # extension, and there's no extract folder to clean up.
+            new_exe = os.path.join(app_data_dir(), "_launcher_update_new.exe")
+            try:
+                if os.path.isfile(new_exe):
+                    os.remove(new_exe)
+                os.replace(tmp_download, new_exe)
+            except OSError as e:
+                fail(f"Couldn't prepare the downloaded exe: {e}")
+                return
 
         exe_path = sys.executable
         old_backup = exe_path + ".old.exe"
@@ -1752,6 +1783,7 @@ class Api:
                     "del /f /q \"%BACKUP%\" >nul 2>nul\r\n"
                     "start \"\" \"%OLDEXE%\"\r\n"
                     ":cleanup\r\n"
+                    "del /f /q \"%NEWEXE%\" >nul 2>nul\r\n"
                     "rmdir /s /q \"%EXTRACTDIR%\" >nul 2>nul\r\n"
                     "endlocal\r\n"
                 )
