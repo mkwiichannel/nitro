@@ -4,24 +4,7 @@ Mario Kart Nitro's own launcher code is licensed under the GNU General
 Public License v3.0 (see `LICENSE` in this same folder). It also includes
 or is informed by the third-party components listed below.
 
-## WheelWizard
 
-<https://github.com/TeamWheelWizard/WheelWizard>
-
-By Patchzy & WantToBeeMe. Licensed under GPL-3.0.
-
-Several of Nitro's internal behaviors (Dolphin portable-mode detection,
-locating Dolphin's user folder, the Mii database layout, and how a
-running Dolphin process is stopped before relaunching) were written to
-match WheelWizard's own observed behavior, confirmed against its public
-source and its own settings screen. If any of that logic was copied or
-adapted directly from WheelWizard's source rather than written
-independently to match its behavior, GPL-3.0 §5/§6 require preserving
-that attribution and making Nitro's own corresponding source available
-on the same terms — which this project satisfies by being hosted as
-GPL-3.0 source at <https://github.com/mkwiichannel/nitro>. Double-check
-which case applies to any code you added or changed before relying on
-this note alone.
 
 ## Mii renderer (MiiJS / FFL.js and its own dependencies)
 
