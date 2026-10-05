@@ -68,29 +68,6 @@ Mod content updates replace the installed content folder with the latest
 version. Launcher updates swap the running `.exe` for the new one once you
 confirm, then relaunch automatically.
 
-Maintainers: see [`release/HOW_TO_RELEASE.txt`](release/HOW_TO_RELEASE.txt)
-for exactly how to cut and publish a new build.
-
-## Building from source
-
-```bat
-build.bat
-```
-
-Run on Windows with Python 3.10+ on `PATH`. This installs dependencies and
-produces `dist\MarioKartNitro.exe` via PyInstaller, including the app icon,
-version info, and bundled assets.
-
-## Project structure
-
-```
-main.py            Launcher backend (pywebview + Python)
-index.html          Launcher UI
-mii_renderer/        Mii rendering
-build.bat            Windows build script
-manifest.json        Live update manifest (version, content_url, launcher_nitro)
-release/             Release/publishing notes for maintainers
-```
 
 ## License
 
