@@ -81,6 +81,7 @@ DEFAULT_CONFIG = {
     "content_version": "0.0.1",
     "installed_from_url": "",
     "installed_launcher_url": "",
+    "_launcher_baseline_set": False,
     "theme_season": "",
     "theme_colors": {},
     "theme_banner_url": "",
@@ -1422,13 +1423,46 @@ class Api:
         except (OSError, ValueError) as e:
             return {"update_available": False, "error": f"Couldn't check for updates: {e}"}
 
+        cfg = load_config()
+        self._apply_remote_theme(manifest, cfg)
+
+        # launcher_nitro (the whole-exe self-update) is checked
+        # FIRST and independently of content_url/version below -- it
+        # used to be gated behind "manifest.json has both version AND
+        # content_url", so as long as content_url was empty (e.g. mod
+        # content not published yet), the launcher_nitro check never
+        # even ran and the Update popup could never show, no matter
+        # what launcher_nitro said. The two are separate features (a
+        # new .exe build vs a new mod content zip) and shouldn't be
+        # able to block each other.
+        launcher_url = str(manifest.get("launcher_nitro", "")).strip()
+        installed_launcher_url = cfg.get("installed_launcher_url", "")
+        if launcher_url and not installed_launcher_url and not cfg.get("_launcher_baseline_set"):
+            # First check ever on this machine (installed_launcher_url
+            # has never been set) -- whatever's currently running IS
+            # this build, by definition (nobody can be "out of date"
+            # before their first check), so adopt the live
+            # launcher_nitro value as the baseline instead of
+            # immediately nagging a brand-new download with an
+            # "Update!" popup for the exact build they just got.
+            cfg["installed_launcher_url"] = launcher_url
+            cfg["_launcher_baseline_set"] = True
+            save_config(cfg)
+            installed_launcher_url = launcher_url
+        launcher_update_available = bool(
+            launcher_url and launcher_url != installed_launcher_url
+        )
+
         latest_version = str(manifest.get("version", "")).strip()
         content_url = str(manifest.get("content_url", "")).strip()
         if not latest_version or not content_url:
-            return {"update_available": False, "error": "manifest.json is missing 'version' or 'content_url'."}
+            return {
+                "update_available": False,
+                "error": "manifest.json is missing 'version' or 'content_url'.",
+                "launcher_update_available": launcher_update_available,
+                "launcher_download_url": launcher_url,
+            }
 
-        cfg = load_config()
-        self._apply_remote_theme(manifest, cfg)
         current_version = cfg.get("content_version", "0")
         installed_from_url = cfg.get("installed_from_url", "")
 
@@ -1441,22 +1475,6 @@ class Api:
 
         url_changed = bool(installed_from_url) and installed_from_url != content_url
         update_available = (not content_installed) or (latest_version != current_version) or url_changed
-
-        # A whole new launcher build (not just the mod content) --
-        # manifest.json's top-level "launcher_nitro" field, a link to
-        # a zipped MarioKartNitro.exe (Drive or a direct .zip URL both
-        # work -- see start_launcher_update()). Unlike content_url
-        # this is never applied silently, since it means replacing the
-        # running .exe itself. The popup shows whenever the live
-        # manifest's launcher_nitro differs from the last version we
-        # actually installed; if the field is cleared from the
-        # manifest again, the popup simply stops showing until it's
-        # set again.
-        launcher_url = str(manifest.get("launcher_nitro", "")).strip()
-        installed_launcher_url = cfg.get("installed_launcher_url", "")
-        launcher_update_available = bool(
-            launcher_url and launcher_url != installed_launcher_url
-        )
 
         return {
             "update_available": update_available,
