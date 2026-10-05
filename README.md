@@ -24,7 +24,6 @@ The launcher:
 
 - Downloads and installs the mod content automatically, and keeps it up to date
 - Manages Mii data used by the mod
-- Can point at an existing Dolphin install, or help set one up
 - Checks in with a small `manifest.json` file on every launch to see whether new
   mod content or a new build of the launcher itself is available
 - Updates itself in place when a new launcher build is published — no
@@ -45,14 +44,11 @@ It's meant to feel like a normal app: open it, it checks for updates, you play.
 
 1. Grab the latest `MarioKartNitro.exe` from this repo's
    [Releases](../../releases) page.
-2. Run it. On first launch it'll ask where your Dolphin install is (or help you
-   grab one).
+2. Run it. On first launch it'll ask where your Dolphin install is.
 3. It downloads the current mod content automatically — no manual file
    copying required.
 4. Play. The launcher checks for mod and launcher updates every time it opens.
 
-No installer, no admin rights needed, nothing to unzip into a Dolphin folder
-by hand.
 
 ## How updates work
 
