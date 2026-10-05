@@ -2039,25 +2039,48 @@ def _acquire_single_instance_lock():
     instance fighting the same lock.
 
     Returns True if this is the only running instance (caller should
-    proceed normally), False if another instance already holds the
-    lock (caller should bail out instead of opening a window at all).
-    Always returns True on non-Windows, where this isn't a concern."""
+    proceed normally), False if another instance genuinely still
+    holds the lock after waiting a few seconds for it to clear
+    (caller should bail out instead of opening a window at all).
+    Always returns True on non-Windows, where this isn't a concern.
+
+    The wait-and-retry below is specifically for the "close it, then
+    immediately reopen it" pattern: ERROR_ALREADY_EXISTS here doesn't
+    mean a window is open -- it means SOME process still has an open
+    handle to this named mutex, which is also true for a fraction of
+    a second *while the previous process is still finishing its own
+    shutdown* (closing its WebView2/Chromium helper processes,
+    running the icon-patch step, letting Python's interpreter tear
+    down, etc). Treating that as a hard failure immediately is what
+    made a normal close+reopen look like "nothing happens" -- the new
+    launch would just pop a message box (which can end up behind
+    other windows, or get missed) instead of opening. Retrying for a
+    few seconds gives the old process time to actually finish exiting
+    first, so a normal quick reopen just works with no popup at all;
+    only a GENUINELY still-running instance (a real second launch
+    attempt while the app is actually open) still gets the message."""
     global _single_instance_mutex_handle
     if os.name != "nt":
         return True
     try:
         import ctypes
+        import time
         ERROR_ALREADY_EXISTS = 183
         kernel32 = ctypes.windll.kernel32
-        kernel32.SetLastError(0)
-        handle = kernel32.CreateMutexW(None, False, "MarioKartNitroLauncherSingleInstance")
-        already_running = (kernel32.GetLastError() == ERROR_ALREADY_EXISTS)
-        if already_running:
+        attempts = 10
+        delay_seconds = 0.5  # 10 x 0.5s = up to 5s total before giving up
+        for attempt in range(attempts):
+            kernel32.SetLastError(0)
+            handle = kernel32.CreateMutexW(None, False, "MarioKartNitroLauncherSingleInstance")
+            already_running = (kernel32.GetLastError() == ERROR_ALREADY_EXISTS)
+            if not already_running:
+                _single_instance_mutex_handle = handle  # kept alive for the process lifetime
+                return True
             if handle:
                 kernel32.CloseHandle(handle)
-            return False
-        _single_instance_mutex_handle = handle  # kept alive for the process lifetime
-        return True
+            if attempt < attempts - 1:
+                time.sleep(delay_seconds)
+        return False
     except Exception:
         return True  # never let this check itself be the reason the app won't start
 
