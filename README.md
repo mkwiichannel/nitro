@@ -8,7 +8,7 @@
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE.txt)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#requirements)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.com/invite/wbU8vw8vJq)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/AhkHNPG65G)
 
 </div>
 
@@ -74,7 +74,7 @@ Third-party components and their licenses are listed in
 
 ## Community
 
-Join the [Discord](https://discord.com/invite/wbU8vw8vJq) for support, updates,
+Join the [Discord](https://discord.gg/AhkHNPG65G) for support, updates,
 and to chat with the community.
 
 ---
