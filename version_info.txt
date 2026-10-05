@@ -1,0 +1,46 @@
+# Windows version-resource info for MarioKartNitro.exe, used by
+# PyInstaller's --version-file flag. This sets the "Company name",
+# "Product name" etc. shown in Explorer -> right-click the exe ->
+# Properties -> Details tab.
+#
+# IMPORTANT: this does NOT set the "Publisher" Windows SmartScreen
+# shows in the "Unknown publisher" warning when someone runs an
+# unsigned exe -- that field comes only from a real Authenticode
+# code-signing certificate's subject name, not from this file. An
+# unsigned exe will keep showing "Unknown publisher" in that warning
+# no matter what's written here; the only fix for that is actually
+# signing the exe (see the README's antivirus/SmartScreen section).
+# This file only makes the Explorer Properties dialog look right.
+
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0),
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          '040904B0',
+          [
+            StringStruct('CompanyName', 'mkwiichannel'),
+            StringStruct('FileDescription', 'Mario Kart Nitro Launcher'),
+            StringStruct('FileVersion', '1.0.0.0'),
+            StringStruct('InternalName', 'MarioKartNitro'),
+            StringStruct('LegalCopyright', 'mkwiichannel - GPL-3.0'),
+            StringStruct('OriginalFilename', 'MarioKartNitro.exe'),
+            StringStruct('ProductName', 'Mario Kart Nitro'),
+            StringStruct('ProductVersion', '1.0.0.0'),
+          ],
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])]),
+  ],
+)
