@@ -1,6 +1,10 @@
 <div align="center">
 
-<img src="build_assets/readme_hero.png" alt="Mario Kart Nitro — a custom Mario Kart Wii mod and desktop launcher, built on Riivolution and Dolphin" width="100%" />
+<img src="logo.png" alt="Mario Kart Nitro" width="140" />
+
+# Mario Kart Nitro
+
+**A custom Mario Kart Wii mod + desktop launcher, built on Riivolution and Dolphin.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE.txt)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#requirements)
