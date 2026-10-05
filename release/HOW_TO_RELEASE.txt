@@ -1,0 +1,53 @@
+Mario Kart Nitro — building a GitHub Release zip
+===================================================
+
+Claude can't compile the actual Windows .exe (no Windows machine here) —
+this is the exact folder structure to zip up AFTER you run build.bat
+yourself on Windows. Do this every time you cut a new release.
+
+1. Run build.bat (in the project root) on your Windows machine.
+   This produces dist\MarioKartNitro.exe.
+
+2. Into a fresh empty folder, copy:
+   - dist\MarioKartNitro.exe        (from the build)
+   - LICENSE                        (project root — GPL-3.0 text)
+   - THIRD_PARTY_NOTICES.md         (project root)
+
+   That's the whole zip. Nothing else needs to go in it — the Mii
+   renderer, RFL_Res.dat, rcedit.exe etc. are already bundled INSIDE
+   the .exe by build.bat, not separate files.
+
+3. Zip that folder's contents (not the folder itself — the .exe
+   should be at the top level when someone unzips it), e.g.:
+   MarioKartNitro_v1.0.0.zip
+     |- MarioKartNitro.exe
+     |- LICENSE
+     |- THIRD_PARTY_NOTICES.md
+
+4. On GitHub: go to the repo -> Releases -> "Draft a new release" ->
+   pick/create a tag (e.g. v1.0.0) -> upload that zip as a release
+   asset -> publish.
+
+5. Copy the asset's direct download URL (GitHub shows it once the
+   release is published — right-click the asset link -> Copy link
+   address). It looks like:
+   https://github.com/mkwiichannel/nitro/releases/download/v1.0.0/MarioKartNitro_v1.0.0.zip
+
+6. Put that URL into manifest.json:
+   - New mod content only -> content_url
+   - A whole new .exe      -> launcher_nitro
+   (See the main README.txt for exactly how each of those behaves —
+   content_url applies silently, launcher_nitro always shows the
+   "Update!" popup first.)
+
+No Drive links needed anywhere anymore — the launcher already treats
+any direct download URL the same way (Drive-specific handling only
+kicks in for drive.google.com links; everything else, GitHub
+included, is just a plain download).
+
+Why ship LICENSE + THIRD_PARTY_NOTICES.md in the zip at all, and not
+just rely on the Credits tab in the app: the Credits tab is something
+people only see AFTER running the app; GPL-3.0 expects the license to
+accompany the actual distributed copy, so it should be sitting right
+next to the .exe in the download itself, not just mentioned on a
+screen inside it.

@@ -13,11 +13,10 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --icon "build_assets\icon.ico" ^
   --manifest "MarioKartNitro.manifest" ^
   --add-data "index.html;." ^
-  --add-data "Untitleddesign.png;." ^
-  --add-data "Untitleddesign6.png;." ^
-  --add-data "Untitleddesign_season1.png;." ^
+  --add-data "logo.png;." ^
+  --add-data "banner.png;." ^
   --add-data "mii_renderer;mii_renderer" ^
-  --add-data "default_mii.mii;." ^
+  --add-data "starter.mii;." ^
   --add-data "RFL_Res.dat;." ^
   --add-data "rcedit.exe;." ^
   main.py

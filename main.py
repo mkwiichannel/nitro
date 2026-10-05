@@ -450,14 +450,14 @@ class Api:
 
     def get_default_mii(self):
         """Returns the starter Mii that "New Mii" builds from -- a real
-        74-byte Wii Mii record (default_mii.mii) bundled directly into
+        74-byte Wii Mii record (starter.mii) bundled directly into
         the exe, not fetched from anywhere, so it works offline and
         the very first time the app is ever run. The frontend falls
         back to its own minimal blank-Mii buffer only if this file is
         somehow missing (e.g. a dev run without it next to main.py)."""
-        path = resource_path("default_mii.mii")
+        path = resource_path("starter.mii")
         if not os.path.isfile(path):
-            return {"ok": False, "error": "default_mii.mii is not bundled."}
+            return {"ok": False, "error": "starter.mii is not bundled."}
         try:
             with open(path, "rb") as f:
                 data = f.read()
@@ -1206,7 +1206,7 @@ class Api:
             "icon_url": "https://raw.githubusercontent.com/.../icon.ico"
           }
         (The "New Mii" starter template is no longer a remote field --
-        it's default_mii.mii, bundled straight into the exe. See
+        it's starter.mii, bundled straight into the exe. See
         Api.get_default_mii().)
         Only CSS custom-property names (the "--xxx" keys already used in
         index.html's :root) are accepted as color keys — anything else is
@@ -1397,7 +1397,7 @@ class Api:
             # pushed page can keep referencing them by the same
             # filenames; anything genuinely new still needs its own
             # logo_url/banner_url-style remote field to be fetched.
-            for name in ("Untitleddesign.png", "Untitleddesign6.png", "Untitleddesign_season1.png"):
+            for name in ("logo.png", "banner.png"):
                 src = resource_path(name)
                 if os.path.isfile(src):
                     shutil.copyfile(src, os.path.join(ui_dir, name))
@@ -1830,6 +1830,61 @@ def _ensure_rcedit():
     return dst if os.path.isfile(dst) else ""
 
 
+def _notify_shell_icon_changed():
+    """Tells Windows Explorer to re-read this exe's icon right now,
+    instead of waiting for its own icon cache to decide to refresh on
+    its own.
+
+    This is the actual explanation for "the icon doesn't show for
+    everyone globally": rcedit successfully patches the new icon into
+    the .exe's resources on disk (confirmed working), but Explorer and
+    the taskbar don't re-read a file's icon from disk on every launch
+    -- they cache it in a per-user icon cache database, keyed by file
+    path, specifically so that showing folder/taskbar icons stays
+    fast. Overwriting the icon resource inside an already-cached exe
+    doesn't invalidate that cache by itself, so most people just keep
+    seeing the OLD icon indefinitely even though the file on disk is
+    already correct.
+
+    Two separate notifications are fired, since one broad call turned
+    out not to be enough in practice:
+      - SHCNE_ASSOCCHANGED: the broad "something about associations/
+        icons changed, please reconsider everything" signal.
+      - SHCNE_UPDATEIMAGE / SHCNE_UPDATEITEM targeted at this exe's
+        own path: the more specific "the image/icon for THIS exact
+        item changed" signal, which is the one documented for exactly
+        this situation (a file's own icon resource changed on disk).
+    Both are safe to call on every launch; they do nothing if there
+    was nothing to refresh. Still not a 100% guarantee on every
+    Windows build/config -- if it's still stuck after this, it's
+    almost always the per-user icon cache DATABASE itself holding an
+    old entry from testing the same filename repeatedly (common while
+    iterating on builds), fixed by deleting
+    %LocalAppData%\\Microsoft\\Windows\\Explorer\\iconcache_*.db and
+    restarting explorer.exe (or just rebooting) -- that's a Windows
+    cache quirk on the testing machine, not something this app can
+    reach into and fix from the outside."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        SHCNE_ASSOCCHANGED = 0x08000000
+        SHCNE_UPDATEITEM = 0x00002000
+        SHCNE_UPDATEIMAGE = 0x00008000
+        SHCNF_IDLIST = 0x0000
+        SHCNF_PATHW = 0x0005
+        SHCNF_FLUSH = 0x1000
+        shell32 = ctypes.windll.shell32
+        shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None)
+        exe_path = getattr(sys, "executable", "")
+        if exe_path and os.path.isfile(exe_path):
+            path_buf = ctypes.c_wchar_p(exe_path)
+            shell32.SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW | SHCNF_FLUSH, path_buf, None)
+            shell32.SHChangeNotify(SHCNE_UPDATEIMAGE, SHCNF_PATHW | SHCNF_FLUSH, path_buf, None)
+    except Exception:
+        pass
+
+
 def _maybe_apply_pending_icon():
     """Patches a newly-pushed icon_url .ico into the .exe's own Windows
     resources -- the one remote-theme field that genuinely can't be
@@ -1912,6 +1967,51 @@ def _maybe_apply_pending_icon():
         pass
 
 
+_single_instance_mutex_handle = None  # module-level so GC never releases it early
+
+
+def _acquire_single_instance_lock():
+    """Grabs a named Windows mutex so a second launch of the exe can
+    detect a first one is already running, instead of opening a
+    second competing window.
+
+    This matters a lot for exactly the "it freezes, so I close it and
+    reopen it, and so on" pattern: someone who double-clicks the exe
+    again while the first one is still starting up (slow PC, AV
+    scanning the freshly-unpacked onefile temp copy, WebView2 still
+    initializing, etc.) ends up with TWO processes racing to grab the
+    same WebView2 browser profile -- and the Chromium engine
+    underneath WebView2 only lets one process own a given profile
+    folder at a time. The second process doesn't error, it just hangs
+    waiting for a lock the first process already holds -- which looks
+    exactly like a freeze, and closing+reopening *that* window doesn't
+    help because it's immediately replaced by yet another second
+    instance fighting the same lock.
+
+    Returns True if this is the only running instance (caller should
+    proceed normally), False if another instance already holds the
+    lock (caller should bail out instead of opening a window at all).
+    Always returns True on non-Windows, where this isn't a concern."""
+    global _single_instance_mutex_handle
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        ERROR_ALREADY_EXISTS = 183
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetLastError(0)
+        handle = kernel32.CreateMutexW(None, False, "MarioKartNitroLauncherSingleInstance")
+        already_running = (kernel32.GetLastError() == ERROR_ALREADY_EXISTS)
+        if already_running:
+            if handle:
+                kernel32.CloseHandle(handle)
+            return False
+        _single_instance_mutex_handle = handle  # kept alive for the process lifetime
+        return True
+    except Exception:
+        return True  # never let this check itself be the reason the app won't start
+
+
 def _show_windows_message(title, message):
     """A plain native Windows message box via ctypes -- no extra
     dependency, works even if the webview itself never manages to
@@ -1952,7 +2052,21 @@ def _start_webview_with_webview2_check():
     clear message with a direct download link, the moment it happens,
     instead of degrading to a broken renderer with no explanation."""
     try:
-        webview.start(gui="edgechromium")
+        # pywebview's own default (private_mode=True, no storage_path)
+        # hands WebView2 a brand-new tempfile.TemporaryDirectory().name
+        # every launch WITHOUT holding a reference to that
+        # TemporaryDirectory object -- so Python's garbage collector is
+        # free to delete that folder the moment it decides to, which
+        # can happen before WebView2 has actually finished using it.
+        # Normally GC runs fast enough that nobody notices, but on a
+        # slower/busier PC (exactly the "i3 laptop" case) that race can
+        # lose, and WebView2 ends up waiting on a profile folder that
+        # just vanished -- another real candidate for "freezes on some
+        # devices but not others". Pointing it at a real, persistent,
+        # app-owned folder instead sidesteps that race entirely.
+        storage_path = os.path.join(app_data_dir(), "webview2_data")
+        os.makedirs(storage_path, exist_ok=True)
+        webview.start(gui="edgechromium", private_mode=False, storage_path=storage_path)
     except Exception as e:
         _show_windows_message(
             "Mario Kart Nitro",
@@ -2013,8 +2127,25 @@ def _centered_window_xy(width, height):
 
 
 def main():
+    if not _acquire_single_instance_lock():
+        _show_windows_message(
+            "Mario Kart Nitro",
+            "Mario Kart Nitro is already running — check your taskbar "
+            "or Alt-Tab for the existing window instead of opening a "
+            "new one (running it twice at once is what causes the "
+            "freeze some people see)."
+        )
+        return
+
     seed_builtin_mod()
     _ensure_rcedit()
+    # Cheap, safe to run every launch -- nudges Explorer to drop its
+    # icon cache for this file right as the app starts, which is what
+    # actually makes a pushed icon_url change visible after the
+    # rcedit patch from a previous close (see
+    # _notify_shell_icon_changed()'s own docstring for why the patch
+    # alone isn't enough).
+    _notify_shell_icon_changed()
     api = Api()
     cfg = load_config()
     index_file = _initial_ui_path(cfg)

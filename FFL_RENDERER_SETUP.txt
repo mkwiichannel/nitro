@@ -1,0 +1,36 @@
+Mario Kart Nitro — Real Mii Renderer
+
+The launcher already reads/writes the real Wii Mii records used by Dolphin,
+and the real MiiJS/FFL renderer is now fully bundled — nothing to set up.
+
+RESOURCE IS BUNDLED
+--------------------
+The FFL renderer needs an FFLResHigh-compatible resource (the actual Mii
+meshes/materials/textures). RFL_Res.dat is now bundled directly inside the
+exe (build.bat adds it via --add-data "RFL_Res.dat;."), since it's properly
+licensed for redistribution now — so this just works the first time anyone
+opens the Mii tab, with no file to pick and no setup step.
+
+There's no "Set FFL renderer" button in the UI anymore — it's not needed
+since the resource is always there now. For anyone who still wants to
+override it with a DIFFERENT resource file (e.g. a different region's
+dump), just drop it at one of the paths Nitro already checks first, no
+picker needed:
+
+Nitro's full search order for the renderer resource:
+  1. %APPDATA%\MarioKartNitro\FFLResHigh.dat / AFLResHigh_2_3.dat
+  2. next to MarioKartNitro.exe
+  3. the app's own resource directory
+  4. RFL_Res.dat bundled inside the exe itself (the default — always there)
+
+The renderer runtime (MiiJS 3.1.0's browser build, the FFL WASM module, and
+its license files) is bundled locally in the mii_renderer\ folder next to
+index.html and inside the built .exe -- no internet access or CDN is needed
+at runtime.
+
+MiiJS documentation confirms that browser FFL rendering requires the FFL
+runtime and an FFLResHigh-compatible resource, and that the resource contains
+the models/textures needed for the Mii render. Nitro renders the face only
+(not the full body), since full-body rendering needs extra body-model assets
+with a less reliable file-lookup path in the browser build -- the face
+render is what the Mii editor's preview needs and is the stable option.

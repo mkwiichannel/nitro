@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mario Kart Nitro — Launcher</title>
-<link rel="icon" type="image/png" href="Untitleddesign6.png">
+<link rel="icon" type="image/png" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -43,6 +43,8 @@
     flex-direction:column;
   }
   ::selection{ background:rgba(255,140,0,0.35); }
+
+  /* ---------- Titlebar ---------- */
   .titlebar{
     display:flex;
     align-items:center;
@@ -77,12 +79,13 @@
   .status-dot{ display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
   .status-dot i{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; }
 
-  
+  /* ---------- Layout ---------- */
   main{ flex:1; padding:40px 26px 60px; max-width:1180px; margin:0 auto; width:100%; }
   .screen{ display:none; animation:rise .35s ease; }
   .screen.active{ display:block; }
   @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none; } }
 
+  /* ---------- Home ---------- */
   .hero{
     position:relative; overflow:hidden;
     border:1px solid var(--border); border-radius:22px;
@@ -148,6 +151,7 @@
   }
   .path-bar b{ color:var(--text-dim); font-weight:500; }
 
+  /* ---------- Stat / feature grids ---------- */
   .grid-4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:14px; }
   .grid-4.cards{ margin-bottom:28px; }
   @media(max-width:900px){ .grid-4{ grid-template-columns:repeat(2,1fr);} }
@@ -173,6 +177,7 @@
   .card h3{ margin:0 0 6px; font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:0.3px; width:100%; }
   .card p{ margin:0; font-size:12.5px; color:var(--text-dim); line-height:1.5; width:100%; }
 
+  /* ---------- Section header (sub pages) ---------- */
   .sub-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:30px; flex-wrap:wrap; }
   .sub-head h2{ font-family:var(--display); font-weight:700; font-size:30px; margin:0; letter-spacing:0.3px; }
   .sub-head .tag{ color:var(--text-faint); font-size:13px; }
@@ -183,6 +188,7 @@
   }
   .back:hover{ background:rgba(255,140,0,0.14); }
 
+  /* ---------- Forms ---------- */
   .panel{ border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); padding:30px; }
   .field{ margin-bottom:22px; max-width:560px; }
   .field label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-dim); margin-bottom:9px; }
@@ -201,7 +207,7 @@
   }
   .browse:hover{ background:rgba(255,140,0,0.1); }
 
-  
+  /* ---------- Mods toolbar ---------- */
   .toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
   .empty-panel{
     border:1px dashed var(--border-strong); border-radius:var(--radius); padding:60px 20px; text-align:center;
@@ -218,7 +224,7 @@
   .toast.show{ opacity:1; transform:none; }
   .toast.error{ border-color:rgba(255,110,110,0.4); color:#ffb3b3; }
 
-  
+  /* ---------- Credits ---------- */
   .credit-block{ margin-bottom:26px; max-width:640px; }
   .credit-block h4{ font-family:var(--display); font-weight:700; font-size:15.5px; color:var(--cyan); margin:0 0 8px; letter-spacing:0.3px; }
   .credit-block p{ margin:0; font-size:13.5px; color:var(--text-dim); line-height:1.6; }
@@ -237,7 +243,7 @@
   .credits-footnote a:hover{ color:var(--text-faint); }
 
 
-  
+  /* ---------- REAL MII SYSTEM ---------- */
   .mii-shell{display:grid;grid-template-columns:300px minmax(420px,1fr);gap:18px}
   .mii-list,.mii-editor,.mii-preview{background:rgba(10,13,22,.82);border:1px solid var(--border);border-radius:14px}
   .mii-list{padding:14px;max-height:610px;overflow:auto}
@@ -265,6 +271,8 @@
   .mii-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .mii-status{font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:10px;min-height:14px}
   @media(max-width:900px){.mii-shell,.mii-main{grid-template-columns:1fr}.mii-list{max-height:240px}}
+
+  /* ---------- Halloween shaders ---------- */
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
@@ -289,6 +297,7 @@
   .btn-primary:hover{ box-shadow:0 8px 30px rgba(255,140,0,0.65) !important; }
   .card:hover, .stat:hover{ box-shadow:0 0 24px rgba(160,60,255,0.2); }
 
+  /* ---------- Window-edge glow pulse ---------- */
   .window-glow{
     position:fixed; inset:0; z-index:30; pointer-events:none;
     border:2px solid transparent;
@@ -316,6 +325,7 @@
     }
   }
 
+  /* ---------- Launcher self-update popup ---------- */
   .launcher-update-overlay{
     position:fixed; inset:0; z-index:90;
     background:rgba(5,2,10,0.72);
@@ -346,7 +356,7 @@
   </div>
 </div>
 <div class="titlebar">
-<div class="brand"><img class="brand-mark" id="brandLogo" src="Untitleddesign6.png" alt="Mario Kart Nitro" />
+<div class="brand"><img class="brand-mark" id="brandLogo" src="logo.png" alt="Mario Kart Nitro" />
 <div class="brand-text">MARIO KART <span>NITRO</span></div>
 <div class="ver-pill" id="verPill">v1.0.0</div>
 </div>
@@ -355,7 +365,7 @@
 <main>
 <section class="screen active" id="home">
 <div class="hero">
-<div class="hero-banner"><img src="Untitleddesign_season1.png" alt="Mario Kart Nitro — Season 1" /></div>
+<div class="hero-banner"><img src="banner.png" alt="Mario Kart Nitro — Season 1" /></div>
 <div class="stripe"></div>
 <p class="hero-sub"> </p>
 <div class="hero-actions"><button class="btn btn-primary" id="heroPlayBtn"><span id="heroPlayLabel">▶ Play</span></button> <button class="btn btn-ghost" onclick="go('settings')" id="heroSettingsBtn">Settings</button> <button class="btn btn-ghost" onclick="go('credits')" id="heroCreditsBtn">Credits</button> <button class="btn btn-danger-ghost" id="exitBtn">Exit</button></div>
@@ -398,7 +408,7 @@
 </div>
 </section>
 
-
+<!-- REAL MII SYSTEM -->
 <section class="screen" id="mii">
 <div class="sub-head"><button class="back" onclick="go('home')" id="miiBackBtn">← Home</button>
 <h2 id="miiTitle">Mii</h2><div class="tag" id="miiTag">Nitro Mii library · syncs on Play</div></div>
@@ -545,7 +555,6 @@
 <p id="creditsProfileText">Included <code>MKnitro.xml</code> / <code>Config.pul</code> / <code>Loader.pul</code> / <code>Code.pul</code> are bundled as the current launcher profile inputs.</p>
 </div>
 <button class="btn btn-primary" id="openDiscordBtn"> <svg width="16" height="16" viewbox="0 0 127.14 96.36" fill="currentColor" style="flex-shrink: 0;"> <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"></path> </svg> <span id="openDiscordLabel">Open Discord</span> </button>
-<div class="credits-footnote" id="creditsFootnote"> </a></div>
 </div>
 </section>
 <!-- SETUP / WELCOME -->
@@ -579,7 +588,7 @@
   });
 
 
-
+// ---------- REAL MII SYSTEM ----------
 let miiRecords = [];
 let selectedMii = -1;
 let currentMii = null;
@@ -605,22 +614,55 @@ const MII_ENUMS = {
   beard: ["None","Thin","Wide","Widest"]
 };
 
+/* =========================================================
+   MII COLOR / FEATURE SPACE CONVERSION
 
+   MiiJS's public get()/set() API is NOT in raw Wii index space for
+   several fields. Internally every Mii (whatever console it came
+   from) is unified into one modern/Switch-era canonical numbering,
+   and encode() always runs a backPort() pass that maps that
+   canonical numbering DOWN into the legacy Wii indices actually
+   stored in RFL_DB.dat (decode runs the reverse, forwardPort()).
+
+   For hairColor/eyebrowColor/faceColor the canonical and legacy
+   Wii indices happen to line up 1:1 over the small range this
+   editor exposes, so no conversion is needed for SAVING those.
+   But eyeColor/mouthColor/glassesColor/faceFeature are NOT 1:1 --
+   setting "eyeColor" to a plain 0-5 dropdown index and saving was
+   silently writing a completely different, wrong color, because
+   the library was reinterpreting that 0-5 as a canonical index and
+   remapping it. These tables were reverse-engineered by sweeping
+   the real library and reading the raw bytes it actually wrote,
+   not guessed -- each entry is the smallest canonical value that
+   makes encode() produce the exact Wii index on the left.
+
+   DISPLAY (loading an existing Mii) needs the opposite direction:
+   take the canonical value currently decoded and run it back
+   through the SAME lookup tables the library itself uses
+   (backTables.switch.*) to see what Wii index it currently means --
+   that's also why some already-created Miis showed colors as
+   blank/wrong before: the dropdown was shown the raw canonical
+   number untranslated, which is very often out of its 0-5/0-7
+   range entirely. */
 const MII_EYE_COLOR_WII_TO_CANON = {0:0,1:4,2:1,3:5,4:12,5:13};
 const MII_MOUTH_COLOR_WII_TO_CANON = {0:0,1:15,2:21};
 const MII_GLASS_COLOR_WII_TO_CANON = {0:0,1:1,2:15,3:12,4:7,5:4};
+/* wii faceFeature index -> [canonical faceFeature, canonical makeup] */
 const MII_FACE_FEATURE_WII_TO_CANON = {
   0:[0,0], 1:[0,1], 2:[0,3], 3:[0,9], 4:[5,0], 5:[2,0],
   6:[1,0], 7:[6,0], 8:[8,0], 9:[0,10], 10:[9,0], 11:[11,0]
 };
 
-
+/* canonical -> wii lookup tables, copied from the real library's own
+   backTables.switch.* (these are what encode()/decode() use internally) */
 const MII_EYES_COLORS_TABLE = [0,2,2,2,1,3,2,3,0,1,2,3,4,5,2,2,4,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,4,4,4,4,4,4,4,1,0,4,4,4,4,4,4,4,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,3,3,3,3,3,3,3,3,2,2,3,3,3,3,2,2,2,2,2,1,1,1,1,1,1];
 const MII_MOUTHS_COLORS_TABLE = [4,4,4,4,4,4,4,3,4,4,4,4,4,4,4,1,4,4,4,0,1,2,3,4,4,2,3,3,4,4,4,4,1,4,4,2,3,3,4,4,4,4,4,4,4,3,3,3,4,4,4,3,3,3,3,3,4,4,4,4,4,3,3,3,3,4,4,4,4,3,3,3,3,3,3,4,4,3,3,3,3,3,3,4,3,3,3,3,3,4,0,3,3,3,3,4,3,3,3,3];
 const MII_GLASSES_COLORS_TABLE = [0,1,1,1,5,1,1,4,0,5,1,1,3,5,1,2,3,4,5,4,2,2,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,5,5,5,5,5,5,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5];
 const MII_HAIRS_COLORS_TABLE = [0,1,2,3,4,5,6,7,0,4,3,5,4,4,6,2,0,6,4,3,2,2,7,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,0,0,4,4,4,4,4,4,0,0,0,4,4,4,4,4,4,5,5,5,4,4,4,4,4,4,4,5,7,5,7,7,7,7,7,6,7,7,7,7,7,3,7,7,7,7,7,0,4,4,4,4];
 const MII_FACE_COLORS_TABLE = [0,1,2,3,4,5,0,1,5,5];
-
+/* wii faceFeature index -> canonical [feature, makeup] (see above);
+   also used in reverse (canonical -> wii) by replaying the library's
+   own feature/makeup resolution rules -- see miiFeatureCanonicalToWii() */
 const MII_FEATURES_3DS_TABLE = ['0','6',5,6,'6',4,7,7,8,10,'6',11];
 const MII_MAKEUPS_3DS_TABLE = [0,1,1,2,1,1,2,2,2,3,9,9];
 
@@ -678,7 +720,9 @@ function fillSelect(id, arr) {
     "feature",
     "hair",
     "eyes",
-    "hair",
+    "hair", /* eyebrow color reuses the hair-color palette, like the
+                real Mii Maker -- this <select> had never been
+                populated at all before, so it always showed empty */
     "nose",
     "lip",
     "glass",
@@ -749,7 +793,9 @@ function b64ToBytes(s) {
   return u;
 }
 
-
+/* =========================================================
+   MIIJS
+   ========================================================= */
 
 async function ensureMiiJS() {
   if (!MIIJS) {
@@ -764,7 +810,9 @@ async function ensureMiiJS() {
   return MIIJS;
 }
 
-
+/* =========================================================
+   FFL RESOURCE
+   ========================================================= */
 
 function b64ToUint8(b64) {
   if (!b64) {
@@ -849,7 +897,9 @@ async function ensureFFLResource() {
   return fflResourceBytes;
 }
 
-
+/* =========================================================
+   MII LIST
+   ========================================================= */
 
 async function refreshMiis() {
   if (!window.pywebview || !window.pywebview.api) {
@@ -954,7 +1004,9 @@ async function refreshMiis() {
   }
 }
 
-
+/* =========================================================
+   SELECT MII
+   ========================================================= */
 
 async function selectMii(i) {
   if (!miiRecords[i]) return;
@@ -997,9 +1049,19 @@ async function selectMii(i) {
   }
 }
 
+/* =========================================================
+   LOAD FORM
+   ========================================================= */
 
 function loadMiiForm(m) {
-
+  /* Friendly short names from MiiJS's own `mappings` table -- NOT the
+     hand-guessed nested paths this editor used before (face.shape,
+     face.skinColor, hair.flip, eyes.vertical, eyes.spacing,
+     eyebrows.vertical, eyebrows.spacing, nose.vertical, mouth.vertical,
+     facialHair.mustacheType, facialHair.beardType, meta.gender -- none
+     of those paths exist in the real library, so every one of those
+     fields was silently reading as its fallback default and silently
+     discarding any edit instead of ever reaching the encoded Mii). */
   const g = path => m.get(path);
 
   miiSet("miiName", g("name") || "");
@@ -1123,7 +1185,8 @@ async function applyMiiForm() {
     );
   };
 
-
+  /* Friendly short names from MiiJS's own `mappings` table -- see the
+     comment on loadMiiForm() for why this changed. */
   set("name", miiVal("miiName"));
   set("creatorName", miiVal("miiCreator"));
   set("gender", miiVal("miiGender"));
@@ -1133,7 +1196,8 @@ async function applyMiiForm() {
   set("weight", miiVal("miiWeight"));
 
   set("faceType", miiVal("miiFaceShape"));
-  set("faceColor", miiVal("miiSkin")); 
+  set("faceColor", miiVal("miiSkin")); /* identity in this range, verified */
+
   {
     const [canonFeature, canonMakeup] =
       MII_FACE_FEATURE_WII_TO_CANON[Number(miiVal("miiFeature"))] || [0, 0];
@@ -1142,7 +1206,7 @@ async function applyMiiForm() {
   }
 
   set("hairType", miiVal("miiHair"));
-  set("hairColor", miiVal("miiHairColor")); 
+  set("hairColor", miiVal("miiHairColor")); /* identity in this range, verified */
 
   const hairFlip =
     document.getElementById("miiHairFlip");
@@ -1162,7 +1226,7 @@ async function applyMiiForm() {
   set("eyeDistanceApart", miiVal("miiEyeSpace"));
 
   set("eyebrowType", miiVal("miiBrowType"));
-  set("eyebrowColor", miiVal("miiBrowColor")); 
+  set("eyebrowColor", miiVal("miiBrowColor")); /* identity in this range, verified */
   set("eyebrowRotation", miiVal("miiBrowRot"));
   set("eyebrowSize", miiVal("miiBrowSize"));
   set("eyebrowYPosition", miiVal("miiBrowVert"));
@@ -1190,7 +1254,9 @@ async function applyMiiForm() {
   set("beardType", miiVal("miiBeard"));
 }
 
-
+/* =========================================================
+   REAL MII RENDERER
+   ========================================================= */
 
 async function renderCurrentMii() {
   if (!currentMii) return;
@@ -1275,7 +1341,9 @@ async function renderCurrentMii() {
   }
 }
 
-
+/* =========================================================
+   SAVE MII
+   ========================================================= */
 
 async function saveMii() {
   if (
@@ -1368,7 +1436,16 @@ async function saveMii() {
   }
 }
 
+/* =========================================================
+   NEW MII
+   ========================================================= */
 
+/* A minimally-valid, blank 74-byte Wii Mii record (MiiFormats.RCD).
+   MiiJS has no zero-argument "blank Mii" constructor -- `new Mii()` /
+   `Mii.create()` both require real decodable Mii data, so a verified
+   all-zero record (with the one field libjs enforces a minimum on,
+   eyebrowYPosition, nudged up to 3) is used as the starting point for
+   a new Mii instead. */
 const BLANK_MII_RCD_B64 =
   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
@@ -1377,7 +1454,12 @@ async function newMii() {
     const { Mii } =
       await ensureMiiJS();
 
-   
+    /* The starter Mii is bundled directly into the exe
+       (starter.mii) and served by Api.get_default_mii() -- no
+       GitHub fetch, no network needed. Falls back to the built-in
+       minimal blank Mii only if that bundled file is somehow missing
+       (e.g. a dev run without it next to main.py), so New Mii always
+       keeps working either way. */
     let usedStarterTemplate = false;
 
     try {
@@ -1480,6 +1562,9 @@ document.addEventListener("input", event => {
   }, 250);
 });
 
+/* =========================================================
+   BUTTONS
+   ========================================================= */
 
 const miiRefreshBtn =
   document.getElementById("miiRefreshBtn");
@@ -1513,7 +1598,7 @@ if (miiNewBtn) {
     newMii;
 }
 
-
+/* ---------- toast ---------- */
 
 let toastEl = null;
 
@@ -2518,7 +2603,7 @@ function toast(msg, isError, sticky) {
   function applyTranslations(langCode){
     const t = TRANSLATIONS[langCode] || TRANSLATIONS.en;
     for(const [id, text] of Object.entries(t)){
-      if(id === 'notSet' || id === 'none') continue;
+      if(id === 'notSet' || id === 'none') continue; // used dynamically, not a static element
       const el = document.getElementById(id);
       if(el) el.textContent = text;
     }
@@ -2528,7 +2613,7 @@ function toast(msg, isError, sticky) {
     window._currentLang = langCode;
   }
 
- 
+  // ---------- state rendering ----------
   let currentState = null;
 
   function shortPath(p){
@@ -2652,7 +2737,8 @@ function toast(msg, isError, sticky) {
         }
       }
     } else if(check && check.error){
-      
+      // couldn't check (e.g. offline) — proceed with whatever's
+      // already installed rather than blocking Play entirely
       toast(`${t.toastCouldntCheck} (${check.error})`, true);
     }
 
@@ -2671,17 +2757,17 @@ function toast(msg, isError, sticky) {
   document.getElementById('heroPlayBtn').addEventListener('click', doPlay);
   document.getElementById('cardPlayBtn').addEventListener('click', doPlay);
 
- 
+  // ---------- exit ----------
   document.getElementById('exitBtn').addEventListener('click', ()=>{
     window.pywebview.api.quit_app();
   });
 
-  
+  // ---------- discord ----------
   document.getElementById('openDiscordBtn').addEventListener('click', ()=>{
     window.pywebview.api.open_discord();
   });
 
-
+  // ---------- settings: browse buttons ----------
   function wireBrowse(btnId, inputId, kind, fileTypes){
     document.getElementById(btnId).addEventListener('click', async ()=>{
       const result = await window.pywebview.api.browse_path(kind, fileTypes || null);
@@ -2696,7 +2782,7 @@ function toast(msg, isError, sticky) {
   wireBrowse('setupBrowseDolphinBtn', 'setupDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
   wireBrowse('setupBrowseIsoBtn', 'setupIsoPath', 'file', ['Wii disc image (*.iso;*.wbfs;*.rvz)', 'All files (*.*)']);
 
- 
+  // ---------- settings: save ----------
   document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
     const payload = {
       dolphin_path: document.getElementById('settingsDolphinPath').value,
@@ -2713,7 +2799,7 @@ function toast(msg, isError, sticky) {
     toast(st.toastSettingsSaved);
   });
 
-
+  // ---------- setup: continue ----------
   document.getElementById('setupContinueBtn').addEventListener('click', async ()=>{
     const payload = {
       dolphin_path: document.getElementById('setupDolphinPath').value,
@@ -2744,7 +2830,7 @@ function toast(msg, isError, sticky) {
     text.textContent = await window.pywebview.api.get_dolphin_log_tail();
   });
 
-  
+  // ---------- launcher self-update popup ----------
   function showLauncherUpdatePopup(downloadUrl){
     const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
     const modal = document.getElementById('launcherUpdateModal');
@@ -2765,7 +2851,8 @@ function toast(msg, isError, sticky) {
           btn.disabled = false;
           btn.textContent = t.launcherUpdateBtn;
         }
-        
+        // On success the backend closes this window itself once the
+        // swap is staged -- nothing left to do here but wait.
       } catch (e) {
         msg.textContent = t.launcherUpdateFailed;
         btn.disabled = false;
@@ -2773,11 +2860,18 @@ function toast(msg, isError, sticky) {
     };
   }
 
-  
+  // ---------- boot ----------
   window.addEventListener('pywebviewready', async ()=>{
     const state = await refreshState();
 
-    
+    // Pulls the manifest.json theme block (colors/logo/banner/icon)
+    // right away, instead of waiting for a Play press, and also
+    // checks whether a whole new launcher build (manifest.json's
+    // top-level "launcher_nitro" field) has been published -- if so,
+    // a small popup offers to update instead of silently doing it,
+    // since that one replaces the running .exe itself and needs the
+    // app to restart. Fire-and-forget: must never block the UI from
+    // opening.
     window.pywebview.api.check_for_update()
       .then((check) => {
         refreshState();
