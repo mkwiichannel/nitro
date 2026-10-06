@@ -2248,15 +2248,20 @@ def _trim_webview2_cache(storage_path):
     just fails to delete and is quietly skipped, never an error."""
     if not os.path.isdir(storage_path):
         return
-    cache_dir_names = {"Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache"}
-    try:
-        for dirpath, dirnames, _filenames in os.walk(storage_path, topdown=True):
-            for d in list(dirnames):
-                if d in cache_dir_names:
-                    shutil.rmtree(os.path.join(dirpath, d), ignore_errors=True)
-                    dirnames.remove(d)
-    except OSError:
-        pass
+    # Deliberately NOT a recursive os.walk over the whole profile --
+    # that was slow enough on a real-world profile (lots of small
+    # files under IndexedDB/Local Storage this never even touches) to
+    # plausibly explain "everything feels slow" on its own, since this
+    # ran synchronously before the window could appear. WebView2's
+    # profile layout is fixed (always
+    # <storage_path>/EBWebView/Default/...), so the cache folders are
+    # deleted directly by their known path -- one rmtree call each,
+    # nothing enumerated first.
+    profile_root = os.path.join(storage_path, "EBWebView", "Default")
+    if not os.path.isdir(profile_root):
+        return
+    for name in ("Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache"):
+        shutil.rmtree(os.path.join(profile_root, name), ignore_errors=True)
 
 
 def _initial_ui_path(cfg):
@@ -2345,7 +2350,11 @@ def _cleanup_orphaned_extraction_folders():
 
 
 def main():
-    _cleanup_orphaned_extraction_folders()
+    # Backgrounded on its own thread -- this is only ever cleaning up
+    # leftovers from PAST launches, nothing the current launch depends
+    # on, so there's no reason for it to add even a little delay
+    # before the window can appear.
+    threading.Thread(target=_cleanup_orphaned_extraction_folders, daemon=True).start()
     if not _acquire_single_instance_lock():
         _show_windows_message(
             "Mario Kart Nitro",
