@@ -25,6 +25,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -2303,7 +2304,48 @@ def _centered_window_xy(width, height):
         return None, None
 
 
+def _cleanup_orphaned_extraction_folders():
+    """Deletes leftover _MEI* onefile extraction folders from PAST
+    launches of THIS app that PyInstaller's bootloader failed to
+    clean up on exit (the "Failed to remove temporary directory"
+    warning -- a known, still-unresolved bug in PyInstaller's own
+    bootloader itself, not something Python code can intercept, since
+    it happens in native code after the Python interpreter has
+    already shut down).
+
+    This can't stop that warning from ever appearing again, but it
+    stops the leftover folders from just piling up in %TEMP% forever
+    afterward, each one holding a full copy of everything this app
+    bundles.
+
+    Safety: every onefile PyInstaller app on the machine shares the
+    same %TEMP% folder and the same "_MEI" naming scheme, so this
+    only ever touches a folder that (a) isn't the CURRENT run's own
+    extraction folder (sys._MEIPASS -- still very much in use) and
+    (b) contains this app's own unique marker file
+    (MarioKartNitro.manifest, bundled only by this build) -- never
+    touches anything belonging to an unrelated app, and never touches
+    its own currently-running copy."""
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return
+    try:
+        temp_dir = tempfile.gettempdir()
+        current_meipass = getattr(sys, "_MEIPASS", None)
+        for name in os.listdir(temp_dir):
+            if not name.startswith("_MEI"):
+                continue
+            candidate = os.path.join(temp_dir, name)
+            if candidate == current_meipass or not os.path.isdir(candidate):
+                continue
+            marker = os.path.join(candidate, "MarioKartNitro.manifest")
+            if os.path.isfile(marker):
+                shutil.rmtree(candidate, ignore_errors=True)
+    except OSError:
+        pass
+
+
 def main():
+    _cleanup_orphaned_extraction_folders()
     if not _acquire_single_instance_lock():
         _show_windows_message(
             "Mario Kart Nitro",
