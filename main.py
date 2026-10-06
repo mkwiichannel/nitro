@@ -2139,6 +2139,7 @@ def _start_webview_with_webview2_check():
         # app-owned folder instead sidesteps that race entirely.
         storage_path = os.path.join(app_data_dir(), "webview2_data")
         os.makedirs(storage_path, exist_ok=True)
+        _trim_webview2_cache(storage_path)
         webview.start(gui="edgechromium", private_mode=False, storage_path=storage_path)
     except Exception as e:
         _show_windows_message(
@@ -2152,6 +2153,79 @@ def _start_webview_with_webview2_check():
             "After installing it, just reopen Mario Kart Nitro.\n\n"
             f"(Technical detail: {e})"
         )
+
+
+def _startup_watchdog(window):
+    """Safety net for a WebView2 initialization that HANGS instead of
+    erroring out -- window.events.shown firing is pywebview's own
+    signal that the window actually made it on screen (the same event
+    pywebview's own internals wait on with a 15s timeout in a few
+    places, per its source).
+
+    Normally that happens within a second or two. If it hasn't
+    happened within 20 seconds, something has genuinely wedged --
+    antivirus holding a lock on the WebView2 profile folder, a stuck
+    GPU/driver issue, a corrupted profile after a crash, etc -- and
+    without this, the process just sits there forever: no window, no
+    error, but fully alive and holding RAM AND the single-instance
+    lock. That last part is exactly what turns one bad launch into
+    "I have to open it 3-5 times": every later attempt immediately
+    hits the "already running" wait (see
+    _acquire_single_instance_lock()) because the first, wedged
+    process never let go, so nothing short of killing it by hand (or
+    exactly this) ever lets a later attempt actually succeed.
+
+    So: if the window hasn't shown within 20s, show one clear message
+    and hard-exit the whole process immediately. There's no app state
+    worth preserving at that point (nothing ever loaded), so this
+    trades a silent, memory-eating hang for a fast, clean failure the
+    person can just retry past right away."""
+    if window.events.shown.wait(timeout=20):
+        return  # started fine -- nothing to do
+    _show_windows_message(
+        "Mario Kart Nitro",
+        "Mario Kart Nitro is taking too long to start (most likely "
+        "antivirus scanning it, a stuck graphics/WebView2 process, or "
+        "a corrupted WebView2 profile folder) -- closing it now so "
+        "you can try opening it again right away instead of it "
+        "silently hanging in the background.\n\n"
+        "If this keeps happening: try reinstalling the Microsoft Edge "
+        "WebView2 Runtime, or check Task Manager for a leftover "
+        "MarioKartNitro.exe / msedgewebview2.exe process to end first."
+    )
+    os._exit(1)
+
+
+def _trim_webview2_cache(storage_path):
+    """Deletes WebView2's regenerable cache subfolders (HTTP cache,
+    GPU shader cache, V8 code cache) from the persistent storage_path
+    before each launch, WITHOUT touching anything that holds actual
+    state (cookies, local storage, IndexedDB). None of this app's own
+    functionality depends on the HTTP/GPU/code cache surviving
+    between launches -- the page is loaded from a local file and this
+    app's own data lives in its own config, not in the browser
+    profile.
+
+    Why bother: the persistent profile (added to fix the earlier
+    "WebView2 points at a temp folder that can get garbage-collected
+    mid-use" race) otherwise only ever grows, launch after launch --
+    more for antivirus to scan on every single start, and more disk/
+    RAM for Chromium to map in. Trimming just the safe-to-regenerate
+    parts keeps the profile small indefinitely, which directly helps
+    both the "feels slow/heavy to open" and "uses a lot of RAM"
+    complaints. Best-effort only: a file WebView2 still has opened
+    just fails to delete and is quietly skipped, never an error."""
+    if not os.path.isdir(storage_path):
+        return
+    cache_dir_names = {"Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache"}
+    try:
+        for dirpath, dirnames, _filenames in os.walk(storage_path, topdown=True):
+            for d in list(dirnames):
+                if d in cache_dir_names:
+                    shutil.rmtree(os.path.join(dirpath, d), ignore_errors=True)
+                    dirnames.remove(d)
+    except OSError:
+        pass
 
 
 def _initial_ui_path(cfg):
@@ -2245,6 +2319,11 @@ def main():
         target=_background_remote_update_loop, args=(api,), daemon=True
     )
     updater.start()
+
+    watchdog = threading.Thread(
+        target=_startup_watchdog, args=(window,), daemon=True
+    )
+    watchdog.start()
 
     _start_webview_with_webview2_check()
 
