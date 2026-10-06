@@ -936,6 +936,17 @@ class Api:
         active_name = cfg.get("active_mod", "")
         mod_entry = next((m for m in cfg["mods"] if m["name"] == active_name), None)
         lines = [f"BUILD: {BUILD_STAMP}  (if this looks old/wrong, you're not running the latest rebuild)"]
+        if os.path.isfile(_STARTUP_TIMING_LOG):
+            try:
+                with open(_STARTUP_TIMING_LOG, "r", encoding="utf-8") as f:
+                    timing_lines = f.read().strip()
+                if timing_lines:
+                    lines.append("")
+                    lines.append("--- Startup timing (most recent launches) ---")
+                    lines.append(timing_lines)
+                    lines.append("--- end startup timing ---")
+            except OSError:
+                pass
         lines.append(f"Dolphin: {cfg.get('dolphin_path') or '(not set)'}")
         lines.append(f"ISO: {cfg.get('iso_path') or '(not set)'}")
         lines.append(f"Active mod: {active_name or '(none)'}")
@@ -2186,7 +2197,126 @@ def _close_splash_screen():
         pass
 
 
-def _startup_watchdog(window):
+def _process_creation_time():
+    """Returns this process's actual OS-level creation time (seconds
+    since epoch), via GetProcessTimes -- distinct from "when main()
+    started running", since on a onefile build there's a real gap
+    between the two (unpacking the whole exe to a temp folder, then
+    starting the Python interpreter) that main() itself has no way to
+    see. Returns None on any failure; callers treat that as "unknown"
+    rather than guessing."""
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+        import ctypes.wintypes as wintypes
+
+        class FILETIME(ctypes.Structure):
+            _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
+
+        kernel32 = ctypes.windll.kernel32
+        creation, exit_t, kernel_t, user_t = FILETIME(), FILETIME(), FILETIME(), FILETIME()
+        handle = kernel32.GetCurrentProcess()
+        if not kernel32.GetProcessTimes(
+            handle, ctypes.byref(creation), ctypes.byref(exit_t),
+            ctypes.byref(kernel_t), ctypes.byref(user_t)
+        ):
+            return None
+        ticks = (creation.dwHighDateTime << 32) | creation.dwLowDateTime
+        # FILETIME: 100ns ticks since 1601-01-01; convert to Unix epoch.
+        return (ticks - 116444736000000000) / 10_000_000
+    except Exception:
+        return None
+
+
+def _process_ram_mb():
+    """Current working-set RAM for this process, in MB, via
+    GetProcessMemoryInfo -- the same number Task Manager shows.
+    Returns None on any failure."""
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+
+        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+            _fields_ = [
+                ("cb", ctypes.c_ulong),
+                ("PageFaultCount", ctypes.c_ulong),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        counters = PROCESS_MEMORY_COUNTERS()
+        counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS)
+        handle = ctypes.windll.kernel32.GetCurrentProcess()
+        if not ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
+            return None
+        return counters.WorkingSetSize / (1024 * 1024)
+    except Exception:
+        return None
+
+
+_STARTUP_TIMING_LOG = os.path.join(app_data_dir(), "startup_timing.log")
+
+
+def _append_timing_log(line):
+    """Appends one line to startup_timing.log, keeping only the most
+    recent 20 runs -- small, bounded, and readable straight from the
+    in-app diagnostics panel (get_launch_diagnostics()) without
+    needing to go dig through AppData by hand."""
+    try:
+        existing = []
+        if os.path.isfile(_STARTUP_TIMING_LOG):
+            with open(_STARTUP_TIMING_LOG, "r", encoding="utf-8") as f:
+                existing = f.readlines()
+        existing.append(line.rstrip("\n") + "\n")
+        existing = existing[-20:]
+        with open(_STARTUP_TIMING_LOG, "w", encoding="utf-8") as f:
+            f.writelines(existing)
+    except OSError:
+        pass
+
+
+def _log_startup_timing(t_process_created, t_main_start, t_before_webview_start, t_shown):
+    """Writes one real, measured timing line for this launch -- how
+    long onefile extraction + interpreter startup took, how long this
+    app's own init code took, and how long WebView2 itself took to
+    get a window on screen -- plus RAM at that point and again 15s
+    later once things have settled. This replaces guessing at where
+    the remaining slowness lives with an actual breakdown from a real
+    machine, surfaced right in get_launch_diagnostics()."""
+    def fmt(seconds):
+        return f"{seconds:.1f}s" if seconds is not None else "?"
+
+    boot = (t_main_start - t_process_created) if t_process_created else None
+    init = t_before_webview_start - t_main_start
+    engine = t_shown - t_before_webview_start
+    ram = _process_ram_mb()
+    stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    line = (
+        f"{stamp} | exe-extract+boot: {fmt(boot)} | app init: {fmt(init)} | "
+        f"WebView2 start: {fmt(engine)} | RAM@shown: {ram:.0f}MB" if ram is not None
+        else f"{stamp} | exe-extract+boot: {fmt(boot)} | app init: {fmt(init)} | "
+             f"WebView2 start: {fmt(engine)} | RAM@shown: ?"
+    )
+    _append_timing_log(line)
+
+    def _log_settled_ram():
+        time.sleep(15)
+        ram2 = _process_ram_mb()
+        if ram2 is not None:
+            _append_timing_log(f"{stamp} | RAM after 15s idle: {ram2:.0f}MB")
+
+    threading.Thread(target=_log_settled_ram, daemon=True).start()
+
+
+def _startup_watchdog(window, t_process_created=None, t_main_start=None, t_before_webview_start=None):
     """Safety net for a WebView2 initialization that HANGS instead of
     erroring out -- window.events.shown firing is pywebview's own
     signal that the window actually made it on screen (the same event
@@ -2212,6 +2342,8 @@ def _startup_watchdog(window):
     trades a silent, memory-eating hang for a fast, clean failure the
     person can just retry past right away."""
     if window.events.shown.wait(timeout=20):
+        if t_main_start is not None and t_before_webview_start is not None:
+            _log_startup_timing(t_process_created, t_main_start, t_before_webview_start, time.time())
         return  # started fine -- nothing to do
     _show_windows_message(
         "Mario Kart Nitro",
@@ -2383,6 +2515,8 @@ def _cleanup_orphaned_extraction_folders():
 
 
 def main():
+    t_process_created = _process_creation_time()
+    t_main_start = time.time()
     # Backgrounded on its own thread -- this is only ever cleaning up
     # leftovers from PAST launches, nothing the current launch depends
     # on, so there's no reason for it to add even a little delay
@@ -2436,8 +2570,11 @@ def main():
     )
     updater.start()
 
+    t_before_webview_start = time.time()
     watchdog = threading.Thread(
-        target=_startup_watchdog, args=(window,), daemon=True
+        target=_startup_watchdog,
+        args=(window, t_process_created, t_main_start, t_before_webview_start),
+        daemon=True,
     )
     watchdog.start()
 
