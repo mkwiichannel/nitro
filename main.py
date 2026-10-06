@@ -2286,6 +2286,39 @@ def _initial_ui_path(cfg):
     return cached_path if cached_path and os.path.isfile(cached_path) else bundled
 
 
+def _write_initial_state_js(index_file, cfg):
+    """Writes a tiny companion initial_state.js next to whichever
+    index.html is about to load, containing exactly what get_state()
+    would return, as a plain embedded JS variable
+    (window.__INITIAL_STATE__).
+
+    Why: index.html's very first paint of things like the Dolphin/ISO
+    path fields used to wait for the 'pywebviewready' event and THEN
+    an async get_state() round-trip over the JS<->Python bridge.
+    get_state() itself is cheap (one small JSON file read) -- the
+    real delay is the bridge handshake itself finishing, which is a
+    separate, fixed cost of this UI technology, not something
+    Python-side code controls. Embedding the exact same data directly
+    in the page lets it paint at plain HTML parse time instead,
+    before that handshake even starts. The normal get_state() call
+    still runs moments later as the authoritative, live-updating
+    source -- this only speeds up the very first paint.
+
+    Best-effort: if this can't be written (e.g. a read-only
+    location), index.html's own fallback just waits for the bridge
+    like before -- never a hard failure."""
+    try:
+        state = dict(cfg)
+        state["version"] = APP_VERSION
+        state["build_stamp"] = BUILD_STAMP
+        state["discord_url"] = DISCORD_URL
+        js_path = os.path.join(os.path.dirname(index_file), "initial_state.js")
+        with open(js_path, "w", encoding="utf-8") as f:
+            f.write("window.__INITIAL_STATE__ = " + json.dumps(state) + ";\n")
+    except OSError:
+        pass
+
+
 def _centered_window_xy(width, height):
     """Computes a centered position for the window instead of leaving
     it to whatever default spot the OS/WebView2 picks -- which is the
@@ -2377,6 +2410,7 @@ def main():
     api = Api()
     cfg = load_config()
     index_file = _initial_ui_path(cfg)
+    _write_initial_state_js(index_file, cfg)
     win_width, win_height = 1180, 820
     win_x, win_y = _centered_window_xy(win_width, win_height)
     window = webview.create_window(

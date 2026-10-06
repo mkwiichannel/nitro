@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mario Kart Nitro — Launcher</title>
+<!-- Written fresh by main.py right before this page loads (see
+     _write_initial_state_js()) -- lets the Dolphin/ISO path fields
+     etc paint immediately on first parse, instead of waiting for the
+     pywebview JS<->Python bridge to finish initializing and
+     round-trip a get_state() call. 404s harmlessly (leaves
+     window.__INITIAL_STATE__ undefined) if it isn't there yet, e.g.
+     running main.py from source. -->
+<script src="initial_state.js"></script>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -2861,6 +2869,28 @@ function toast(msg, isError, sticky) {
   }
 
   // ---------- boot ----------
+  // Paint immediately from the state main.py already embedded in the
+  // page (window.__INITIAL_STATE__, see initial_state.js) WITHOUT
+  // waiting for the pywebview JS<->Python bridge to come up -- that
+  // bridge-ready handshake (the 'pywebviewready' event below) is
+  // itself a real source of delay separate from anything Python does
+  // per call, and was the actual cause of the Dolphin/ISO path
+  // fields not showing up instantly. This runs at plain HTML parse
+  // time, as soon as the script tags above it have executed, which
+  // is well before 'pywebviewready' can fire. Safe no-op if the
+  // companion file wasn't there (currentState just stays unset and
+  // the normal async path below still paints everything shortly
+  // after).
+  if(window.__INITIAL_STATE__){
+    try {
+      currentState = window.__INITIAL_STATE__;
+      applyTranslations(currentState.language || 'en');
+      applyRemoteTheme(currentState);
+      renderHome(currentState);
+      renderSettings(currentState);
+    } catch(e){ /* fall through to the normal async paint below */ }
+  }
+
   window.addEventListener('pywebviewready', async ()=>{
     const state = await refreshState();
 
