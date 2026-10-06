@@ -2155,6 +2155,36 @@ def _start_webview_with_webview2_check():
         )
 
 
+def _close_splash_screen():
+    """Closes the PyInstaller --splash screen (see the --splash flag
+    in build.bat) the moment this app's own window actually shows, so
+    there's no gap between the splash disappearing and the real
+    window appearing.
+
+    The whole point of the splash is the "I had to click it 3-5
+    times" complaint: a onefile .exe silently re-unpacks its entire
+    contents to a temp folder on EVERY launch, before any of this
+    file's own code even runs -- nothing is visible on screen for
+    that whole stretch. Someone who doesn't know that just sees
+    nothing happen and clicks the exe again (and again), which is how
+    one slow launch turns into several processes all competing at
+    once, each eating RAM -- which looks exactly like a freeze and
+    explains the high memory use. --splash shows a window within a
+    moment of the very first click, before Python has even finished
+    importing, so there's immediate feedback and far less reason to
+    click again.
+
+    pyi_splash only exists inside a build that was actually made with
+    --splash; running main.py directly from source (no splash was
+    ever shown) just hits ImportError here, which is expected and
+    silently ignored."""
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except Exception:
+        pass
+
+
 def _startup_watchdog(window):
     """Safety net for a WebView2 initialization that HANGS instead of
     erroring out -- window.events.shown firing is pywebview's own
@@ -2310,6 +2340,7 @@ def main():
         js_api=api,
     )
     api.window = window
+    window.events.shown += _close_splash_screen
 
     # Keeps checking GitHub for changes the whole time the app is open,
     # not just at startup -- so a push while someone already has the

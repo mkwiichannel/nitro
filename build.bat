@@ -13,6 +13,7 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --icon "build_assets\icon.ico" ^
   --manifest "MarioKartNitro.manifest" ^
   --version-file "version_info.txt" ^
+  --splash "build_assets\splash.png" ^
   --add-data "index.html;." ^
   --add-data "logo.png;." ^
   --add-data "banner.png;." ^
