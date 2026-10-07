@@ -291,6 +291,13 @@
   .mii-sw:hover{transform:scale(1.1)}
   .mii-sw.active{border-color:#fff;box-shadow:0 0 0 2px #ff8c00}
   #hairV,#eyeTypeV{display:none}
+  .mii-step{display:flex;align-items:center;gap:8px}
+  .mii-step button{width:44px;height:34px;border:1px solid var(--border);border-radius:9px;background:#171b29;color:var(--text);font-size:16px;line-height:1;cursor:pointer;padding:0;user-select:none;flex:0 0 auto}
+  .mii-step button:hover{border-color:rgba(255,140,0,.55)}
+  .mii-step button:active{background:rgba(255,140,0,.25);border-color:#ff8c00}
+  .mii-step button:disabled{opacity:.3;cursor:default}
+  .mii-pips{flex:1;height:8px;border-radius:4px;background:#0b0e16;border:1px solid var(--border);position:relative;overflow:hidden}
+  .mii-pips i{position:absolute;top:0;bottom:0;width:10px;margin-left:-5px;border-radius:4px;background:#ff8c00}
   @media(max-width:900px){.mii-shell,.mii-main{grid-template-columns:1fr}.mii-list{max-height:240px}}
 
   /* ---------- Halloween shaders ---------- */
@@ -1665,6 +1672,7 @@ function syncMiiPickers(){
     const v = String(p.input.value);
     p.items.forEach((b, i) => b.classList.toggle("active", String(i) === v));
   }
+  for (const f of miiSteppers) f();
 }
 
 miiSwatchPicker("miiFav", MII_SWATCHES.fav, MII_ENUMS.fav);
@@ -1765,6 +1773,58 @@ async function miiThumbsRun(){
     }
   }
 }
+
+/* Mii-Channel style steppers: every remaining slider becomes two buttons
+   (hold to repeat) with a small position marker. */
+const MII_STEP_ICONS = [
+  [/Rot$/,   "\u21BA", "\u21BB", 1],
+  [/Vert$/,  "\u25B2", "\u25BC", -1],
+  [/Space$/, "\u2192\u2190", "\u2190\u2192", 1],
+  [/(Size|Height|Weight)$/, "\u2212", "+", 1]
+];
+const miiSteppers = [];
+function miiMakeStepper(input){
+  const icon = MII_STEP_ICONS.find(x => x[0].test(input.id));
+  if (!icon) return;
+  const dir = icon[3];
+  const wrap = document.createElement("div");
+  wrap.className = "mii-step";
+  const mk = (txt, d) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = txt;
+    const step = () => {
+      const lo = Number(input.min), hi = Number(input.max);
+      const v = Math.max(lo, Math.min(hi, Number(input.value) + d * dir));
+      if (v === Number(input.value)) return;
+      input.value = String(v);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      refresh();
+    };
+    let t = 0, iv = 0;
+    const stop = () => { clearTimeout(t); clearInterval(iv); };
+    b.addEventListener("pointerdown", e => { e.preventDefault(); step(); t = setTimeout(() => { iv = setInterval(step, 140); }, 450); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+    return b;
+  };
+  const less = mk(icon[1], -1), more = mk(icon[2], 1);
+  const pips = document.createElement("div"); pips.className = "mii-pips";
+  const mark = document.createElement("i"); pips.appendChild(mark);
+  wrap.append(less, pips, more);
+  input.style.display = "none";
+  input.insertAdjacentElement("afterend", wrap);
+  const refresh = () => {
+    const lo = Number(input.min), hi = Number(input.max);
+    mark.style.left = (hi > lo ? ((Number(input.value) - lo) / (hi - lo)) * 96 + 2 : 50) + "%";
+    const atLo = Number(input.value) <= lo, atHi = Number(input.value) >= hi;
+    less.disabled = dir > 0 ? atLo : atHi;
+    more.disabled = dir > 0 ? atHi : atLo;
+  };
+  miiSteppers.push(refresh);
+  refresh();
+}
+document.querySelectorAll("#mii input[type=range]").forEach(inp => {
+  if (inp.style.display !== "none") miiMakeStepper(inp);
+});
 
 document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click", () => {
   setTimeout(() => {
