@@ -31,8 +31,6 @@ The launcher:
 - Supports seasonal/remote theming (banner, accent colors) pushed without a
   rebuild
 
-It's meant to feel like a normal app: open it, it checks for updates, you play.
-
 ## Requirements
 
 - Windows 10/11
