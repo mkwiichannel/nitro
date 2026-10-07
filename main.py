@@ -2114,6 +2114,48 @@ def _show_windows_message(title, message):
         pass
 
 
+def _apply_optional_webview2_args():
+    """OPT-IN experiment, off unless someone creates the file
+    <app data>/webview2_args.txt containing extra Chromium flags
+    (one line, e.g. "--in-process-gpu"). Nothing changes by default.
+
+    Why it exists: seeing ~6 msedgewebview2.exe processes for one app
+    is normal (WebView2 runs Edge's multi-process model: manager, GPU,
+    utility, renderer), so that count is not a bug to "fix". But flags
+    like --in-process-gpu may shrink the process count / RAM. Those
+    flags are NOT officially documented or supported for production
+    by Microsoft, and I can't test them on a real Windows PC from
+    here -- so instead of shipping them blind to everyone, a tester
+    can try them by dropping a text file, no rebuild needed, and
+    report back whether it helped or broke anything. Deleting the
+    file turns it back off.
+
+    The WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS env var REPLACES (does
+    not merge with) the arguments pywebview sets in code, so
+    pywebview's own two defaults are re-included here -- dropping
+    --allow-file-access-from-files in particular could stop the
+    locally-loaded page from reading its own files.
+
+    Never fatal: any problem reading the file just means no extra
+    args, same as before. NOT a good idea: --disable-gpu (the Mii
+    renderer uses WebGL via three.js, so that would force slow
+    software rendering)."""
+    try:
+        args_file = os.path.join(app_data_dir(), "webview2_args.txt")
+        if not os.path.isfile(args_file):
+            return
+        with open(args_file, "r", encoding="utf-8") as f:
+            extra = " ".join(f.read().split())
+        if not extra:
+            return
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+            "--disable-features=ElasticOverscroll --allow-file-access-from-files " + extra
+        )
+        _append_timing_log(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | experimental WebView2 args active: {extra}")
+    except OSError:
+        pass
+
+
 def _start_webview_with_webview2_check():
     """Forces pywebview to use the modern Microsoft Edge WebView2
     engine (gui="edgechromium") instead of letting it silently fall
@@ -2152,6 +2194,7 @@ def _start_webview_with_webview2_check():
         storage_path = os.path.join(app_data_dir(), "webview2_data")
         os.makedirs(storage_path, exist_ok=True)
         _trim_webview2_cache(storage_path)
+        _apply_optional_webview2_args()
         webview.start(gui="edgechromium", private_mode=False, storage_path=storage_path)
     except Exception as e:
         _show_windows_message(
