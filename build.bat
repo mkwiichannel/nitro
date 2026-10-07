@@ -15,19 +15,12 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --version-file "version_info.txt" ^
   --splash "build_assets\splash.png" ^
   --add-data "index.html;." ^
-  --add-data "translations.json;." ^
   --add-data "logo.png;." ^
   --add-data "banner.png;." ^
   --add-data "mii_renderer;mii_renderer" ^
   --add-data "starter.mii;." ^
   --add-data "RFL_Res.dat;." ^
   --add-data "rcedit.exe;." ^
-  --hidden-import native_ui ^
-  --exclude-module PySide6.QtWebEngineCore --exclude-module PySide6.QtWebEngineWidgets ^
-  --exclude-module PySide6.QtQml --exclude-module PySide6.QtQuick --exclude-module PySide6.QtNetwork ^
-  --exclude-module PySide6.QtSvg --exclude-module PySide6.QtPdf --exclude-module PySide6.Qt3DCore ^
-  --exclude-module PySide6.QtMultimedia --exclude-module PySide6.QtOpenGL ^
-  --exclude-module tkinter ^
   main.py
 if errorlevel 1 goto failed
 copy /Y "MarioKartNitro.manifest" "dist\MarioKartNitro.exe.manifest" >nul

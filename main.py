@@ -2652,12 +2652,15 @@ def main():
         _notify_shell_icon_changed()
     api = Api()
 
-    use_web = mii_only or "--web" in sys.argv[1:]
-    if not use_web:
+    # Your original web UI is the default. The Qt version (native_ui.py)
+    # is experimental and only used with --native.
+    use_web = True
+    if "--native" in sys.argv[1:] and not mii_only:
         try:
             import PySide6  # noqa: F401
+            use_web = False
         except ImportError:
-            use_web = True  # dev run without Qt installed
+            pass
 
     if use_web:
         _run_web(api, mii_only=mii_only)
