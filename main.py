@@ -1462,7 +1462,7 @@ class Api:
             return fallback, False
 
     # ---------- mod content updates ----------
-    def check_for_update(self):
+    def check_for_update(self, light=False):
         """Fetch the manifest.json (hardcoded GitHub URL, controlled
         entirely by editing that file's content — never needs an app
         rebuild) and compare its version against what's installed.
@@ -1512,6 +1512,11 @@ class Api:
             "launcher_update_available": launcher_update_available,
             "launcher_download_url": launcher_url,
         }
+
+        if light:
+            # Startup check: theme + launcher update only. Scanning ~3000 mod
+            # files is deferred to Play so opening the app stays light.
+            return {"update_available": False, "light": True, **launcher_info}
 
         dolphin_path = cfg.get("dolphin_path", "")
         if not dolphin_path or not os.path.isfile(dolphin_path):

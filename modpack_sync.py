@@ -52,6 +52,19 @@ def _protected(rel):
     return rel.startswith(PROTECTED_PREFIXES)
 
 
+def _lower_thread_priority():
+    """Worker threads run below-normal so hashing/downloading never makes
+    the window or the rest of the PC feel sluggish (matters on small CPUs)."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        k.SetThreadPriority(k.GetCurrentThread(), -1)  # THREAD_PRIORITY_BELOW_NORMAL
+    except Exception:
+        pass
+
+
 def _safe_rel(rel):
     """True if a repo path is safe to write under the destination."""
     if not rel or rel.startswith("/"):
@@ -139,7 +152,7 @@ def _local_path(dest, rel):
     return os.path.join(dest, *rel.split("/"))
 
 
-def make_plan(dest, remote_files, state, workers=4):
+def make_plan(dest, remote_files, state, workers=2):
     """Compare Dolphin's folder with the repo listing.
     Returns dict(download=[(rel, sha, size)], delete=[rel], ok={rel: [size, mtime_ns, sha]})."""
     norm = os.path.normcase(os.path.abspath(dest))
@@ -169,7 +182,7 @@ def make_plan(dest, remote_files, state, workers=4):
         return rel, None, None
 
     download, ok = [], {}
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    with ThreadPoolExecutor(max_workers=workers, initializer=_lower_thread_priority) as pool:
         for rel, verdict, entry in pool.map(check, list(remote_files)):
             if verdict == "ok":
                 ok[rel] = entry
@@ -241,7 +254,7 @@ def _download_one(repo, branch, dest, rel, sha, size, add_bytes, stop):
 
 
 def run_sync(repo, branch, dest, remote, plan, state, state_path,
-             progress_cb=None, workers=6):
+             progress_cb=None, workers=4):
     """Execute a plan from make_plan(). Raises SyncError on failure
     (everything finished so far stays valid and is remembered)."""
     todo = plan["download"]
@@ -271,7 +284,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
     error = None
     try:
         if todo:
-            with ThreadPoolExecutor(max_workers=workers) as pool:
+            with ThreadPoolExecutor(max_workers=workers, initializer=_lower_thread_priority) as pool:
                 futures = [pool.submit(_download_one, repo, branch, dest, rel, sha, size,
                                        add_bytes, stop) for rel, sha, size in todo]
                 for fut in futures:
