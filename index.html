@@ -1050,6 +1050,7 @@ async function selectMii(i) {
     );
 
     loadMiiForm(currentMii);
+    miiThumbsInvalidate();
 
     await renderCurrentMii();
 
@@ -1545,6 +1546,7 @@ async function newMii() {
       );
 
     loadMiiForm(currentMii);
+    miiThumbsInvalidate();
 
     await renderCurrentMii();
 
@@ -1636,7 +1638,7 @@ function miiGridPicker(cat, inputId){
     items.push(b);
   }
   host.label.insertAdjacentElement("afterend", wrap);
-  miiPickers.push({ input: host.input, items });
+  miiPickers.push({ input: host.input, items, cat, stale: true });
 }
 
 function miiSwatchPicker(inputId, colors, names){
@@ -1683,8 +1685,90 @@ miiSwatchPicker("miiGlassColor", MII_SWATCHES.glass, MII_ENUMS.glassColor);
 miiGridPicker("mustache", "miiMustache");
 miiGridPicker("beard", "miiBeard");
 
+/* Live pictures: the baked sprites are only placeholders. Every style picture
+   is re-rendered on a copy of the Mii being edited (only the tab that is open,
+   one at a time, after the main preview), then cached. */
+const MII_LIVE = {
+  hair:     [i => ({ hairType: i }), [28, 10, 228, 210], false],
+  face:     [i => ({ faceType: i }), [50, 30, 210, 220], true],
+  feature:  [i => { const f = MII_FACE_FEATURE_WII_TO_CANON[i] || [0, 0]; return { faceFeature: f[0], makeup: f[1] }; }, [50, 30, 210, 220], true],
+  eyes:     [i => ({ eyeType: i }), [67, 100, 193, 153], true],
+  brows:    [i => ({ eyebrowType: i }), [67, 87, 193, 135], true],
+  nose:     [i => ({ noseType: i }), [97, 149, 157, 194], true],
+  mouth:    [i => ({ mouthType: i }), [85, 160, 170, 203], true],
+  glasses:  [i => ({ glassesType: i }), [55, 95, 205, 160], true],
+  mustache: [i => ({ mustacheType: i }), [80, 145, 175, 205], true],
+  beard:    [i => ({ beardType: i }), [80, 145, 175, 215], true]
+};
+const miiThumbCache = new Map();
+let miiThumbGen = 0, miiThumbRunning = false;
+const miiSleep = ms => new Promise(r => setTimeout(r, ms));
+
+function miiThumbsInvalidate(exceptInputId){
+  miiThumbGen++;
+  for (const p of miiPickers) if (p.cat && p.input.id !== exceptInputId) p.stale = true;
+  miiThumbsKick();
+}
+function miiThumbsKick(){
+  if (miiThumbRunning || !currentMii) return;
+  miiThumbRunning = true;
+  miiThumbsRun().catch(e => console.warn("thumbs:", e)).finally(() => { miiThumbRunning = false; });
+}
+async function miiThumbsRun(){
+  const { Mii, MiiFormats } = await ensureMiiJS();
+  const res = await ensureFFLResource();
+  for (;;){
+    const active = p => p.items[0].closest(".mii-section.active");
+    const p = miiPickers.find(q => q.cat && q.stale && active(q));
+    if (!p || !currentMii) return;
+    const gen = miiThumbGen;
+    p.stale = false;
+    const snap = await currentMii.encode(MiiFormats.RCD);
+    const key0 = Array.from(snap).join(",");
+    const [fields, box, bald] = MII_LIVE[p.cat];
+    const w = box[2] - box[0], h = box[3] - box[1];
+    for (let i = 0; i < p.items.length; i++){
+      if (gen !== miiThumbGen || !active(p)) { p.stale = true; break; }
+      const key = p.cat + i + "|" + key0;
+      let url = miiThumbCache.get(key);
+      if (!url){
+        while (miiRenderBusy || miiRenderAgain) await miiSleep(40);
+        if (gen !== miiThumbGen || !active(p)) { p.stale = true; break; }
+        miiRenderBusy = true;
+        try {
+          const m = await Mii.create(snap);
+          for (const [k, v] of Object.entries(fields(i))) m.set(k, v);
+          if (bald) m.set("hairType", 30);
+          const png = await m.render(false, { size: 256, fflResBuffer: res });
+          const bmp = await createImageBitmap(new Blob([png], { type: "image/png" }));
+          const c = document.createElement("canvas");
+          c.width = w * 2; c.height = h * 2;
+          c.getContext("2d").drawImage(bmp, box[0], box[1], w, h, 0, 0, c.width, c.height);
+          bmp.close();
+          url = await new Promise(r => c.toBlob(b => r(URL.createObjectURL(b)), "image/png"));
+          miiThumbCache.set(key, url);
+          if (miiThumbCache.size > 400){
+            const old = miiThumbCache.keys().next().value;
+            URL.revokeObjectURL(miiThumbCache.get(old));
+            miiThumbCache.delete(old);
+          }
+        } finally {
+          miiRenderBusy = false;
+          if (miiRenderAgain) renderCurrentMii();
+        }
+      }
+      const b = p.items[i];
+      b.style.backgroundImage = "url(" + url + ")";
+      b.style.backgroundSize = "100% 100%";
+      b.style.backgroundPosition = "0 0";
+      await miiSleep(0);
+    }
+  }
+}
+
 document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click", () => {
   setTimeout(() => {
+    miiThumbsKick();
     const a = document.querySelector(".mii-section.active .mii-opt.active");
     if (a) a.scrollIntoView({ block: "nearest" });
   }, 40);
@@ -1720,6 +1804,7 @@ document.addEventListener("input", event => {
     try {
       await applyMiiForm();
       await renderCurrentMii();
+      miiThumbsInvalidate(event.target && event.target.id);
     } catch (e) {
       console.error(
         "Live Mii render failed:",
