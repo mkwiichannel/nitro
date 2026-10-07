@@ -2524,6 +2524,62 @@ def _memory_guard(threshold_mb=1000, check_every=15, repeat_after=300):
                 pass
 
 
+def _hang_guard(window_title, hung_seconds=15):
+    """If Windows reports this app's window as "not responding" for
+    hung_seconds in a row: write every thread's stack to
+    memory_dump.log (shown in Settings -> Show diagnostics, so the
+    real cause can be read off) and restart the launcher once
+    automatically instead of leaving a frozen window. The restart
+    (env NITRO_RESTARTED) only happens once, so it can never loop."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        import traceback
+        user32 = ctypes.windll.user32
+        user32.FindWindowW.restype = ctypes.c_void_p
+        user32.IsHungAppWindow.argtypes = [ctypes.c_void_p]
+        user32.GetWindowThreadProcessId.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+        my_pid = os.getpid()
+        hung_since = None
+        while True:
+            time.sleep(2)
+            hwnd = user32.FindWindowW(None, window_title)
+            if not hwnd:
+                hung_since = None
+                continue
+            pid = ctypes.c_ulong(0)
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value != my_pid or not user32.IsHungAppWindow(hwnd):
+                hung_since = None
+                continue
+            hung_since = hung_since or time.time()
+            if time.time() - hung_since < hung_seconds:
+                continue
+            names = {t.ident: t.name for t in threading.enumerate()}
+            out = [f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} WINDOW NOT RESPONDING for {hung_seconds}s ==="]
+            for tid, frame in sys._current_frames().items():
+                out.append(f"--- thread {names.get(tid, tid)} ---")
+                out.append("".join(traceback.format_stack(frame)[-8:]).rstrip())
+            try:
+                with open(_MEMORY_DUMP_LOG, "a", encoding="utf-8") as f:
+                    f.write("\n".join(out)[:20000] + "\n\n")
+            except OSError:
+                pass
+            if os.environ.get("NITRO_RESTARTED"):
+                return  # already restarted once: leave it, never loop
+            env = dict(os.environ, NITRO_RESTARTED="1", PYINSTALLER_RESET_ENVIRONMENT="1")
+            args = [sys.executable] + ([] if getattr(sys, "frozen", False) else [os.path.abspath(__file__)])
+            args += [a for a in sys.argv[1:]]
+            try:
+                subprocess.Popen(args, env=env, close_fds=True)
+            except OSError:
+                return
+            os._exit(0)
+    except Exception:
+        return
+
+
 def _startup_watchdog(window, t_process_created=None, t_main_start=None, t_before_webview_start=None):
     """Safety net for a WebView2 initialization that HANGS instead of
     erroring out -- window.events.shown firing is pywebview's own
@@ -2715,6 +2771,14 @@ def _cleanup_orphaned_extraction_folders():
             candidate = os.path.join(temp_dir, name)
             if candidate == current_meipass or not os.path.isdir(candidate):
                 continue
+            try:
+                # Anything touched in the last 15 minutes might belong to a
+                # copy that is running right now (deleting its unlocked
+                # files is what made it freeze); leftovers are old.
+                if time.time() - os.path.getmtime(candidate) < 15 * 60:
+                    continue
+            except OSError:
+                continue
             marker = os.path.join(candidate, "MarioKartNitro.manifest")
             if os.path.isfile(marker):
                 shutil.rmtree(candidate, ignore_errors=True)
@@ -2765,6 +2829,7 @@ def _run_web(api, mii_only=False):
         threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
     threading.Thread(target=_memory_guard, daemon=True).start()
+    threading.Thread(target=_hang_guard, args=("Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",), daemon=True).start()
     threading.Thread(
         target=_startup_watchdog,
         args=(window, t_process_created, t_main_start, t_before_webview_start),
@@ -2775,7 +2840,6 @@ def _run_web(api, mii_only=False):
 
 def main():
     mii_only = "--mii" in sys.argv[1:]
-    threading.Thread(target=_cleanup_orphaned_extraction_folders, daemon=True).start()
     if not mii_only and not _acquire_single_instance_lock():
         _show_windows_message(
             "Mario Kart Nitro",
@@ -2787,6 +2851,10 @@ def main():
 
     seed_builtin_mod()
     if not mii_only:
+        # Only the instance that owns the lock may clean up old extraction
+        # folders: a second copy doing it earlier used to delete files the
+        # first, running copy still needed -> that window froze.
+        threading.Thread(target=_cleanup_orphaned_extraction_folders, daemon=True).start()
         # Neither is needed to show the window; SHChangeNotify in
         # particular can stall for a while when Explorer is busy.
         def _deferred_startup_chores():
