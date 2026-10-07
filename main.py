@@ -961,6 +961,14 @@ class Api:
                     lines.append("--- end startup timing ---")
             except OSError:
                 pass
+        if os.path.isfile(_MEMORY_DUMP_LOG):
+            try:
+                with open(_MEMORY_DUMP_LOG, "r", encoding="utf-8") as f:
+                    lines.append("")
+                    lines.append("--- Memory snapshot (RAM passed 1 GB) ---")
+                    lines.append(f.read()[-6000:])
+            except OSError:
+                pass
         lines.append(f"Dolphin: {cfg.get('dolphin_path') or '(not set)'}")
         lines.append(f"ISO: {cfg.get('iso_path') or '(not set)'}")
         lines.append(f"Active mod: {active_name or '(none)'}")
@@ -2386,6 +2394,50 @@ def _log_startup_timing(t_process_created, t_main_start, t_before_webview_start,
     threading.Thread(target=_log_settled_ram, daemon=True).start()
 
 
+_MEMORY_DUMP_LOG = os.path.join(app_data_dir(), "memory_dump.log")
+
+
+def _memory_guard(threshold_mb=1000, check_every=15, repeat_after=300):
+    """Diagnostic only: if this process's RAM passes threshold_mb,
+    write ONE snapshot of what it is doing (every thread's current
+    Python stack + the biggest Python object types) to
+    memory_dump.log, shown in Settings -> Show diagnostics. Costs
+    nothing until the threshold is hit. Exists because a tester's
+    launcher reached 2.4 GB / 24% CPU and the cause can't be found
+    by reading code -- this captures it on the machine where it
+    actually happens."""
+    import collections
+    import gc
+    import traceback
+    last = 0.0
+    while True:
+        time.sleep(check_every)
+        ram = _process_ram_mb()
+        if ram is None or ram < threshold_mb or time.time() - last < repeat_after:
+            continue
+        last = time.time()
+        try:
+            names = {t.ident: t.name for t in threading.enumerate()}
+            out = [f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} RAM {ram:.0f} MB ==="]
+            for tid, frame in sys._current_frames().items():
+                out.append(f"--- thread {names.get(tid, tid)} ---")
+                out.append("".join(traceback.format_stack(frame)[-6:]).rstrip())
+            objs = gc.get_objects()
+            counts = collections.Counter(type(o).__name__ for o in objs)
+            out.append(f"--- {len(objs)} tracked objects; top types ---")
+            out.append(", ".join(f"{k}:{v}" for k, v in counts.most_common(12)))
+            big = sorted((len(o) for o in objs if isinstance(o, (bytes, bytearray, str, list, dict))), reverse=True)[:5]
+            out.append(f"--- largest str/bytes/list/dict lengths: {big} ---")
+            with open(_MEMORY_DUMP_LOG, "a", encoding="utf-8") as f:
+                f.write("\n".join(out)[:20000] + "\n\n")
+        except Exception as e:  # never let diagnostics hurt the app
+            try:
+                with open(_MEMORY_DUMP_LOG, "a", encoding="utf-8") as f:
+                    f.write(f"memory guard failed: {e}\n")
+            except OSError:
+                pass
+
+
 def _startup_watchdog(window, t_process_created=None, t_main_start=None, t_before_webview_start=None):
     """Safety net for a WebView2 initialization that HANGS instead of
     erroring out -- window.events.shown firing is pywebview's own
@@ -2626,6 +2678,7 @@ def _run_web(api, mii_only=False):
     else:
         threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
+    threading.Thread(target=_memory_guard, daemon=True).start()
     threading.Thread(
         target=_startup_watchdog,
         args=(window, t_process_created, t_main_start, t_before_webview_start),
