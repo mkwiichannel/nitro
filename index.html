@@ -2698,7 +2698,18 @@ function toast(msg, isError, sticky) {
     btn.disabled = true;
 
     label.textContent = t.checkingFiles;
-    const check = await window.pywebview.api.check_for_update();
+    // Reading every mod file byte-for-byte takes a moment: show progress.
+    const verifyTimer = setInterval(async () => {
+      try {
+        const vp = await window.pywebview.api.get_download_progress();
+        if(vp && vp.status === 'verifying' && vp.total_bytes){
+          label.textContent = t.checkingFiles + ' ' + Math.floor((vp.downloaded_bytes / vp.total_bytes) * 100) + '%';
+        }
+      } catch(e) {}
+    }, 400);
+    let check;
+    try { check = await window.pywebview.api.check_for_update(); }
+    finally { clearInterval(verifyTimer); }
 
     if(check && check.update_available){
       const startRes = await window.pywebview.api.start_update(check.download_url, check.latest_version);

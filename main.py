@@ -1527,7 +1527,10 @@ class Api:
         state = modpack_sync.load_state(MODPACK_STATE_PATH)
         try:
             remote = modpack_sync.fetch_remote(repo, branch, state)
-            plan = modpack_sync.make_plan(dest, remote["files"], state)
+            def _verify_progress(done, total):
+                _set_progress(status="verifying", downloaded_bytes=done, total_bytes=total or None)
+            plan = modpack_sync.make_plan(dest, remote["files"], state, progress_cb=_verify_progress)
+            _set_progress(status="idle", downloaded_bytes=0, total_bytes=None)
         except modpack_sync.SyncError as e:
             return {"update_available": False, "error": str(e), **launcher_info}
         except OSError as e:

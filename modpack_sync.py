@@ -152,45 +152,88 @@ def _local_path(dest, rel):
     return os.path.join(dest, *rel.split("/"))
 
 
-def make_plan(dest, remote_files, state, workers=2):
-    """Compare Dolphin's folder with the repo listing.
-    Returns dict(download=[(rel, sha, size)], delete=[rel], ok={rel: [size, mtime_ns, sha]})."""
+def git_blob_sha_progress(path, on_bytes):
+    size = os.path.getsize(path)
+    h = hashlib.sha1()
+    h.update(b"blob %d\0" % size)
+    with open(path, "rb", buffering=0) as f:
+        while True:
+            chunk = f.read(4 << 20)
+            if not chunk:
+                break
+            h.update(chunk)
+            on_bytes(len(chunk))
+    return h.hexdigest()
+
+
+def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
+    """Compare Dolphin's folder with the repo listing, byte for byte.
+
+    Every file is read and checked against its git SHA on every call,
+    so a file whose CONTENT differs is always caught, even when it has
+    the same size and the same modified-time (copying a file over
+    another preserves the timestamp, so size/mtime alone can't be
+    trusted). Missing files and wrong sizes are found first with plain
+    stat() calls and never need reading.
+
+    Returns dict(download=[(rel, sha, size)], delete=[rel],
+    ok={rel: [size, mtime_ns, sha]}). progress_cb(done_bytes,
+    total_bytes) reports the reading progress."""
     norm = os.path.normcase(os.path.abspath(dest))
-    cache = state.get("files", {}) if state.get("dest") == norm else {}
+    prev = state.get("files", {}) if state.get("dest") == norm else {}
+
+    download, to_hash = [], []
+    for rel, (sha, size) in remote_files.items():  # pass 1: stat only
+        p = _local_path(dest, rel)
+        try:
+            st = os.stat(p)
+        except OSError:
+            download.append((rel, sha, size))
+            continue
+        if not stat_mod.S_ISREG(st.st_mode):
+            download.append((rel, sha, size))
+        elif _protected(rel):
+            continue  # exists: the player's data, never touched
+        elif st.st_size != size:
+            download.append((rel, sha, size))
+        else:
+            to_hash.append(rel)
+
+    total = sum(remote_files[r][1] for r in to_hash)
+    lock = threading.Lock()
+    done = [0]
+    last = [0.0]
+
+    def on_bytes(n):
+        with lock:
+            done[0] += n
+            now = time.time()
+            if progress_cb and now - last[0] > 0.2:
+                last[0] = now
+                progress_cb(done[0], total)
 
     def check(rel):
         sha, size = remote_files[rel]
         p = _local_path(dest, rel)
         try:
+            actual = git_blob_sha_progress(p, on_bytes)
             st = os.stat(p)
         except OSError:
-            return rel, None, None
-        if not stat_mod.S_ISREG(st.st_mode):
-            return rel, None, None
-        if _protected(rel):
-            return rel, "protected", None  # exists: never touch it
-        if st.st_size != size:
-            return rel, None, None
-        c = cache.get(rel)
-        if c and c[0] == size and c[1] == st.st_mtime_ns and c[2] == sha:
-            return rel, "ok", c
-        try:
-            if git_blob_sha(p) == sha:
-                return rel, "ok", [size, st.st_mtime_ns, sha]
-        except OSError:
-            pass
-        return rel, None, None
+            return rel, None
+        if actual == sha:
+            return rel, [size, st.st_mtime_ns, sha]
+        return rel, None
 
-    download, ok = [], {}
+    ok = {}
     with ThreadPoolExecutor(max_workers=workers, initializer=_lower_thread_priority) as pool:
-        for rel, verdict, entry in pool.map(check, list(remote_files)):
-            if verdict == "ok":
+        for rel, entry in pool.map(check, to_hash):
+            if entry:
                 ok[rel] = entry
-            elif verdict == "protected":
-                continue
             else:
                 download.append((rel, remote_files[rel][0], remote_files[rel][1]))
-    delete = [r for r in cache if r not in remote_files and not _protected(r)]
+    if progress_cb:
+        progress_cb(total, total)
+    delete = [r for r in prev if r not in remote_files and not _protected(r)]
     return {"download": download, "delete": delete, "ok": ok}
 
 
