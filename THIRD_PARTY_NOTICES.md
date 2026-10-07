@@ -29,3 +29,12 @@ MIT License. Copyright (c) Electron contributors, GitHub Inc.
 Used at runtime (bundled directly in the built .exe) to patch a newly
 pushed icon into the .exe's own Windows resources without needing a
 full rebuild.
+
+## PySide6 / Qt
+
+<https://doc.qt.io/qtforpython-6/>
+
+Qt for Python (PySide6) and the Qt libraries are used for the native
+launcher window, under the GNU LGPL v3.0 (compatible with this
+project's GPL-3.0). The full source is available from the Qt Project,
+and the PySide6 package can be replaced by any compatible build.

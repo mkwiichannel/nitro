@@ -35,7 +35,15 @@ import webbrowser
 import xml.etree.ElementTree as ET
 import zipfile
 
-import webview
+webview = None  # imported lazily: the native Qt UI never needs it
+
+
+def _import_webview():
+    global webview
+    if webview is None:
+        import webview as _wv
+        webview = _wv
+    return webview
 
 DISCORD_URL = "https://discord.com/invite/wbU8vw8vJq"
 APP_VERSION = "1.0.0"
@@ -386,6 +394,12 @@ def _set_progress(**kwargs):
 class Api:
     def __init__(self):
         self.window = None  # set after window creation, needed for dialogs
+        # Native (Qt) UI mode: no webview window exists, so anything that
+        # used to reach into self.window goes through these two optional
+        # callables instead (both must be thread-safe; native_ui.py
+        # implements them with Qt signals). None in the web-UI modes.
+        self.on_launcher_update_error = None  # callable(message: str)
+        self.on_request_quit = None           # callable()
 
     # ---------- state ----------
     def get_state(self):
@@ -1623,7 +1637,9 @@ class Api:
         return {"ok": True}
 
     def quit_app(self):
-        if self.window is not None:
+        if self.on_request_quit is not None:
+            self.on_request_quit()
+        elif self.window is not None:
             self.window.destroy()
         return {"ok": True}
 
@@ -1685,6 +1701,12 @@ class Api:
         already uses) so the popup shows a real message instead of
         hanging on "Installing..." forever."""
         def fail(message):
+            if self.on_launcher_update_error is not None:
+                try:
+                    self.on_launcher_update_error(str(message))
+                except Exception:
+                    pass
+                return
             if self.window is not None:
                 try:
                     safe = json.dumps(str(message))
@@ -1817,7 +1839,12 @@ class Api:
         # keep retrying regardless, this just avoids a near-certain
         # first failed attempt in the common case.
         time.sleep(0.5)
-        if self.window is not None:
+        if self.on_request_quit is not None:
+            try:
+                self.on_request_quit()
+            except Exception:
+                pass
+        elif self.window is not None:
             try:
                 self.window.destroy()
             except Exception:
@@ -2557,41 +2584,25 @@ def _cleanup_orphaned_extraction_folders():
         pass
 
 
-def main():
+def _run_native(api):
+    """Default path: the Qt UI. No browser engine is started."""
+    import native_ui
+    return native_ui.run(api, sys.modules[__name__])
+
+
+def _run_web(api, mii_only=False):
+    """Web UI path: used for the Mii editor (--mii, needs WebGL) and as a
+    dev fallback when PySide6 isn't installed."""
+    _import_webview()
     t_process_created = _process_creation_time()
     t_main_start = time.time()
-    # Backgrounded on its own thread -- this is only ever cleaning up
-    # leftovers from PAST launches, nothing the current launch depends
-    # on, so there's no reason for it to add even a little delay
-    # before the window can appear.
-    threading.Thread(target=_cleanup_orphaned_extraction_folders, daemon=True).start()
-    if not _acquire_single_instance_lock():
-        _show_windows_message(
-            "Mario Kart Nitro",
-            "Mario Kart Nitro is already running — check your taskbar "
-            "or Alt-Tab for the existing window instead of opening a "
-            "new one (running it twice at once is what causes the "
-            "freeze some people see)."
-        )
-        return
-
-    seed_builtin_mod()
-    _ensure_rcedit()
-    # Cheap, safe to run every launch -- nudges Explorer to drop its
-    # icon cache for this file right as the app starts, which is what
-    # actually makes a pushed icon_url change visible after the
-    # rcedit patch from a previous close (see
-    # _notify_shell_icon_changed()'s own docstring for why the patch
-    # alone isn't enough).
-    _notify_shell_icon_changed()
-    api = Api()
     cfg = load_config()
     index_file = _initial_ui_path(cfg)
     _write_initial_state_js(index_file, cfg)
-    win_width, win_height = 1180, 820
+    win_width, win_height = (1100, 780) if mii_only else (1180, 820)
     win_x, win_y = _centered_window_xy(win_width, win_height)
     window = webview.create_window(
-        "Mario Kart Nitro — Launcher",
+        "Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",
         index_file,
         x=win_x,
         y=win_y,
@@ -2603,31 +2614,64 @@ def main():
     )
     api.window = window
     window.events.shown += _close_splash_screen
-
-    # Keeps checking GitHub for changes the whole time the app is open,
-    # not just at startup -- so a push while someone already has the
-    # app running still reaches them, in the background, with nothing
-    # for them to click.
-    updater = threading.Thread(
-        target=_background_remote_update_loop, args=(api,), daemon=True
-    )
-    updater.start()
-
+    if mii_only:
+        def _open_mii():
+            try:
+                window.evaluate_js(
+                    "go('mii');var n=document.getElementById('tabs');if(n)n.style.display='none';"
+                )
+            except Exception:
+                pass
+        window.events.loaded += _open_mii
+    else:
+        threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
-    watchdog = threading.Thread(
+    threading.Thread(
         target=_startup_watchdog,
         args=(window, t_process_created, t_main_start, t_before_webview_start),
         daemon=True,
-    )
-    watchdog.start()
-
+    ).start()
     _start_webview_with_webview2_check()
+
+
+def main():
+    mii_only = "--mii" in sys.argv[1:]
+    threading.Thread(target=_cleanup_orphaned_extraction_folders, daemon=True).start()
+    if not mii_only and not _acquire_single_instance_lock():
+        _show_windows_message(
+            "Mario Kart Nitro",
+            "Mario Kart Nitro is already running — check your taskbar "
+            "or Alt-Tab for the existing window instead of opening a "
+            "new one."
+        )
+        return
+
+    seed_builtin_mod()
+    if not mii_only:
+        _ensure_rcedit()
+        _notify_shell_icon_changed()
+    api = Api()
+
+    use_web = mii_only or "--web" in sys.argv[1:]
+    if not use_web:
+        try:
+            import PySide6  # noqa: F401
+        except ImportError:
+            use_web = True  # dev run without Qt installed
+
+    if use_web:
+        _run_web(api, mii_only=mii_only)
+    else:
+        # The background updater keeps theme/colors/banner current; the
+        # native UI notices the config change on its own.
+        threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
+        _run_native(api)
 
     # The window just closed -- this process is about to exit, which
     # is the one safe moment to patch a pending icon_url change into
-    # the .exe file on disk (see _maybe_apply_pending_icon()'s own
-    # docstring for why it can't happen any earlier).
-    _maybe_apply_pending_icon()
+    # the .exe file on disk (see _maybe_apply_pending_icon()).
+    if not mii_only:
+        _maybe_apply_pending_icon()
 
 
 if __name__ == "__main__":
