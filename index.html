@@ -267,7 +267,9 @@
   .mii-preview{min-height:420px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 40%,rgba(255,120,0,.12),transparent 50%),#080b12}
   .mii-preview img{width:100%;height:100%;max-height:520px;object-fit:contain}
   .mii-preview .loading{color:var(--text-faint);font-family:var(--mono);font-size:12px}
-  .mii-editor{padding:16px;max-height:610px;overflow:auto}
+  .mii-editor{padding:16px;max-height:610px;overflow:hidden;display:flex;flex-direction:column}
+  .mii-editor .mii-section.active{overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:4px}
+  #miiViewBtn{padding:13px 16px}
   .mii-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .mii-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:14px}
   .mii-tab{border:1px solid var(--border);background:var(--bg-2);color:var(--text-dim);border-radius:7px;padding:7px 10px;font-size:11px;cursor:pointer}
@@ -278,6 +280,17 @@
   .mii-field input[type=range]{width:100%}
   .mii-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .mii-status{font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:10px;min-height:14px}
+
+  /* ---------- Mii visual pickers (pictures baked by tools/gen_mii_thumbs.py) ---------- */
+  .mii-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+  .mii-opt{padding:0;border:1px solid var(--border);border-radius:9px;background-color:#171b29;background-repeat:no-repeat;cursor:pointer;flex:0 0 auto;transition:border-color .12s, box-shadow .12s}
+  .mii-opt:hover{border-color:rgba(255,140,0,.55)}
+  .mii-opt.active{border-color:#ff8c00;box-shadow:0 0 0 2px rgba(255,140,0,.45)}
+  .mii-swatches{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}
+  .mii-sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.18);cursor:pointer;padding:0;flex:0 0 auto}
+  .mii-sw:hover{transform:scale(1.1)}
+  .mii-sw.active{border-color:#fff;box-shadow:0 0 0 2px #ff8c00}
+  #hairV,#eyeTypeV{display:none}
   @media(max-width:900px){.mii-shell,.mii-main{grid-template-columns:1fr}.mii-list{max-height:240px}}
 
   /* ---------- Halloween shaders ---------- */
@@ -431,6 +444,7 @@
         <button class="btn btn-primary" id="miiSaveBtn">Save to Nitro</button>
         <button class="btn btn-ghost" id="miiNewBtn">New Mii</button>
         <button class="btn btn-ghost" id="miiRefresh2Btn">Reload</button>
+        <button class="btn btn-ghost" id="miiViewBtn" title="Full body / face close-up">🧍</button>
       </div>
       <div class="mii-tabs">
         <button class="mii-tab active" data-miitab="identity" id="miiSubtabIdentity">Identity</button>
@@ -1174,6 +1188,8 @@ function loadMiiForm(m) {
 
   if (eyeTypeV)
     eyeTypeV.textContent = miiVal("miiEyeType");
+
+  syncMiiPickers();
 }
 
 /* =========================================================
@@ -1265,7 +1281,25 @@ async function applyMiiForm() {
    REAL MII RENDERER
    ========================================================= */
 
+let miiRenderBusy = false;
+let miiRenderAgain = false;
+
 async function renderCurrentMii() {
+  /* The renderer shares one GPU context, so renders run one at a time;
+     if more edits arrive meanwhile only the newest state is rendered. */
+  if (miiRenderBusy) { miiRenderAgain = true; return; }
+  miiRenderBusy = true;
+  try {
+    do {
+      miiRenderAgain = false;
+      await renderCurrentMiiOnce();
+    } while (miiRenderAgain);
+  } finally {
+    miiRenderBusy = false;
+  }
+}
+
+async function renderCurrentMiiOnce() {
   if (!currentMii) return;
 
   const preview =
@@ -1273,8 +1307,10 @@ async function renderCurrentMii() {
 
   if (!preview) return;
 
-  preview.innerHTML =
-    '<div class="loading">Rendering real Mii…</div>';
+  if (!preview.querySelector("img")) {
+    preview.innerHTML =
+      '<div class="loading">Rendering real Mii…</div>';
+  }
 
   try {
     const resource =
@@ -1287,7 +1323,7 @@ async function renderCurrentMii() {
       );
     }
 
-    const png = await currentMii.render(false, {
+    const png = await currentMii.render(miiFullBody, {
       size: 512,
       fflResBuffer: resource
     });
@@ -1541,6 +1577,130 @@ async function newMii() {
   }
 }
 
+
+/* =========================================================
+   VISUAL PICKERS (like the Wii's Mii Channel: pick by picture)
+   The picture sheets are baked at build time, so showing them costs
+   no rendering. The hidden <select>/<input> elements stay the single
+   source of truth, so loading/saving/live-render work exactly as before.
+   ========================================================= */
+const MII_SHEETS = {"hair":{"file":"hair.png","cell":[128,128],"cols":8,"count":72,"tile":76},"face":{"file":"face.png","cell":[128,128],"cols":8,"count":8,"tile":76},"feature":{"file":"feature.png","cell":[128,128],"cols":8,"count":12,"tile":76},"eyes":{"file":"eyes.png","cell":[160,64],"cols":6,"count":48,"tile":100},"brows":{"file":"brows.png","cell":[160,61],"cols":6,"count":24,"tile":100},"nose":{"file":"nose.png","cell":[112,112],"cols":8,"count":12,"tile":68},"mouth":{"file":"mouth.png","cell":[160,80],"cols":6,"count":24,"tile":100},"glasses":{"file":"glasses.png","cell":[160,69],"cols":6,"count":9,"tile":100},"mustache":{"file":"mustache.png","cell":[128,82],"cols":8,"count":4,"tile":84},"beard":{"file":"beard.png","cell":[128,94],"cols":8,"count":4,"tile":84}};
+const MII_SWATCHES = {
+  hair: ["#1e1a18", "#402010", "#5c180a", "#7c3a14", "#787880", "#4e3e10", "#885818", "#d0a04a"],
+  skin: ["#ffd3ad", "#ffb66b", "#de7942", "#ffaa8c", "#ad5129", "#632c18"],
+  eye: ["#000000", "#6c7070", "#663c2c", "#605e30", "#4654a8", "#387058"],
+  lip: ["#c7957a", "#9e0f07", "#861f27"],
+  glass: ["#808080","#7a5c1e","#c8281e","#2850c8","#e6b41e","#f0f0f0"],
+  fav: ["#e3372d", "#fe8432", "#fee939", "#8de339", "#1a8d48", "#245fc7", "#54bdef", "#fb7192", "#8841c0", "#5f5031", "#f0f0f0", "#31312d"]
+};
+const miiPickers = [];
+
+function miiPickerHost(inputId){
+  const input = document.getElementById(inputId);
+  if (!input) return null;
+  const field = input.closest(".mii-field");
+  const label = field && field.querySelector("label");
+  if (!field || !label) return null;
+  input.style.display = "none";
+  field.style.gridColumn = "1 / -1";
+  return { input, label };
+}
+
+function miiPickAndRender(input, value){
+  input.value = String(value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  syncMiiPickers();
+}
+
+function miiGridPicker(cat, inputId){
+  const host = miiPickerHost(inputId);
+  const m = MII_SHEETS[cat];
+  if (!host || !m) return;
+  const k = m.tile / m.cell[0];
+  const tw = m.tile, th = Math.round(m.cell[1] * k);
+  const wrap = document.createElement("div");
+  wrap.className = "mii-picker";
+  const items = [];
+  for (let i = 0; i < m.count; i++){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "mii-opt";
+    b.style.width = tw + "px";
+    b.style.height = th + "px";
+    b.style.backgroundImage = "url(mii_renderer/thumbs/" + m.file + ")";
+    b.style.backgroundSize = (m.cols * tw) + "px auto";
+    b.style.backgroundPosition = "-" + ((i % m.cols) * tw) + "px -" +
+      (Math.floor(i / m.cols) * m.cell[1] * k) + "px";
+    b.onclick = () => miiPickAndRender(host.input, i);
+    wrap.appendChild(b);
+    items.push(b);
+  }
+  host.label.insertAdjacentElement("afterend", wrap);
+  miiPickers.push({ input: host.input, items });
+}
+
+function miiSwatchPicker(inputId, colors, names){
+  const host = miiPickerHost(inputId);
+  if (!host) return;
+  const wrap = document.createElement("div");
+  wrap.className = "mii-swatches";
+  const items = colors.map((c, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "mii-sw";
+    b.style.background = c;
+    if (names && names[i]) b.title = names[i];
+    b.onclick = () => miiPickAndRender(host.input, i);
+    wrap.appendChild(b);
+    return b;
+  });
+  host.label.insertAdjacentElement("afterend", wrap);
+  miiPickers.push({ input: host.input, items });
+}
+
+function syncMiiPickers(){
+  for (const p of miiPickers){
+    const v = String(p.input.value);
+    p.items.forEach((b, i) => b.classList.toggle("active", String(i) === v));
+  }
+}
+
+miiSwatchPicker("miiFav", MII_SWATCHES.fav, MII_ENUMS.fav);
+miiGridPicker("face", "miiFaceShape");
+miiSwatchPicker("miiSkin", MII_SWATCHES.skin, MII_ENUMS.skin);
+miiGridPicker("feature", "miiFeature");
+miiGridPicker("hair", "miiHair");
+miiSwatchPicker("miiHairColor", MII_SWATCHES.hair, MII_ENUMS.hair);
+miiGridPicker("eyes", "miiEyeType");
+miiSwatchPicker("miiEyeColor", MII_SWATCHES.eye, MII_ENUMS.eyes);
+miiGridPicker("brows", "miiBrowType");
+miiSwatchPicker("miiBrowColor", MII_SWATCHES.hair, MII_ENUMS.hair);
+miiGridPicker("nose", "miiNoseType");
+miiGridPicker("mouth", "miiLipType");
+miiSwatchPicker("miiLipColor", MII_SWATCHES.lip, MII_ENUMS.lip);
+miiGridPicker("glasses", "miiGlassType");
+miiSwatchPicker("miiGlassColor", MII_SWATCHES.glass, MII_ENUMS.glassColor);
+miiGridPicker("mustache", "miiMustache");
+miiGridPicker("beard", "miiBeard");
+
+document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click", () => {
+  setTimeout(() => {
+    const a = document.querySelector(".mii-section.active .mii-opt.active");
+    if (a) a.scrollIntoView({ block: "nearest" });
+  }, 40);
+}));
+
+/* whole-body preview (default) or face close-up */
+let miiFullBody = true;
+{
+  const vb = document.getElementById("miiViewBtn");
+  if (vb) vb.onclick = () => {
+    miiFullBody = !miiFullBody;
+    vb.textContent = miiFullBody ? "🧍" : "👤";
+    renderCurrentMii();
+  };
+}
+
 /* =========================================================
    LIVE RENDERING
    ========================================================= */
@@ -1693,13 +1853,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Name", miiLblGender:"Gender", miiOptMale:"Male", miiOptFemale:"Female",
       miiLblFav:"Favorite color", miiLblHeight:"Height", miiLblWeight:"Weight",
       miiLblFaceShape:"Face shape", miiLblSkin:"Skin", miiLblFeature:"Facial feature",
-      miiLblHairStyle:"Hair style ID", miiLblHairColor:"Hair color", miiLblHairFlip:"Flip hair",
-      miiLblEyeStyle:"Eye style ID", miiLblEyeColorField:"Color", miiLblEyeRot:"Rotation",
+      miiLblHairStyle:"Hair style", miiLblHairColor:"Hair color", miiLblHairFlip:"Flip hair",
+      miiLblEyeStyle:"Eye style", miiLblEyeColorField:"Color", miiLblEyeRot:"Rotation",
       miiLblEyeVert:"Vertical", miiLblEyeSize:"Size", miiLblEyeSpace:"Spacing",
-      miiLblBrowStyle:"Eyebrow style ID", miiLblBrowColorField:"Color", miiLblBrowRot:"Rotation",
+      miiLblBrowStyle:"Eyebrow style", miiLblBrowColorField:"Color", miiLblBrowRot:"Rotation",
       miiLblBrowSize:"Size", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Spacing",
       miiLblNoseType:"Nose type", miiLblNoseSize:"Size", miiLblNoseVert:"Vertical",
-      miiLblMouthStyle:"Mouth style ID", miiLblLipColorField:"Color", miiLblLipSize:"Size", miiLblLipVert:"Vertical",
+      miiLblMouthStyle:"Mouth style", miiLblLipColorField:"Color", miiLblLipSize:"Size", miiLblLipVert:"Vertical",
       miiLblGlasses:"Glasses", miiLblGlassesColor:"Glasses color", miiLblMustache:"Mustache", miiLblBeard:"Beard",
       miiLblCreator:"Creator name",
       launcherUpdateMsg:"A new launcher version is available.", launcherUpdateBtn:"Update!",
@@ -1753,13 +1913,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Name", miiLblGender:"Geschlecht", miiOptMale:"Männlich", miiOptFemale:"Weiblich",
       miiLblFav:"Lieblingsfarbe", miiLblHeight:"Größe", miiLblWeight:"Gewicht",
       miiLblFaceShape:"Gesichtsform", miiLblSkin:"Hautfarbe", miiLblFeature:"Gesichtsmerkmal",
-      miiLblHairStyle:"Frisur-ID", miiLblHairColor:"Haarfarbe", miiLblHairFlip:"Haare spiegeln",
-      miiLblEyeStyle:"Augen-ID", miiLblEyeColorField:"Farbe", miiLblEyeRot:"Drehung",
+      miiLblHairStyle:"Frisur", miiLblHairColor:"Haarfarbe", miiLblHairFlip:"Haare spiegeln",
+      miiLblEyeStyle:"Augen", miiLblEyeColorField:"Farbe", miiLblEyeRot:"Drehung",
       miiLblEyeVert:"Vertikal", miiLblEyeSize:"Größe", miiLblEyeSpace:"Abstand",
-      miiLblBrowStyle:"Augenbrauen-ID", miiLblBrowColorField:"Farbe", miiLblBrowRot:"Drehung",
+      miiLblBrowStyle:"Augenbrauen", miiLblBrowColorField:"Farbe", miiLblBrowRot:"Drehung",
       miiLblBrowSize:"Größe", miiLblBrowVert:"Vertikal", miiLblBrowSpace:"Abstand",
       miiLblNoseType:"Nasentyp", miiLblNoseSize:"Größe", miiLblNoseVert:"Vertikal",
-      miiLblMouthStyle:"Mund-ID", miiLblLipColorField:"Farbe", miiLblLipSize:"Größe", miiLblLipVert:"Vertikal",
+      miiLblMouthStyle:"Mund", miiLblLipColorField:"Farbe", miiLblLipSize:"Größe", miiLblLipVert:"Vertikal",
       miiLblGlasses:"Brille", miiLblGlassesColor:"Brillenfarbe", miiLblMustache:"Schnurrbart", miiLblBeard:"Bart",
       miiLblCreator:"Ersteller-Name",
       launcherUpdateMsg:"Eine neue Launcher-Version ist verfügbar.", launcherUpdateBtn:"Aktualisieren!",
@@ -1813,13 +1973,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Nom", miiLblGender:"Genre", miiOptMale:"Homme", miiOptFemale:"Femme",
       miiLblFav:"Couleur préférée", miiLblHeight:"Taille", miiLblWeight:"Poids",
       miiLblFaceShape:"Forme du visage", miiLblSkin:"Peau", miiLblFeature:"Trait du visage",
-      miiLblHairStyle:"ID de coiffure", miiLblHairColor:"Couleur des cheveux", miiLblHairFlip:"Retourner les cheveux",
-      miiLblEyeStyle:"ID des yeux", miiLblEyeColorField:"Couleur", miiLblEyeRot:"Rotation",
+      miiLblHairStyle:"Coiffure", miiLblHairColor:"Couleur des cheveux", miiLblHairFlip:"Retourner les cheveux",
+      miiLblEyeStyle:"Yeux", miiLblEyeColorField:"Couleur", miiLblEyeRot:"Rotation",
       miiLblEyeVert:"Vertical", miiLblEyeSize:"Taille", miiLblEyeSpace:"Espacement",
-      miiLblBrowStyle:"ID des sourcils", miiLblBrowColorField:"Couleur", miiLblBrowRot:"Rotation",
+      miiLblBrowStyle:"Sourcils", miiLblBrowColorField:"Couleur", miiLblBrowRot:"Rotation",
       miiLblBrowSize:"Taille", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espacement",
       miiLblNoseType:"Type de nez", miiLblNoseSize:"Taille", miiLblNoseVert:"Vertical",
-      miiLblMouthStyle:"ID de bouche", miiLblLipColorField:"Couleur", miiLblLipSize:"Taille", miiLblLipVert:"Vertical",
+      miiLblMouthStyle:"Bouche", miiLblLipColorField:"Couleur", miiLblLipSize:"Taille", miiLblLipVert:"Vertical",
       miiLblGlasses:"Lunettes", miiLblGlassesColor:"Couleur des lunettes", miiLblMustache:"Moustache", miiLblBeard:"Barbe",
       miiLblCreator:"Nom du créateur",
       launcherUpdateMsg:"Une nouvelle version du launcher est disponible.", launcherUpdateBtn:"Mettre à jour !",
@@ -1873,13 +2033,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Nombre", miiLblGender:"Género", miiOptMale:"Masculino", miiOptFemale:"Femenino",
       miiLblFav:"Color favorito", miiLblHeight:"Altura", miiLblWeight:"Peso",
       miiLblFaceShape:"Forma del rostro", miiLblSkin:"Piel", miiLblFeature:"Rasgo facial",
-      miiLblHairStyle:"ID de peinado", miiLblHairColor:"Color de cabello", miiLblHairFlip:"Invertir cabello",
-      miiLblEyeStyle:"ID de ojos", miiLblEyeColorField:"Color", miiLblEyeRot:"Rotación",
+      miiLblHairStyle:"Peinado", miiLblHairColor:"Color de cabello", miiLblHairFlip:"Invertir cabello",
+      miiLblEyeStyle:"Ojos", miiLblEyeColorField:"Color", miiLblEyeRot:"Rotación",
       miiLblEyeVert:"Vertical", miiLblEyeSize:"Tamaño", miiLblEyeSpace:"Espaciado",
-      miiLblBrowStyle:"ID de cejas", miiLblBrowColorField:"Color", miiLblBrowRot:"Rotación",
+      miiLblBrowStyle:"Cejas", miiLblBrowColorField:"Color", miiLblBrowRot:"Rotación",
       miiLblBrowSize:"Tamaño", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espaciado",
       miiLblNoseType:"Tipo de nariz", miiLblNoseSize:"Tamaño", miiLblNoseVert:"Vertical",
-      miiLblMouthStyle:"ID de boca", miiLblLipColorField:"Color", miiLblLipSize:"Tamaño", miiLblLipVert:"Vertical",
+      miiLblMouthStyle:"Boca", miiLblLipColorField:"Color", miiLblLipSize:"Tamaño", miiLblLipVert:"Vertical",
       miiLblGlasses:"Gafas", miiLblGlassesColor:"Color de gafas", miiLblMustache:"Bigote", miiLblBeard:"Barba",
       miiLblCreator:"Nombre del creador",
       launcherUpdateMsg:"Hay una nueva versión del launcher disponible.", launcherUpdateBtn:"¡Actualizar!",
@@ -1933,13 +2093,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Nome", miiLblGender:"Genere", miiOptMale:"Maschio", miiOptFemale:"Femmina",
       miiLblFav:"Colore preferito", miiLblHeight:"Altezza", miiLblWeight:"Peso",
       miiLblFaceShape:"Forma del viso", miiLblSkin:"Pelle", miiLblFeature:"Tratto del viso",
-      miiLblHairStyle:"ID acconciatura", miiLblHairColor:"Colore capelli", miiLblHairFlip:"Rifletti capelli",
-      miiLblEyeStyle:"ID occhi", miiLblEyeColorField:"Colore", miiLblEyeRot:"Rotazione",
+      miiLblHairStyle:"Acconciatura", miiLblHairColor:"Colore capelli", miiLblHairFlip:"Rifletti capelli",
+      miiLblEyeStyle:"Occhi", miiLblEyeColorField:"Colore", miiLblEyeRot:"Rotazione",
       miiLblEyeVert:"Verticale", miiLblEyeSize:"Dimensione", miiLblEyeSpace:"Distanza",
-      miiLblBrowStyle:"ID sopracciglia", miiLblBrowColorField:"Colore", miiLblBrowRot:"Rotazione",
+      miiLblBrowStyle:"Sopracciglia", miiLblBrowColorField:"Colore", miiLblBrowRot:"Rotazione",
       miiLblBrowSize:"Dimensione", miiLblBrowVert:"Verticale", miiLblBrowSpace:"Distanza",
       miiLblNoseType:"Tipo di naso", miiLblNoseSize:"Dimensione", miiLblNoseVert:"Verticale",
-      miiLblMouthStyle:"ID bocca", miiLblLipColorField:"Colore", miiLblLipSize:"Dimensione", miiLblLipVert:"Verticale",
+      miiLblMouthStyle:"Bocca", miiLblLipColorField:"Colore", miiLblLipSize:"Dimensione", miiLblLipVert:"Verticale",
       miiLblGlasses:"Occhiali", miiLblGlassesColor:"Colore occhiali", miiLblMustache:"Baffi", miiLblBeard:"Barba",
       miiLblCreator:"Nome del creatore",
       launcherUpdateMsg:"È disponibile una nuova versione del launcher.", launcherUpdateBtn:"Aggiorna!",
@@ -1993,13 +2153,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Nome", miiLblGender:"Gênero", miiOptMale:"Masculino", miiOptFemale:"Feminino",
       miiLblFav:"Cor favorita", miiLblHeight:"Altura", miiLblWeight:"Peso",
       miiLblFaceShape:"Formato do rosto", miiLblSkin:"Pele", miiLblFeature:"Traço facial",
-      miiLblHairStyle:"ID do penteado", miiLblHairColor:"Cor do cabelo", miiLblHairFlip:"Inverter cabelo",
-      miiLblEyeStyle:"ID dos olhos", miiLblEyeColorField:"Cor", miiLblEyeRot:"Rotação",
+      miiLblHairStyle:"Penteado", miiLblHairColor:"Cor do cabelo", miiLblHairFlip:"Inverter cabelo",
+      miiLblEyeStyle:"Olhos", miiLblEyeColorField:"Cor", miiLblEyeRot:"Rotação",
       miiLblEyeVert:"Vertical", miiLblEyeSize:"Tamanho", miiLblEyeSpace:"Espaçamento",
-      miiLblBrowStyle:"ID das sobrancelhas", miiLblBrowColorField:"Cor", miiLblBrowRot:"Rotação",
+      miiLblBrowStyle:"Sobrancelhas", miiLblBrowColorField:"Cor", miiLblBrowRot:"Rotação",
       miiLblBrowSize:"Tamanho", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espaçamento",
       miiLblNoseType:"Tipo de nariz", miiLblNoseSize:"Tamanho", miiLblNoseVert:"Vertical",
-      miiLblMouthStyle:"ID da boca", miiLblLipColorField:"Cor", miiLblLipSize:"Tamanho", miiLblLipVert:"Vertical",
+      miiLblMouthStyle:"Boca", miiLblLipColorField:"Cor", miiLblLipSize:"Tamanho", miiLblLipVert:"Vertical",
       miiLblGlasses:"Óculos", miiLblGlassesColor:"Cor dos óculos", miiLblMustache:"Bigode", miiLblBeard:"Barba",
       miiLblCreator:"Nome do criador",
       launcherUpdateMsg:"Uma nova versão do launcher está disponível.", launcherUpdateBtn:"Atualizar!",
@@ -2053,13 +2213,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Naam", miiLblGender:"Geslacht", miiOptMale:"Man", miiOptFemale:"Vrouw",
       miiLblFav:"Favoriete kleur", miiLblHeight:"Lengte", miiLblWeight:"Gewicht",
       miiLblFaceShape:"Gezichtsvorm", miiLblSkin:"Huid", miiLblFeature:"Gezichtskenmerk",
-      miiLblHairStyle:"Kapsel-ID", miiLblHairColor:"Haarkleur", miiLblHairFlip:"Haar spiegelen",
-      miiLblEyeStyle:"Ogen-ID", miiLblEyeColorField:"Kleur", miiLblEyeRot:"Rotatie",
+      miiLblHairStyle:"Kapsel", miiLblHairColor:"Haarkleur", miiLblHairFlip:"Haar spiegelen",
+      miiLblEyeStyle:"Ogen", miiLblEyeColorField:"Kleur", miiLblEyeRot:"Rotatie",
       miiLblEyeVert:"Verticaal", miiLblEyeSize:"Grootte", miiLblEyeSpace:"Afstand",
-      miiLblBrowStyle:"Wenkbrauw-ID", miiLblBrowColorField:"Kleur", miiLblBrowRot:"Rotatie",
+      miiLblBrowStyle:"Wenkbrauwen", miiLblBrowColorField:"Kleur", miiLblBrowRot:"Rotatie",
       miiLblBrowSize:"Grootte", miiLblBrowVert:"Verticaal", miiLblBrowSpace:"Afstand",
       miiLblNoseType:"Neustype", miiLblNoseSize:"Grootte", miiLblNoseVert:"Verticaal",
-      miiLblMouthStyle:"Mond-ID", miiLblLipColorField:"Kleur", miiLblLipSize:"Grootte", miiLblLipVert:"Verticaal",
+      miiLblMouthStyle:"Mond", miiLblLipColorField:"Kleur", miiLblLipSize:"Grootte", miiLblLipVert:"Verticaal",
       miiLblGlasses:"Bril", miiLblGlassesColor:"Brilkleur", miiLblMustache:"Snor", miiLblBeard:"Baard",
       miiLblCreator:"Naam maker",
       launcherUpdateMsg:"Er is een nieuwe launcherversie beschikbaar.", launcherUpdateBtn:"Updaten!",
@@ -2113,13 +2273,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Imię", miiLblGender:"Płeć", miiOptMale:"Mężczyzna", miiOptFemale:"Kobieta",
       miiLblFav:"Ulubiony kolor", miiLblHeight:"Wzrost", miiLblWeight:"Waga",
       miiLblFaceShape:"Kształt twarzy", miiLblSkin:"Skóra", miiLblFeature:"Rys twarzy",
-      miiLblHairStyle:"ID fryzury", miiLblHairColor:"Kolor włosów", miiLblHairFlip:"Odwróć włosy",
-      miiLblEyeStyle:"ID oczu", miiLblEyeColorField:"Kolor", miiLblEyeRot:"Obrót",
+      miiLblHairStyle:"Fryzura", miiLblHairColor:"Kolor włosów", miiLblHairFlip:"Odwróć włosy",
+      miiLblEyeStyle:"Oczy", miiLblEyeColorField:"Kolor", miiLblEyeRot:"Obrót",
       miiLblEyeVert:"Pionowo", miiLblEyeSize:"Rozmiar", miiLblEyeSpace:"Odstęp",
-      miiLblBrowStyle:"ID brwi", miiLblBrowColorField:"Kolor", miiLblBrowRot:"Obrót",
+      miiLblBrowStyle:"Brwi", miiLblBrowColorField:"Kolor", miiLblBrowRot:"Obrót",
       miiLblBrowSize:"Rozmiar", miiLblBrowVert:"Pionowo", miiLblBrowSpace:"Odstęp",
       miiLblNoseType:"Typ nosa", miiLblNoseSize:"Rozmiar", miiLblNoseVert:"Pionowo",
-      miiLblMouthStyle:"ID ust", miiLblLipColorField:"Kolor", miiLblLipSize:"Rozmiar", miiLblLipVert:"Pionowo",
+      miiLblMouthStyle:"Usta", miiLblLipColorField:"Kolor", miiLblLipSize:"Rozmiar", miiLblLipVert:"Pionowo",
       miiLblGlasses:"Okulary", miiLblGlassesColor:"Kolor okularów", miiLblMustache:"Wąsy", miiLblBeard:"Broda",
       miiLblCreator:"Nazwa twórcy",
       launcherUpdateMsg:"Dostępna jest nowa wersja launchera.", launcherUpdateBtn:"Zaktualizuj!",
@@ -2173,13 +2333,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"İsim", miiLblGender:"Cinsiyet", miiOptMale:"Erkek", miiOptFemale:"Kadın",
       miiLblFav:"Favori renk", miiLblHeight:"Boy", miiLblWeight:"Kilo",
       miiLblFaceShape:"Yüz şekli", miiLblSkin:"Ten", miiLblFeature:"Yüz özelliği",
-      miiLblHairStyle:"Saç stili ID", miiLblHairColor:"Saç rengi", miiLblHairFlip:"Saçı çevir",
-      miiLblEyeStyle:"Göz stili ID", miiLblEyeColorField:"Renk", miiLblEyeRot:"Döndürme",
+      miiLblHairStyle:"Saç stili", miiLblHairColor:"Saç rengi", miiLblHairFlip:"Saçı çevir",
+      miiLblEyeStyle:"Göz stili", miiLblEyeColorField:"Renk", miiLblEyeRot:"Döndürme",
       miiLblEyeVert:"Dikey", miiLblEyeSize:"Boyut", miiLblEyeSpace:"Aralık",
-      miiLblBrowStyle:"Kaş stili ID", miiLblBrowColorField:"Renk", miiLblBrowRot:"Döndürme",
+      miiLblBrowStyle:"Kaş stili", miiLblBrowColorField:"Renk", miiLblBrowRot:"Döndürme",
       miiLblBrowSize:"Boyut", miiLblBrowVert:"Dikey", miiLblBrowSpace:"Aralık",
       miiLblNoseType:"Burun tipi", miiLblNoseSize:"Boyut", miiLblNoseVert:"Dikey",
-      miiLblMouthStyle:"Ağız stili ID", miiLblLipColorField:"Renk", miiLblLipSize:"Boyut", miiLblLipVert:"Dikey",
+      miiLblMouthStyle:"Ağız stili", miiLblLipColorField:"Renk", miiLblLipSize:"Boyut", miiLblLipVert:"Dikey",
       miiLblGlasses:"Gözlük", miiLblGlassesColor:"Gözlük rengi", miiLblMustache:"Bıyık", miiLblBeard:"Sakal",
       miiLblCreator:"Oluşturan adı",
       launcherUpdateMsg:"Yeni bir launcher sürümü mevcut.", launcherUpdateBtn:"Güncelle!",
@@ -2233,13 +2393,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Имя", miiLblGender:"Пол", miiOptMale:"Мужской", miiOptFemale:"Женский",
       miiLblFav:"Любимый цвет", miiLblHeight:"Рост", miiLblWeight:"Вес",
       miiLblFaceShape:"Форма лица", miiLblSkin:"Кожа", miiLblFeature:"Черта лица",
-      miiLblHairStyle:"ID причёски", miiLblHairColor:"Цвет волос", miiLblHairFlip:"Отразить волосы",
-      miiLblEyeStyle:"ID глаз", miiLblEyeColorField:"Цвет", miiLblEyeRot:"Поворот",
+      miiLblHairStyle:"Причёска", miiLblHairColor:"Цвет волос", miiLblHairFlip:"Отразить волосы",
+      miiLblEyeStyle:"Глаза", miiLblEyeColorField:"Цвет", miiLblEyeRot:"Поворот",
       miiLblEyeVert:"Вертикаль", miiLblEyeSize:"Размер", miiLblEyeSpace:"Расстояние",
-      miiLblBrowStyle:"ID бровей", miiLblBrowColorField:"Цвет", miiLblBrowRot:"Поворот",
+      miiLblBrowStyle:"Брови", miiLblBrowColorField:"Цвет", miiLblBrowRot:"Поворот",
       miiLblBrowSize:"Размер", miiLblBrowVert:"Вертикаль", miiLblBrowSpace:"Расстояние",
       miiLblNoseType:"Тип носа", miiLblNoseSize:"Размер", miiLblNoseVert:"Вертикаль",
-      miiLblMouthStyle:"ID рта", miiLblLipColorField:"Цвет", miiLblLipSize:"Размер", miiLblLipVert:"Вертикаль",
+      miiLblMouthStyle:"Рот", miiLblLipColorField:"Цвет", miiLblLipSize:"Размер", miiLblLipVert:"Вертикаль",
       miiLblGlasses:"Очки", miiLblGlassesColor:"Цвет очков", miiLblMustache:"Усы", miiLblBeard:"Борода",
       miiLblCreator:"Имя создателя",
       launcherUpdateMsg:"Доступна новая версия лаунчера.", launcherUpdateBtn:"Обновить!",
@@ -2293,13 +2453,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"名前", miiLblGender:"性別", miiOptMale:"男性", miiOptFemale:"女性",
       miiLblFav:"好きな色", miiLblHeight:"身長", miiLblWeight:"体重",
       miiLblFaceShape:"顔の形", miiLblSkin:"肌の色", miiLblFeature:"顔の特徴",
-      miiLblHairStyle:"髪型ID", miiLblHairColor:"髪の色", miiLblHairFlip:"髪を反転",
-      miiLblEyeStyle:"目のID", miiLblEyeColorField:"色", miiLblEyeRot:"回転",
+      miiLblHairStyle:"髪型", miiLblHairColor:"髪の色", miiLblHairFlip:"髪を反転",
+      miiLblEyeStyle:"目", miiLblEyeColorField:"色", miiLblEyeRot:"回転",
       miiLblEyeVert:"縦位置", miiLblEyeSize:"大きさ", miiLblEyeSpace:"間隔",
-      miiLblBrowStyle:"眉のID", miiLblBrowColorField:"色", miiLblBrowRot:"回転",
+      miiLblBrowStyle:"眉", miiLblBrowColorField:"色", miiLblBrowRot:"回転",
       miiLblBrowSize:"大きさ", miiLblBrowVert:"縦位置", miiLblBrowSpace:"間隔",
       miiLblNoseType:"鼻のタイプ", miiLblNoseSize:"大きさ", miiLblNoseVert:"縦位置",
-      miiLblMouthStyle:"口のID", miiLblLipColorField:"色", miiLblLipSize:"大きさ", miiLblLipVert:"縦位置",
+      miiLblMouthStyle:"口", miiLblLipColorField:"色", miiLblLipSize:"大きさ", miiLblLipVert:"縦位置",
       miiLblGlasses:"メガネ", miiLblGlassesColor:"メガネの色", miiLblMustache:"口ひげ", miiLblBeard:"ひげ",
       miiLblCreator:"作成者名",
       launcherUpdateMsg:"新しいランチャーのバージョンが利用可能です。", launcherUpdateBtn:"更新する！",
@@ -2353,13 +2513,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"이름", miiLblGender:"성별", miiOptMale:"남성", miiOptFemale:"여성",
       miiLblFav:"좋아하는 색", miiLblHeight:"키", miiLblWeight:"몸무게",
       miiLblFaceShape:"얼굴형", miiLblSkin:"피부색", miiLblFeature:"얼굴 특징",
-      miiLblHairStyle:"머리 스타일 ID", miiLblHairColor:"머리 색", miiLblHairFlip:"머리 반전",
-      miiLblEyeStyle:"눈 스타일 ID", miiLblEyeColorField:"색상", miiLblEyeRot:"회전",
+      miiLblHairStyle:"머리 스타일", miiLblHairColor:"머리 색", miiLblHairFlip:"머리 반전",
+      miiLblEyeStyle:"눈 스타일", miiLblEyeColorField:"색상", miiLblEyeRot:"회전",
       miiLblEyeVert:"수직", miiLblEyeSize:"크기", miiLblEyeSpace:"간격",
-      miiLblBrowStyle:"눈썹 스타일 ID", miiLblBrowColorField:"색상", miiLblBrowRot:"회전",
+      miiLblBrowStyle:"눈썹 스타일", miiLblBrowColorField:"색상", miiLblBrowRot:"회전",
       miiLblBrowSize:"크기", miiLblBrowVert:"수직", miiLblBrowSpace:"간격",
       miiLblNoseType:"코 유형", miiLblNoseSize:"크기", miiLblNoseVert:"수직",
-      miiLblMouthStyle:"입 스타일 ID", miiLblLipColorField:"색상", miiLblLipSize:"크기", miiLblLipVert:"수직",
+      miiLblMouthStyle:"입 스타일", miiLblLipColorField:"색상", miiLblLipSize:"크기", miiLblLipVert:"수직",
       miiLblGlasses:"안경", miiLblGlassesColor:"안경 색상", miiLblMustache:"콧수염", miiLblBeard:"턱수염",
       miiLblCreator:"작성자 이름",
       launcherUpdateMsg:"새 런처 버전을 사용할 수 있습니다.", launcherUpdateBtn:"업데이트!",
@@ -2413,13 +2573,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"名称", miiLblGender:"性别", miiOptMale:"男性", miiOptFemale:"女性",
       miiLblFav:"喜欢的颜色", miiLblHeight:"身高", miiLblWeight:"体重",
       miiLblFaceShape:"脸型", miiLblSkin:"肤色", miiLblFeature:"面部特征",
-      miiLblHairStyle:"发型 ID", miiLblHairColor:"发色", miiLblHairFlip:"翻转头发",
-      miiLblEyeStyle:"眼型 ID", miiLblEyeColorField:"颜色", miiLblEyeRot:"旋转",
+      miiLblHairStyle:"发型", miiLblHairColor:"发色", miiLblHairFlip:"翻转头发",
+      miiLblEyeStyle:"眼型", miiLblEyeColorField:"颜色", miiLblEyeRot:"旋转",
       miiLblEyeVert:"垂直位置", miiLblEyeSize:"大小", miiLblEyeSpace:"间距",
-      miiLblBrowStyle:"眉型 ID", miiLblBrowColorField:"颜色", miiLblBrowRot:"旋转",
+      miiLblBrowStyle:"眉型", miiLblBrowColorField:"颜色", miiLblBrowRot:"旋转",
       miiLblBrowSize:"大小", miiLblBrowVert:"垂直位置", miiLblBrowSpace:"间距",
       miiLblNoseType:"鼻型", miiLblNoseSize:"大小", miiLblNoseVert:"垂直位置",
-      miiLblMouthStyle:"嘴型 ID", miiLblLipColorField:"颜色", miiLblLipSize:"大小", miiLblLipVert:"垂直位置",
+      miiLblMouthStyle:"嘴型", miiLblLipColorField:"颜色", miiLblLipSize:"大小", miiLblLipVert:"垂直位置",
       miiLblGlasses:"眼镜", miiLblGlassesColor:"眼镜颜色", miiLblMustache:"胡子", miiLblBeard:"胡须",
       miiLblCreator:"创建者名称",
       launcherUpdateMsg:"有新的启动器版本可用。", launcherUpdateBtn:"更新！",
@@ -2473,13 +2633,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"الاسم", miiLblGender:"الجنس", miiOptMale:"ذكر", miiOptFemale:"أنثى",
       miiLblFav:"اللون المفضل", miiLblHeight:"الطول", miiLblWeight:"الوزن",
       miiLblFaceShape:"شكل الوجه", miiLblSkin:"لون البشرة", miiLblFeature:"ملامح الوجه",
-      miiLblHairStyle:"معرّف تصفيفة الشعر", miiLblHairColor:"لون الشعر", miiLblHairFlip:"عكس الشعر",
-      miiLblEyeStyle:"معرّف العينين", miiLblEyeColorField:"اللون", miiLblEyeRot:"الدوران",
+      miiLblHairStyle:"تصفيفة الشعر", miiLblHairColor:"لون الشعر", miiLblHairFlip:"عكس الشعر",
+      miiLblEyeStyle:"العينان", miiLblEyeColorField:"اللون", miiLblEyeRot:"الدوران",
       miiLblEyeVert:"عمودي", miiLblEyeSize:"الحجم", miiLblEyeSpace:"التباعد",
-      miiLblBrowStyle:"معرّف الحواجب", miiLblBrowColorField:"اللون", miiLblBrowRot:"الدوران",
+      miiLblBrowStyle:"الحواجب", miiLblBrowColorField:"اللون", miiLblBrowRot:"الدوران",
       miiLblBrowSize:"الحجم", miiLblBrowVert:"عمودي", miiLblBrowSpace:"التباعد",
       miiLblNoseType:"نوع الأنف", miiLblNoseSize:"الحجم", miiLblNoseVert:"عمودي",
-      miiLblMouthStyle:"معرّف الفم", miiLblLipColorField:"اللون", miiLblLipSize:"الحجم", miiLblLipVert:"عمودي",
+      miiLblMouthStyle:"الفم", miiLblLipColorField:"اللون", miiLblLipSize:"الحجم", miiLblLipVert:"عمودي",
       miiLblGlasses:"النظارات", miiLblGlassesColor:"لون النظارات", miiLblMustache:"الشنب", miiLblBeard:"اللحية",
       miiLblCreator:"اسم المنشئ",
       launcherUpdateMsg:"يتوفر إصدار جديد من المشغّل.", launcherUpdateBtn:"تحديث!",
@@ -2533,13 +2693,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Namn", miiLblGender:"Kön", miiOptMale:"Man", miiOptFemale:"Kvinna",
       miiLblFav:"Favoritfärg", miiLblHeight:"Längd", miiLblWeight:"Vikt",
       miiLblFaceShape:"Ansiktsform", miiLblSkin:"Hud", miiLblFeature:"Ansiktsdrag",
-      miiLblHairStyle:"Frisyr-ID", miiLblHairColor:"Hårfärg", miiLblHairFlip:"Spegla hår",
-      miiLblEyeStyle:"Ögon-ID", miiLblEyeColorField:"Färg", miiLblEyeRot:"Rotation",
+      miiLblHairStyle:"Frisyr", miiLblHairColor:"Hårfärg", miiLblHairFlip:"Spegla hår",
+      miiLblEyeStyle:"Ögon", miiLblEyeColorField:"Färg", miiLblEyeRot:"Rotation",
       miiLblEyeVert:"Vertikal", miiLblEyeSize:"Storlek", miiLblEyeSpace:"Avstånd",
-      miiLblBrowStyle:"Ögonbryn-ID", miiLblBrowColorField:"Färg", miiLblBrowRot:"Rotation",
+      miiLblBrowStyle:"Ögonbryn", miiLblBrowColorField:"Färg", miiLblBrowRot:"Rotation",
       miiLblBrowSize:"Storlek", miiLblBrowVert:"Vertikal", miiLblBrowSpace:"Avstånd",
       miiLblNoseType:"Näsa-typ", miiLblNoseSize:"Storlek", miiLblNoseVert:"Vertikal",
-      miiLblMouthStyle:"Mun-ID", miiLblLipColorField:"Färg", miiLblLipSize:"Storlek", miiLblLipVert:"Vertikal",
+      miiLblMouthStyle:"Mun", miiLblLipColorField:"Färg", miiLblLipSize:"Storlek", miiLblLipVert:"Vertikal",
       miiLblGlasses:"Glasögon", miiLblGlassesColor:"Glasögonfärg", miiLblMustache:"Mustasch", miiLblBeard:"Skägg",
       miiLblCreator:"Skaparens namn",
       launcherUpdateMsg:"En ny launcher-version är tillgänglig.", launcherUpdateBtn:"Uppdatera!",
@@ -2593,13 +2753,13 @@ function toast(msg, isError, sticky) {
       miiLblName:"Nimi", miiLblGender:"Sukupuoli", miiOptMale:"Mies", miiOptFemale:"Nainen",
       miiLblFav:"Lempiväri", miiLblHeight:"Pituus", miiLblWeight:"Paino",
       miiLblFaceShape:"Kasvojen muoto", miiLblSkin:"Ihonväri", miiLblFeature:"Kasvonpiirre",
-      miiLblHairStyle:"Kampauksen ID", miiLblHairColor:"Hiusväri", miiLblHairFlip:"Peilaa hiukset",
-      miiLblEyeStyle:"Silmien ID", miiLblEyeColorField:"Väri", miiLblEyeRot:"Kierto",
+      miiLblHairStyle:"Kampaus", miiLblHairColor:"Hiusväri", miiLblHairFlip:"Peilaa hiukset",
+      miiLblEyeStyle:"Silmät", miiLblEyeColorField:"Väri", miiLblEyeRot:"Kierto",
       miiLblEyeVert:"Pysty", miiLblEyeSize:"Koko", miiLblEyeSpace:"Väli",
-      miiLblBrowStyle:"Kulmakarvojen ID", miiLblBrowColorField:"Väri", miiLblBrowRot:"Kierto",
+      miiLblBrowStyle:"Kulmakarvat", miiLblBrowColorField:"Väri", miiLblBrowRot:"Kierto",
       miiLblBrowSize:"Koko", miiLblBrowVert:"Pysty", miiLblBrowSpace:"Väli",
       miiLblNoseType:"Nenän tyyppi", miiLblNoseSize:"Koko", miiLblNoseVert:"Pysty",
-      miiLblMouthStyle:"Suun ID", miiLblLipColorField:"Väri", miiLblLipSize:"Koko", miiLblLipVert:"Pysty",
+      miiLblMouthStyle:"Suu", miiLblLipColorField:"Väri", miiLblLipSize:"Koko", miiLblLipVert:"Pysty",
       miiLblGlasses:"Silmälasit", miiLblGlassesColor:"Silmälasien väri", miiLblMustache:"Viikset", miiLblBeard:"Parta",
       miiLblCreator:"Luojan nimi",
       launcherUpdateMsg:"Uusi launcher-versio on saatavilla.", launcherUpdateBtn:"Päivitä!",
