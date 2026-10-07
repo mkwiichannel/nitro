@@ -32,6 +32,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import webbrowser
+import modpack_sync
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -77,6 +78,7 @@ def app_data_dir() -> str:
 
 
 CONFIG_PATH = os.path.join(app_data_dir(), "config.json")
+MODPACK_STATE_PATH = os.path.join(app_data_dir(), "modpack_state.json")
 
 DEFAULT_CONFIG = {
     "dolphin_path": "",
@@ -400,6 +402,7 @@ class Api:
         # implements them with Qt signals). None in the web-UI modes.
         self.on_launcher_update_error = None  # callable(message: str)
         self.on_request_quit = None           # callable()
+        self._pending_sync = None
 
     # ---------- state ----------
     def get_state(self):
@@ -969,6 +972,9 @@ class Api:
                     lines.append(f.read()[-6000:])
             except OSError:
                 pass
+        _ms = modpack_sync.load_state(MODPACK_STATE_PATH)
+        lines.append(f"Modpack: {_ms.get('repo', '(not synced yet)')}@{(_ms.get('tree_sha') or '-')[:7]}, "
+                     f"{len(_ms.get('files', {}))} files tracked")
         lines.append(f"Dolphin: {cfg.get('dolphin_path') or '(not set)'}")
         lines.append(f"ISO: {cfg.get('iso_path') or '(not set)'}")
         lines.append(f"Active mod: {active_name or '(none)'}")
@@ -1085,10 +1091,17 @@ class Api:
                     riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
                     os.makedirs(riivolution_root, exist_ok=True)
                     linked = []
+                    # Modpack synced straight into Dolphin's folder (the
+                    # normal case now): nothing to copy, it's already there.
+                    same_root = os.path.normcase(os.path.abspath(content_root)) == \
+                        os.path.normcase(os.path.abspath(riivolution_root))
                     for entry in os.listdir(content_root):
                         src = os.path.join(content_root, entry)
                         if not os.path.isdir(src):
                             continue  # skip stray files like the placeholder .txt
+                        if same_root:
+                            linked.append(entry)
+                            continue
                         dest = os.path.join(riivolution_root, entry)
                         self._link_or_copy_into(src, dest)
                         linked.append(entry)
@@ -1098,7 +1111,9 @@ class Api:
                         for fname in filenames:
                             if fname.lower().endswith(".xml"):
                                 existing_xmls.append(os.path.join(dirpath, fname))
-                    if existing_xmls:
+                    if same_root and os.path.isfile(xml_path):
+                        pass  # the synced profile is already the one to use
+                    elif existing_xmls:
                         xml_path = existing_xmls[0]
                     else:
                         riivolution_xml_dir = os.path.join(riivolution_root, "riivolution")
@@ -1487,37 +1502,43 @@ class Api:
             launcher_url and launcher_url != installed_launcher_url
         )
 
-        latest_version = str(manifest.get("version", "")).strip()
-        content_url = str(manifest.get("content_url", "")).strip()
-        if not latest_version or not content_url:
-            return {
-                "update_available": False,
-                "error": "manifest.json is missing 'version' or 'content_url'.",
-                "launcher_update_available": launcher_update_available,
-                "launcher_download_url": launcher_url,
-            }
-
-        current_version = cfg.get("content_version", "0")
-        installed_from_url = cfg.get("installed_from_url", "")
-
-        nitro_pack = next((m for m in cfg["mods"] if m["name"] == "Nitro Pack"), None)
-        content_installed = bool(
-            nitro_pack
-            and nitro_pack.get("content_root")
-            and os.path.isdir(nitro_pack["content_root"])
-        )
-
-        url_changed = bool(installed_from_url) and installed_from_url != content_url
-        update_available = (not content_installed) or (latest_version != current_version) or url_changed
-
-        return {
-            "update_available": update_available,
-            "is_first_install": not content_installed,
-            "latest_version": latest_version,
-            "current_version": current_version,
-            "download_url": content_url,
+        # ---- modpack: synced straight from the GitHub repo into Dolphin's
+        # Load/Riivolution folder (see modpack_sync.py). manifest.json can
+        # still redirect it without a rebuild via "modpack_repo" /
+        # "modpack_branch"; otherwise the official Nitropack repo is used.
+        repo = str(manifest.get("modpack_repo") or modpack_sync.DEFAULT_REPO).strip()
+        branch = str(manifest.get("modpack_branch") or modpack_sync.DEFAULT_BRANCH).strip()
+        launcher_info = {
             "launcher_update_available": launcher_update_available,
             "launcher_download_url": launcher_url,
+        }
+
+        dolphin_path = cfg.get("dolphin_path", "")
+        if not dolphin_path or not os.path.isfile(dolphin_path):
+            return {"update_available": False,
+                    "error": "Set your Dolphin path in Settings first - the modpack installs into Dolphin's folder.",
+                    **launcher_info}
+        dest = os.path.join(self._dolphin_user_dir(dolphin_path), "Load", "Riivolution")
+        state = modpack_sync.load_state(MODPACK_STATE_PATH)
+        try:
+            remote = modpack_sync.fetch_remote(repo, branch, state)
+            plan = modpack_sync.make_plan(dest, remote["files"], state)
+        except modpack_sync.SyncError as e:
+            return {"update_available": False, "error": str(e), **launcher_info}
+        except OSError as e:
+            return {"update_available": False, "error": f"Couldn't read Dolphin's folder: {e}", **launcher_info}
+
+        self._pending_sync = {"repo": repo, "branch": branch, "dest": dest,
+                              "remote": remote, "plan": plan, "state": state}
+        installed_before = bool(state.get("files")) and state.get("dest") == os.path.normcase(os.path.abspath(dest))
+        latest = (remote.get("tree_sha") or "")[:7]
+        return {
+            "update_available": bool(plan["download"] or plan["delete"]),
+            "is_first_install": not installed_before,
+            "latest_version": latest,
+            "current_version": (state.get("tree_sha") or "")[:7] or "0",
+            "download_url": f"repo:{repo}@{branch}",
+            **launcher_info,
         }
 
     def start_update(self, download_url, latest_version):
@@ -1527,8 +1548,10 @@ class Api:
         instead of a single opaque blocking call."""
         _set_progress(status="downloading", downloaded_bytes=0, total_bytes=None,
                        error=None, version=latest_version)
+        worker = (self._modpack_sync_worker if str(download_url).startswith("repo:")
+                  else self._apply_update_worker)
         thread = threading.Thread(
-            target=self._apply_update_worker, args=(download_url, latest_version), daemon=True
+            target=worker, args=(download_url, latest_version), daemon=True
         )
         thread.start()
         return {"ok": True, "started": True}
@@ -1536,6 +1559,67 @@ class Api:
     def get_download_progress(self):
         with _progress_lock:
             return dict(_download_progress)
+
+    def _modpack_sync_worker(self, download_url, latest_version):
+        """Runs the plan check_for_update() prepared: downloads only
+        missing/changed files into Dolphin's Load/Riivolution folder."""
+        try:
+            pend = getattr(self, "_pending_sync", None)
+            if not pend:
+                _set_progress(status="error", error="Modpack check hasn't run yet - press Play again.")
+                return
+            repo, branch, dest = pend["repo"], pend["branch"], pend["dest"]
+            remote, state = pend["remote"], pend["state"]
+            plan = pend["plan"]
+            cfg = load_config()
+            if plan["download"] or plan["delete"]:
+                self._kill_dolphin(cfg.get("dolphin_path", ""))  # Windows can't overwrite open files
+
+            # One-time migration from the old zip-based install: remember
+            # which top-level folders it created (they're stale now).
+            old_content = os.path.join(app_data_dir(), "mods", "Nitro Pack", "content")
+            first_time = not state.get("files")
+            stale_dirs = []
+            if first_time and os.path.isdir(old_content):
+                repo_tops = {p.split("/", 1)[0] for p in remote["files"]}
+                try:
+                    stale_dirs = [d for d in os.listdir(old_content)
+                                  if os.path.isdir(os.path.join(old_content, d)) and d not in repo_tops]
+                except OSError:
+                    stale_dirs = []
+
+            def on_progress(done, total):
+                _set_progress(status="downloading", downloaded_bytes=done, total_bytes=total or None)
+
+            new_state = modpack_sync.run_sync(repo, branch, dest, remote, plan, state,
+                                              MODPACK_STATE_PATH, progress_cb=on_progress)
+            _set_progress(status="extracting")  # finishing up: config + cleanup
+
+            # point the Nitro Pack entry at the synced files
+            xml_candidates = sorted(p for p in remote["files"] if p.lower().endswith(".xml"))
+            top_xml = [p for p in xml_candidates if p.lower().startswith("riivolution/") and p.count("/") == 1]
+            chosen = (top_xml or xml_candidates or [""])[0]
+            cfg = load_config()
+            cfg["content_version"] = (remote.get("tree_sha") or "")[:7] or cfg.get("content_version", "0")
+            cfg["installed_from_url"] = download_url
+            for m in cfg["mods"]:
+                if m.get("name") == "Nitro Pack":
+                    m["content_root"] = dest
+                    if chosen:
+                        m["xml_path"] = os.path.join(dest, *chosen.split("/"))
+            save_config(cfg)
+
+            # Old-format leftovers: stale mod folders in Dolphin's folder and
+            # the old private copy (frees ~1.6 GB). Best effort.
+            for d in stale_dirs:
+                shutil.rmtree(os.path.join(dest, d), ignore_errors=True)
+            if first_time and os.path.isdir(old_content):
+                shutil.rmtree(old_content, ignore_errors=True)
+            _set_progress(status="done", version=cfg["content_version"])
+        except modpack_sync.SyncError as e:
+            _set_progress(status="error", error=str(e))
+        except Exception as e:  # noqa: BLE001 - never leave the UI polling forever
+            _set_progress(status="error", error=f"Modpack update failed: {e}")
 
     def _apply_update_worker(self, download_url, latest_version):
         """The actual download+extract+install work, run on a
@@ -1921,7 +2005,9 @@ def _ensure_rcedit():
         src = resource_path("rcedit.exe")
         if os.path.isfile(src):
             try:
-                shutil.copyfile(src, dst)
+                tmp = dst + ".tmp"
+                shutil.copyfile(src, tmp)
+                os.replace(tmp, dst)  # atomic: never leaves a half-copied exe
             except OSError:
                 return ""
     return dst if os.path.isfile(dst) else ""
@@ -2701,8 +2787,12 @@ def main():
 
     seed_builtin_mod()
     if not mii_only:
-        _ensure_rcedit()
-        _notify_shell_icon_changed()
+        # Neither is needed to show the window; SHChangeNotify in
+        # particular can stall for a while when Explorer is busy.
+        def _deferred_startup_chores():
+            _ensure_rcedit()
+            _notify_shell_icon_changed()
+        threading.Thread(target=_deferred_startup_chores, daemon=True).start()
     api = Api()
 
     # Your original web UI is the default. The Qt version (native_ui.py)
