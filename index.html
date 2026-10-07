@@ -1636,9 +1636,9 @@ function miiGridPicker(cat, inputId){
     b.className = "mii-opt";
     b.style.width = tw + "px";
     b.style.height = th + "px";
-    b.style.backgroundImage = "url(mii_renderer/thumbs/" + m.file + ")";
-    b.style.backgroundSize = (m.cols * tw) + "px auto";
-    b.style.backgroundPosition = "-" + ((i % m.cols) * tw) + "px -" +
+    b.dataset.bgImg = "url(mii_renderer/thumbs/" + m.file + ")";
+    b.dataset.bgSize = (m.cols * tw) + "px auto";
+    b.dataset.bgPos = "-" + ((i % m.cols) * tw) + "px -" +
       (Math.floor(i / m.cols) * m.cell[1] * k) + "px";
     b.onclick = () => miiPickAndRender(host.input, i);
     wrap.appendChild(b);
@@ -1720,42 +1720,52 @@ function miiThumbsInvalidate(exceptInputId){
 function miiThumbsKick(){
   if (miiThumbRunning || !currentMii) return;
   miiThumbRunning = true;
-  miiThumbsRun().catch(e => console.warn("thumbs:", e)).finally(() => { miiThumbRunning = false; });
+  miiThumbsRun().catch(e => { console.warn("thumbs:", e); miiThumbsFallback(); }).finally(() => { miiThumbRunning = false; });
 }
 async function miiThumbsRun(){
   const { Mii, MiiFormats } = await ensureMiiJS();
   const res = await ensureFFLResource();
+  const SZ = 192, K = SZ / 256;
+  const active = p => !!p.items[0].closest(".mii-section.active");
   for (;;){
-    const active = p => p.items[0].closest(".mii-section.active");
-    const p = miiPickers.find(q => q.cat && q.stale && active(q));
+    /* open tab first, then every other tab in the background so switching
+       tabs finds the pictures already rendered */
+    const p = miiPickers.find(q => q.cat && q.stale && active(q)) ||
+              miiPickers.find(q => q.cat && q.stale);
     if (!p || !currentMii) return;
     const gen = miiThumbGen;
+    const wasActive = active(p);
     p.stale = false;
     const snap = await currentMii.encode(MiiFormats.RCD);
     const key0 = Array.from(snap).join(",");
     const [fields, box, bald] = MII_LIVE[p.cat];
-    const w = box[2] - box[0], h = box[3] - box[1];
+    const bx = box.map(v => v * K), w = bx[2] - bx[0], h = bx[3] - bx[1];
+    let m = null;
     for (let i = 0; i < p.items.length; i++){
-      if (gen !== miiThumbGen || !active(p)) { p.stale = true; break; }
+      const preempted = gen !== miiThumbGen ||
+        (!wasActive && miiPickers.some(q => q.cat && q.stale && active(q)));
+      if (preempted) { p.stale = true; break; }
       const key = p.cat + i + "|" + key0;
       let url = miiThumbCache.get(key);
       if (!url){
-        while (miiRenderBusy || miiRenderAgain) await miiSleep(40);
-        if (gen !== miiThumbGen || !active(p)) { p.stale = true; break; }
+        while (miiRenderBusy || miiRenderAgain) await miiSleep(30);
+        if (gen !== miiThumbGen) { p.stale = true; break; }
         miiRenderBusy = true;
         try {
-          const m = await Mii.create(snap);
+          if (!m){
+            m = await Mii.create(snap);
+            if (bald) m.set("hairType", 30);
+          }
           for (const [k, v] of Object.entries(fields(i))) m.set(k, v);
-          if (bald) m.set("hairType", 30);
-          const png = await m.render(false, { size: 256, fflResBuffer: res });
+          const png = await m.render(false, { size: SZ, fflResBuffer: res });
           const bmp = await createImageBitmap(new Blob([png], { type: "image/png" }));
           const c = document.createElement("canvas");
-          c.width = w * 2; c.height = h * 2;
-          c.getContext("2d").drawImage(bmp, box[0], box[1], w, h, 0, 0, c.width, c.height);
+          c.width = Math.round(w * 2); c.height = Math.round(h * 2);
+          c.getContext("2d").drawImage(bmp, bx[0], bx[1], w, h, 0, 0, c.width, c.height);
           bmp.close();
           url = await new Promise(r => c.toBlob(b => r(URL.createObjectURL(b)), "image/png"));
           miiThumbCache.set(key, url);
-          if (miiThumbCache.size > 400){
+          if (miiThumbCache.size > 900){
             const old = miiThumbCache.keys().next().value;
             URL.revokeObjectURL(miiThumbCache.get(old));
             miiThumbCache.delete(old);
@@ -1769,9 +1779,20 @@ async function miiThumbsRun(){
       b.style.backgroundImage = "url(" + url + ")";
       b.style.backgroundSize = "100% 100%";
       b.style.backgroundPosition = "0 0";
-      await miiSleep(0);
+      b.dataset.live = "1";
+      await miiSleep(wasActive ? 0 : 25);
     }
   }
+}
+
+/* If live rendering is impossible, fall back to the baked sprites. */
+function miiThumbsFallback(){
+  for (const p of miiPickers) if (p.cat) p.items.forEach(b => {
+    if (b.dataset.live) return;
+    b.style.backgroundImage = b.dataset.bgImg;
+    b.style.backgroundSize = b.dataset.bgSize;
+    b.style.backgroundPosition = b.dataset.bgPos;
+  });
 }
 
 /* Mii-Channel style steppers: every remaining slider becomes two buttons
