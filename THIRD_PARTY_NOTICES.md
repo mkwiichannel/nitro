@@ -29,3 +29,8 @@ MIT License. Copyright (c) Electron contributors, GitHub Inc.
 Used at runtime (bundled directly in the built .exe) to patch a newly
 pushed icon into the .exe's own Windows resources without needing a
 full rebuild.
+
+## Fonts (bundled in `fonts/`)
+
+Rajdhani, Inter and JetBrains Mono, via the Fontsource packages, licensed under the
+SIL Open Font License 1.1. The license texts are in `fonts/LICENSE-*.txt`.

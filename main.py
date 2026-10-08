@@ -2623,7 +2623,7 @@ def _restart_launcher():
     os._exit(0)
 
 
-def _page_load_watchdog(window, loaded, wait_after_shown=25):
+def _page_load_watchdog(window, loaded, wait_after_shown=15):
     """The window can appear but its page never load (a stuck WebView2
     start). Seen as "it does nothing, then works on the 2nd or 3rd try".
     If the page hasn't finished loading wait_after_shown seconds after the

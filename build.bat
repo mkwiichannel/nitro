@@ -20,6 +20,7 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --add-data "logo.png;." ^
   --add-data "banner.png;." ^
   --add-data "mii_renderer;mii_renderer" ^
+  --add-data "fonts;fonts" ^
   --add-data "starter.mii;." ^
   --add-data "RFL_Res.dat;." ^
   --add-data "rcedit.exe;." ^
