@@ -1528,6 +1528,7 @@ class Api:
         state = modpack_sync.load_state(MODPACK_STATE_PATH)
         try:
             remote = modpack_sync.fetch_remote(repo, branch, state)
+            remote["files"] = modpack_sync.resolve_lfs(repo, branch, remote["files"])
             def _verify_progress(done, total):
                 _set_progress(status="verifying", downloaded_bytes=done, total_bytes=total or None)
             plan = modpack_sync.make_plan(dest, remote["files"], state, progress_cb=_verify_progress)

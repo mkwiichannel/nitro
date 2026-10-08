@@ -140,11 +140,73 @@ def fetch_remote(repo, branch, state, timeout=20):
         # Only files inside top-level folders are installed (the folders
         # of the repo ARE the modpack); loose root files like LICENSE or
         # README are not.
-        if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel):
+        if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
             files[rel] = [entry["sha"], int(entry.get("size", 0))]
     if not files:
         raise SyncError("The modpack repository has no folders to install.")
     return {"tree_sha": data.get("sha", ""), "files": files, "etag": etag}
+
+
+# ---------------------------------------------------------------- Git LFS
+# Big files (e.g. the 100 MB sound archive) live in Git LFS: the repo only
+# holds a ~130 byte pointer text, and raw.githubusercontent.com serves that
+# pointer, not the file. Installing the pointer makes the game crash as soon
+# as it loads the file. Pointers are detected here and the real file is
+# fetched from media.githubusercontent.com instead.
+MEDIA_BASE = "https://media.githubusercontent.com/media"
+LFS_PREFIX = "lfs:"
+
+
+def _parse_lfs_pointer(data):
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if not text.startswith("version https://git-lfs.github.com/spec/v1"):
+        return None
+    oid = size = None
+    for line in text.splitlines():
+        if line.startswith("oid sha256:"):
+            oid = line[len("oid sha256:"):].strip()
+        elif line.startswith("size "):
+            try:
+                size = int(line[5:].strip())
+            except ValueError:
+                return None
+    if oid and len(oid) == 64 and size is not None:
+        return oid, size
+    return None
+
+
+def resolve_lfs(repo, branch, files):
+    """files: {rel: [git_sha, size]} -> same dict, with every Git LFS pointer
+    replaced by ["lfs:<sha256>", real_size]. Only tiny files are looked at."""
+    out = dict(files)
+    for rel, (sha, size) in files.items():
+        if sha.startswith(LFS_PREFIX) or not (100 <= size <= 200):
+            continue
+        url = f"{RAW_BASE}/{repo}/{urllib.parse.quote(branch)}/{urllib.parse.quote(rel)}"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=20) as r:
+                data = r.read(512)
+        except (urllib.error.URLError, OSError):
+            continue  # leave as-is; a later check tries again
+        ptr = _parse_lfs_pointer(data)
+        if ptr:
+            out[rel] = [LFS_PREFIX + ptr[0], ptr[1]]
+    return out
+
+
+def _sha256_progress(path, on_bytes):
+    h = hashlib.sha256()
+    with open(path, "rb", buffering=0) as f:
+        while True:
+            chunk = f.read(4 << 20)
+            if not chunk:
+                break
+            h.update(chunk)
+            on_bytes(len(chunk))
+    return LFS_PREFIX + h.hexdigest()
 
 
 # ---------------------------------------------------------------- planning
@@ -220,7 +282,8 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
         sha, size = remote_files[rel]
         p = _local_path(dest, rel)
         try:
-            actual = git_blob_sha_progress(p, on_bytes)
+            actual = (_sha256_progress(p, on_bytes) if sha.startswith(LFS_PREFIX)
+                      else git_blob_sha_progress(p, on_bytes))
             st = os.stat(p)
         except OSError:
             return rel, None
@@ -252,7 +315,9 @@ def _free_space(path):
 
 
 def _download_one(repo, branch, dest, rel, sha, size, add_bytes, stop):
-    url = f"{RAW_BASE}/{repo}/{urllib.parse.quote(branch)}/{urllib.parse.quote(rel)}"
+    is_lfs = sha.startswith(LFS_PREFIX)
+    base = MEDIA_BASE if is_lfs else RAW_BASE
+    url = f"{base}/{repo}/{urllib.parse.quote(branch)}/{urllib.parse.quote(rel)}"
     final = _local_path(dest, rel)
     os.makedirs(os.path.dirname(final), exist_ok=True)
     part = final + ".nitro-part"
@@ -262,8 +327,9 @@ def _download_one(repo, branch, dest, rel, sha, size, add_bytes, stop):
             raise SyncError("cancelled")
         got = 0
         try:
-            h = hashlib.sha1()
-            h.update(b"blob %d\0" % size)
+            h = hashlib.sha256() if is_lfs else hashlib.sha1()
+            if not is_lfs:
+                h.update(b"blob %d\0" % size)
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r, \
                     open(part, "wb") as f:
                 while True:
@@ -274,7 +340,7 @@ def _download_one(repo, branch, dest, rel, sha, size, add_bytes, stop):
                     h.update(chunk)
                     got += len(chunk)
                     add_bytes(len(chunk))
-            if got != size or h.hexdigest() != sha:
+            if got != size or (LFS_PREFIX if is_lfs else "") + h.hexdigest() != sha:
                 raise OSError(f"checksum mismatch for {rel} (repo changed while downloading?)")
             for swap in range(8):  # Dolphin/antivirus may briefly hold a file
                 try:
