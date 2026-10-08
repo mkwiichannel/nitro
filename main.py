@@ -33,6 +33,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import webbrowser
+import freeze_watch
 import modpack_sync
 import xml.etree.ElementTree as ET
 import zipfile
@@ -406,6 +407,14 @@ class Api:
         self._pending_sync = None
 
     # ---------- state ----------
+    def log_ui(self, text):
+        """Slow-interaction reports sent by the page (see freeze_watch)."""
+        try:
+            freeze_watch.log("ui | " + str(text)[:300])
+        except Exception:
+            pass
+        return True
+
     def get_state(self):
         cfg = load_config()
         cfg["version"] = APP_VERSION
@@ -2834,6 +2843,8 @@ def _run_web(api, mii_only=False):
     else:
         threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
+    freeze_watch.init(app_data_dir())
+    freeze_watch.Watch(window, "webview args: " + os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "-")).start()
     threading.Thread(target=_memory_guard, daemon=True).start()
     threading.Thread(target=_hang_guard, args=("Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",), daemon=True).start()
     threading.Thread(
