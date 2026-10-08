@@ -287,7 +287,7 @@
   /* ---------- Mii visual pickers (pictures baked by tools/gen_mii_thumbs.py) ---------- */
   .mii-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
   .mii-opt{padding:0;border:1px solid var(--border);border-radius:9px;background-color:#171b29;background-repeat:no-repeat;cursor:pointer;flex:0 0 auto;transition:border-color .12s, box-shadow .12s}
-  .mii-opt.mc{background:#fff;border:2px solid #5f7776;border-radius:13px;overflow:hidden}
+  .mii-opt.mc{background:linear-gradient(160deg,#f6f9fb 0%,#dbe3e9 100%);box-shadow:inset 0 1px 0 #fff,0 2px 6px rgba(0,0,0,.35);border:2px solid #5f7776;border-radius:13px;overflow:hidden}
   .mii-opt.mc.active{border-color:#ff8c00}
   .mii-opt.mc canvas{display:block;width:100%;height:100%;pointer-events:none}
   .mii-step button img{width:22px;height:22px;display:block;margin:auto;pointer-events:none;opacity:.92}
@@ -459,7 +459,6 @@
         <button class="btn btn-primary" id="miiSaveBtn">Save to Nitro</button>
         <button class="btn btn-ghost" id="miiNewBtn">New Mii</button>
         <button class="btn btn-ghost" id="miiRefresh2Btn">Reload</button>
-        <button class="btn btn-ghost" id="miiViewBtn" title="Full body / face close-up"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="3"/><path d="M12 9c-3 0-5 1.2-5 3v3h2v7h2.2v-6h1.6v6H15v-7h2v-3c0-1.8-2-3-5-3z"/></svg></button>
       </div>
       <div class="mii-tabs">
         <button class="mii-tab active" data-miitab="identity" id="miiSubtabIdentity">Identity</button>
@@ -1641,7 +1640,7 @@ function miiPickAndRender(input, value){
 const MC = window.MC_ICONS || null;
 const MC_SHEET_OF = { hair:"hair", eyes:"eye", brows:"brow", nose:"nose", mouth:"mouth", face:"face", feature:"facetex",
                       glasses:"glasses", mustache:"mustache", beard:"mustache" };
-const MC_TINT = { hair:["miiHairColor","hair"], eyes:["miiEyeColor","eye"], mouth:["miiLipColor","lip"] };
+const MC_TINT = { eyes:["miiEyeColor","eye"] }; /* only the eyes change colour; everything else stays as drawn in the Mii Channel */
 const mcImgs = {};
 function mcSheet(key){
   if (!mcImgs[key]){
@@ -1992,17 +1991,9 @@ document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click
 }));
 
 /* whole-body preview (default) or face close-up */
-let miiFullBody = true;
+let miiFullBody = false; /* close-up only */
 const MII_ICON_BODY = '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="3"/><path d="M12 9c-3 0-5 1.2-5 3v3h2v7h2.2v-6h1.6v6H15v-7h2v-3c0-1.8-2-3-5-3z"/></svg>';
 const MII_ICON_HEAD = '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="9" r="5"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
-{
-  const vb = document.getElementById("miiViewBtn");
-  if (vb) vb.onclick = () => {
-    miiFullBody = !miiFullBody;
-    vb.innerHTML = miiFullBody ? MII_ICON_BODY : MII_ICON_HEAD;
-    renderCurrentMii();
-  };
-}
 
 /* =========================================================
    LIVE RENDERING
