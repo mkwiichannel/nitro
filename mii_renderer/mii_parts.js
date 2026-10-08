@@ -168,6 +168,7 @@
   }
 
   const WHITE = [255, 255, 255];
+  const OUTLINE = "drop-shadow(1px 0 0 #3a3a3a) drop-shadow(-1px 0 0 #3a3a3a) drop-shadow(0 1px 0 #3a3a3a) drop-shadow(0 -1px 0 #3a3a3a)";
 
   async function drawTextureTile(cat, i, ctx, cw, ch, o) {
     if (cat === "eyes") {
@@ -275,8 +276,7 @@
       const ow = r.owner[k];
       if (!ow) continue;
       const c = cols[ow - 1], s = r.shade[k] / 255;
-      o[k * 4] = clamp(c[0] * (0.35 + 0.8 * s)); o[k * 4 + 1] = clamp(c[1] * (0.35 + 0.8 * s));
-      o[k * 4 + 2] = clamp(c[2] * (0.35 + 0.8 * s)); o[k * 4 + 3] = 255;
+      o[k * 4] = c[0]; o[k * 4 + 1] = c[1]; o[k * 4 + 2] = c[2]; o[k * 4 + 3] = 255; /* flat 2D, like the Mii Channel icons */
     }
     return toCanvas(img);
   }
@@ -297,19 +297,19 @@
     const r = await cachedRaster(key, slots, W, H, frame);
     const cv = colourise(r, cols);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-    if (cat === "face" && o.cap !== false) { /* the face mesh is open at the top (hair covers it): close it with a rounded crown */
+    const T = document.createElement("canvas"); T.width = cw; T.height = ch;
+    const tx = T.getContext("2d");
+    tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = "high";
+    if (cat === "face") { /* the face mesh is open at the top (hair covers it): close it with a rounded crown */
       const sc = cw / 70, c = cols[0];
-      ctx.save();
-      ctx.fillStyle = `rgb(${clamp(c[0] * 0.98) | 0},${clamp(c[1] * 0.98) | 0},${clamp(c[2] * 0.98) | 0})`;
-      ctx.filter = "drop-shadow(0 0 1px rgba(30,30,30,.9))";
-      ctx.beginPath();
-      ctx.ellipse(cw / 2, (67 - 49.4) * sc, 26.0 * sc, 15 * sc, 0, Math.PI, 2 * Math.PI);
-      ctx.fill(); ctx.restore();
+      tx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+      tx.beginPath();
+      tx.ellipse(cw / 2, (67 - 49.4) * sc, 26.0 * sc, 15 * sc, 0, Math.PI, 2 * Math.PI);
+      tx.fill();
     }
-    if (cat === "face") { /* a thin outline, like the Mii Channel's face icons */
-      ctx.save(); ctx.filter = "drop-shadow(0 0 1px rgba(30,30,30,.9))";
-      ctx.drawImage(cv, 0, 0, cw, ch); ctx.restore();
-    } else ctx.drawImage(cv, 0, 0, cw, ch);
+    tx.drawImage(cv, 0, 0, cw, ch);
+    ctx.save(); ctx.filter = OUTLINE; /* thin dark outline like the Mii Channel icons */
+    ctx.drawImage(T, 0, 0); ctx.restore();
   }
 
   /* facial features: the game's make-up / wrinkle textures over a face shape */
