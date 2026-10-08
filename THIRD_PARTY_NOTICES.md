@@ -34,14 +34,3 @@ full rebuild.
 
 Rajdhani, Inter and JetBrains Mono, via the Fontsource packages, licensed under the
 SIL Open Font License 1.1. The license texts are in `fonts/LICENSE-*.txt`.
-
-## WebView2 (Microsoft.Web.WebView2)
-
-Used only by the Mii editor window. Licensed under the Microsoft WebView2 SDK
-license (BSD-style). The WebView2 runtime itself ships with Windows 10/11.
-
-## .NET / WPF
-
-The launcher is built on .NET 8 (MIT License, (c) .NET Foundation and contributors)
-and bundled self-contained inside the single `.exe`. Fonts are included as TTF
-conversions of the same Fontsource files listed above.

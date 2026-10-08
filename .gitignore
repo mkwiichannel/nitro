@@ -7,5 +7,3 @@ build/
 # Nintendo artwork read from the user's own Mii Channel WAD - never commit
 mii_renderer/mc_icons/
 tools_private/
-bin/
-obj/

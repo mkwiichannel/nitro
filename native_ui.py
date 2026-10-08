@@ -16,16 +16,13 @@ import sys
 import threading
 
 from PySide6.QtCore import QObject, QTimer, Qt, Signal
-from PySide6.QtCore import QRectF, QPointF, QSize
-from PySide6.QtGui import (QColor, QDesktopServices, QFont, QFontDatabase, QIcon,
-                           QLinearGradient, QPainter, QPainterPath, QPen, QPixmap,
-                           QRadialGradient)
+from PySide6.QtGui import QDesktopServices, QFont, QIcon, QPixmap
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPlainTextEdit,
-    QGraphicsDropShadowEffect, QGridLayout, QProgressBar, QPushButton, QSizePolicy,
-    QStackedWidget, QVBoxLayout, QWidget,
+    QProgressBar, QPushButton, QSizePolicy, QStackedWidget, QVBoxLayout,
+    QWidget,
 )
 
 LANGUAGES = [
@@ -63,59 +60,6 @@ def _load_translations(resource_path):
 
 def _is_hex_color(v):
     return isinstance(v, str) and v.startswith("#") and len(v) in (4, 7)
-
-
-def _rgba(hexc, a):
-    c = QColor(hexc)
-    return "rgba(%d,%d,%d,%d)" % (c.red(), c.green(), c.blue(), int(a * 255))
-
-
-def load_fonts(resource_path):
-    """Register the bundled Inter / Rajdhani / JetBrains Mono (same files the
-    web UI used) so text renders exactly like the HTML design."""
-    d = resource_path("fonts")
-    try:
-        names = sorted(os.listdir(d))
-    except OSError:
-        return
-    for n in names:
-        if n.endswith(".woff2") and "-latin-" in n and "-latin-ext-" not in n:
-            QFontDatabase.addApplicationFont(os.path.join(d, n))
-
-
-class BgWidget(QWidget):
-    """Page background: the two soft glows + dark vignette from the CSS."""
-    def __init__(self):
-        super().__init__()
-        self.setObjectName("root")
-        self.base = QColor("#0a0512")
-
-    def paintEvent(self, e):
-        p = QPainter(self)
-        w, h = self.width(), self.height()
-        p.fillRect(self.rect(), self.base)
-        g = QRadialGradient(QPointF(w * 0.12, -h * 0.1), max(w, h) * 0.75)
-        g.setColorAt(0, QColor(255, 140, 0, 41)); g.setColorAt(1, QColor(255, 140, 0, 0))
-        p.fillRect(self.rect(), g)
-        g = QRadialGradient(QPointF(w, 0), max(w, h) * 0.6)
-        g.setColorAt(0, QColor(192, 132, 252, 20)); g.setColorAt(1, QColor(192, 132, 252, 0))
-        p.fillRect(self.rect(), g)
-        g = QRadialGradient(QPointF(w * 0.15, h), w * 0.45)
-        g.setColorAt(0, QColor(120, 40, 200, 30)); g.setColorAt(1, QColor(120, 40, 200, 0))
-        p.fillRect(self.rect(), g)
-        g = QRadialGradient(QPointF(w * 0.85, h), w * 0.45)
-        g.setColorAt(0, QColor(255, 120, 0, 18)); g.setColorAt(1, QColor(255, 120, 0, 0))
-        p.fillRect(self.rect(), g)
-        g = QRadialGradient(QPointF(w / 2, h / 2), max(w, h) * 0.72)
-        g.setColorAt(0.55, QColor(0, 0, 0, 0)); g.setColorAt(1, QColor(0, 0, 0, 175))
-        p.fillRect(self.rect(), g)
-
-
-def glow(widget, color="#ff7800", alpha=110, blur=26, dy=6):
-    fx = QGraphicsDropShadowEffect(widget)
-    c = QColor(color); c.setAlpha(alpha)
-    fx.setColor(c); fx.setBlurRadius(blur); fx.setOffset(0, dy)
-    widget.setGraphicsEffect(fx)
 
 
 class _Bridge(QObject):
@@ -157,51 +101,6 @@ class BannerLabel(QLabel):
         self._rescale()
 
 
-class HeroFrame(QFrame):
-    """Home hero: the whole banner, with the buttons in front of it and a fade
-    at the bottom (same look as the web UI)."""
-    def __init__(self):
-        super().__init__()
-        self.setObjectName("hero")
-        self._pm = None
-        self._scaled = None
-        self._scaled_for = None
-        self.border = QColor(180, 90, 255, 46)
-
-    def set_path(self, path):
-        pm = QPixmap(path) if path and os.path.isfile(path) else QPixmap()
-        self._pm = pm if not pm.isNull() else None
-        self._scaled_for = None
-        self.update()
-
-    def paintEvent(self, e):
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setRenderHint(QPainter.SmoothPixmapTransform)
-        clip = QPainterPath()
-        clip.addRoundedRect(r, 22, 22)
-        p.setClipPath(clip)
-        p.fillRect(self.rect(), QColor("#07040d"))
-        if self._pm is not None:
-            size = self.size()
-            if self._scaled_for != size:
-                self._scaled = self._pm.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                self._scaled_for = size
-            x = (size.width() - self._scaled.width()) // 2
-            y = (size.height() - self._scaled.height()) // 2
-            p.drawPixmap(x, y, self._scaled)
-        h = self.height()
-        g = QLinearGradient(0, h * 0.54, 0, h)
-        g.setColorAt(0.0, QColor(10, 5, 18, 0))
-        g.setColorAt(0.62, QColor(10, 5, 18, 184))
-        g.setColorAt(1.0, QColor(10, 5, 18, 255))
-        p.fillRect(self.rect(), g)
-        p.setClipping(False)
-        p.setPen(QPen(self.border, 1))
-        p.drawRoundedRect(r, 22, 22)
-
-
 class LauncherWindow(QMainWindow):
     def __init__(self, api, main_module):
         super().__init__()
@@ -234,6 +133,8 @@ class LauncherWindow(QMainWindow):
         self._build()
         state = api.get_state()
         self.apply_state(state)
+        if not state.get("dolphin_path") or not state.get("iso_path"):
+            self.show_screen("setup")
 
         # Pick up remote theme changes the background updater writes to
         # config.json (cheap stat() once a second; no web page involved).
@@ -241,13 +142,6 @@ class LauncherWindow(QMainWindow):
         self._watch.timeout.connect(self._poll_config)
         self._watch.start(1500)
         QTimer.singleShot(600, self._startup_update_check)
-
-    def resizeEvent(self, e):
-        super().resizeEvent(e)
-        short = self.height() < 780
-        for _t, c in getattr(self, "cards", []):
-            c._d.setVisible(not short)
-            c.setFixedHeight(92 if short else 127)
 
     # ------------------------------------------------------------ helpers
     def t(self, key):
@@ -265,8 +159,8 @@ class LauncherWindow(QMainWindow):
 
     # ------------------------------------------------------------ build UI
     def _build(self):
-        root = BgWidget()
-        self.bg = root
+        root = QWidget()
+        root.setObjectName("root")
         self.setCentralWidget(root)
         outer = QVBoxLayout(root)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -276,26 +170,17 @@ class LauncherWindow(QMainWindow):
         bar = QFrame()
         bar.setObjectName("bar")
         bl = QHBoxLayout(bar)
-        bl.setContentsMargins(26, 14, 26, 14)
-        bl.setSpacing(10)
+        bl.setContentsMargins(24, 12, 24, 12)
         self.logo = QLabel()
         self.logo.setFixedSize(30, 30)
         self.brand = QLabel()
         self.brand.setObjectName("brand")
-        f = self.brand.font(); f.setLetterSpacing(QFont.AbsoluteSpacing, 0.5); self.brand.setFont(f)
         self.ver = QLabel()
         self.ver.setObjectName("pill")
-        self.ver.setFixedHeight(22)
         bl.addWidget(self.logo)
         bl.addWidget(self.brand)
-        bl.addSpacing(-2)
-        bl.addWidget(self.ver, 0, Qt.AlignVCenter)
+        bl.addWidget(self.ver)
         bl.addStretch(1)
-        tabs = QFrame()
-        tabs.setObjectName("tabs")
-        tl = QHBoxLayout(tabs)
-        tl.setContentsMargins(4, 4, 4, 4)
-        tl.setSpacing(4)
         self.tab_buttons = {}
         for key in ("home", "mii", "credits", "settings"):
             b = QPushButton()
@@ -304,8 +189,13 @@ class LauncherWindow(QMainWindow):
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _=False, k=key: self.show_screen(k))
             self.tab_buttons[key] = b
-            tl.addWidget(b)
-        bl.addWidget(tabs)
+            bl.addWidget(b)
+        bl.addStretch(1)
+        self.exit_btn = QPushButton()
+        self.exit_btn.setObjectName("ghost")
+        self.exit_btn.setCursor(Qt.PointingHandCursor)
+        self.exit_btn.clicked.connect(QApplication.instance().quit)
+        bl.addWidget(self.exit_btn)
         outer.addWidget(bar)
 
         self.stack = QStackedWidget()
@@ -319,62 +209,50 @@ class LauncherWindow(QMainWindow):
             self.screens[key] = page
             self.stack.addWidget(page)
 
-        foot = QFrame()
-        foot.setObjectName("foot")
-        foot.setFixedHeight(11)
-        outer.addWidget(foot)
+        # launcher-update overlay is a modal dialog, built lazily
         self.show_screen("home")
 
     def _page(self):
         w = QWidget()
-        w.setAttribute(Qt.WA_TranslucentBackground)
-        outer = QHBoxLayout(w)
-        outer.setContentsMargins(26, 14, 26, 8)
-        inner = QWidget()
-        inner.setAttribute(Qt.WA_TranslucentBackground)
-        inner.setMaximumWidth(1128)
-        lay = QVBoxLayout(inner)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(12)
-        outer.addWidget(inner, 1)
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(40, 28, 40, 28)
+        lay.setSpacing(16)
         return w, lay
 
     def _build_home(self):
         w, lay = self._page()
-        self.banner = HeroFrame()
-        hl = QVBoxLayout(self.banner)
-        hl.setContentsMargins(28, 0, 28, 22)
-        hl.setSpacing(12)
-        hl.addStretch(1)
+        self.banner = BannerLabel()
+        lay.addWidget(self.banner)
+
+        row = QHBoxLayout()
+        self.play_btn = QPushButton()
+        self.play_btn.setObjectName("primary")
+        self.play_btn.setMinimumHeight(48)
+        self.play_btn.setMinimumWidth(260)
+        self.play_btn.setCursor(Qt.PointingHandCursor)
+        self.play_btn.clicked.connect(self.do_play)
+        self.hero_settings = QPushButton()
+        self.hero_settings.setObjectName("ghost")
+        self.hero_settings.clicked.connect(lambda: self.show_screen("settings"))
+        self.hero_credits = QPushButton()
+        self.hero_credits.setObjectName("ghost")
+        self.hero_credits.clicked.connect(lambda: self.show_screen("credits"))
+        row.addWidget(self.play_btn)
+        row.addWidget(self.hero_settings)
+        row.addWidget(self.hero_credits)
+        row.addStretch(1)
+        lay.addLayout(row)
+
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setFixedHeight(6)
         self.progress.hide()
-        hl.addWidget(self.progress)
+        lay.addWidget(self.progress)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
         self.notice.setObjectName("notice")
         self.notice.hide()
-        hl.addWidget(self.notice)
-        row = QHBoxLayout()
-        row.setSpacing(12)
-        self.play_btn = QPushButton()
-        self.play_btn.setObjectName("primary")
-        self.play_btn.setFixedHeight(42)
-        self.play_btn.setMinimumWidth(96)
-        self.play_btn.setCursor(Qt.PointingHandCursor)
-        self.play_btn.clicked.connect(self.do_play)
-        glow(self.play_btn, alpha=115)
-        self.hero_close = QPushButton()
-        self.hero_close.setObjectName("dghost")
-        self.hero_close.setFixedHeight(42)
-        self.hero_close.setCursor(Qt.PointingHandCursor)
-        self.hero_close.clicked.connect(QApplication.instance().quit)
-        row.addWidget(self.play_btn)
-        row.addWidget(self.hero_close)
-        row.addStretch(1)
-        hl.addLayout(row)
-        lay.addWidget(self.banner, 1)
+        lay.addWidget(self.notice)
 
         stats = QHBoxLayout()
         stats.setSpacing(14)
@@ -383,11 +261,8 @@ class LauncherWindow(QMainWindow):
             box = QFrame()
             box.setObjectName("stat")
             bl = QVBoxLayout(box)
-            bl.setContentsMargins(16, 11, 16, 11)
-            bl.setSpacing(4)
             lab = QLabel()
             lab.setObjectName("statLabel")
-            lf = lab.font(); lf.setLetterSpacing(QFont.AbsoluteSpacing, 0.6); lab.setFont(lf)
             val = QLabel()
             val.setObjectName("statVal")
             val.setWordWrap(False)
@@ -405,21 +280,14 @@ class LauncherWindow(QMainWindow):
             c = QPushButton()
             c.setObjectName("card")
             c.setCursor(Qt.PointingHandCursor)
-            c.setFixedHeight(127)
+            c.setMinimumHeight(120)
             cl = QVBoxLayout(c)
-            cl.setContentsMargins(16, 13, 16, 13)
-            cl.setSpacing(4)
-            ci = QLabel({"play": "▶", "settings": "⚙", "credits": "i"}[target])
-            ci.setObjectName("cardIcon")
-            ci.setFixedSize(34, 34)
-            ci.setAlignment(Qt.AlignCenter)
             ct = QLabel(); ct.setObjectName("cardTitle")
             cd = QLabel(); cd.setObjectName("cardDesc"); cd.setWordWrap(True)
             cd.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-            for lab in (ci, ct, cd):
+            for lab in (ct, cd):
                 lab.setAttribute(Qt.WA_TransparentForMouseEvents)
-            cl.addWidget(ci); cl.addWidget(ct); cl.addWidget(cd)
-            cl.addStretch(1)
+            cl.addWidget(ct); cl.addWidget(cd, 1)
             c._t, c._d = ct, cd
             if target == "play":
                 c.clicked.connect(self.do_play)
@@ -427,64 +295,52 @@ class LauncherWindow(QMainWindow):
                 c.clicked.connect(lambda _=False, k=target: self.show_screen(k))
             self.cards.append((target, c))
             cards.addWidget(c, 1)
-        spacer = QWidget()
-        spacer.setAttribute(Qt.WA_TranslucentBackground)
-        cards.addWidget(spacer, 1)
         lay.addLayout(cards)
+        lay.addStretch(1)
         return w
 
     def _build_mii(self):
         w, lay = self._page()
-        self.mii_back, self.mii_title, self.mii_desc = self._sub_head(lay)
-        panel = QFrame()
-        panel.setObjectName("panel")
-        pl = QVBoxLayout(panel)
-        pl.setContentsMargins(26, 22, 26, 22)
-        pl.setSpacing(14)
-        self.mii_info = QLabel()
-        self.mii_info.setWordWrap(True)
-        self.mii_info.setObjectName("dim")
+        self.mii_title = QLabel()
+        self.mii_title.setObjectName("h2")
+        self.mii_desc = QLabel()
+        self.mii_desc.setWordWrap(True)
+        self.mii_desc.setObjectName("dim")
         self.mii_btn = QPushButton()
         self.mii_btn.setObjectName("primary")
-        self.mii_btn.setFixedHeight(42)
+        self.mii_btn.setMinimumHeight(46)
+        self.mii_btn.setMaximumWidth(280)
         self.mii_btn.setCursor(Qt.PointingHandCursor)
         self.mii_btn.clicked.connect(self.open_mii_editor)
-        glow(self.mii_btn, alpha=115)
-        pl.addWidget(self.mii_info)
-        pl.addWidget(self.mii_btn, 0, Qt.AlignLeft)
-        lay.addWidget(panel)
+        lay.addWidget(self.mii_title)
+        lay.addWidget(self.mii_desc)
+        lay.addWidget(self.mii_btn)
         lay.addStretch(1)
         return w
 
     def _sub_head(self, lay):
         row = QHBoxLayout()
-        row.setSpacing(16)
         back = QPushButton()
-        back.setObjectName("back")
-        back.setCursor(Qt.PointingHandCursor)
+        back.setObjectName("ghost")
         back.clicked.connect(lambda: self.show_screen("home"))
         title = QLabel()
         title.setObjectName("h2")
         tag = QLabel()
-        tag.setObjectName("tag")
+        tag.setObjectName("dim")
         row.addWidget(back)
         row.addWidget(title)
         row.addWidget(tag)
         row.addStretch(1)
-        row.setAlignment(back, Qt.AlignVCenter)
         lay.addLayout(row)
         return back, title, tag
 
     def _path_row(self, kind, filt):
         row = QHBoxLayout()
-        row.setSpacing(10)
         edit = QLineEdit()
         edit.setReadOnly(True)
-        edit.setPlaceholderText("Not set" if kind == "file" else "")
         btn = QPushButton()
-        btn.setObjectName("browse")
+        btn.setObjectName("ghost")
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
 
         def browse():
             if kind == "folder":
@@ -499,77 +355,65 @@ class LauncherWindow(QMainWindow):
         self._browse_buttons.append(btn)
         return row, edit
 
-    def _field(self, label, body):
-        box = QWidget()
-        v = QVBoxLayout(box)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(9)
-        label.setObjectName("fieldLabel")
-        v.addWidget(label)
-        if isinstance(body, QHBoxLayout):
-            v.addLayout(body)
-        else:
-            v.addWidget(body)
-        return box
-
     def _build_settings(self):
         w, lay = self._page()
         self.set_back, self.set_title, self.set_tag = self._sub_head(lay)
         panel = QFrame()
         panel.setObjectName("panel")
-        g = QGridLayout(panel)
-        g.setContentsMargins(26, 22, 26, 22)
-        g.setHorizontalSpacing(28)
-        g.setVerticalSpacing(14)
-        g.setColumnStretch(0, 1)
-        g.setColumnStretch(1, 1)
+        pl = QVBoxLayout(panel)
+        pl.setSpacing(8)
 
         self.lbl_dolphin_path = QLabel()
         r, self.set_dolphin = self._path_row("file", "Dolphin (*.exe);;All files (*)")
-        g.addWidget(self._field(self.lbl_dolphin_path, r), 0, 0)
+        pl.addWidget(self.lbl_dolphin_path); pl.addLayout(r)
         self.lbl_iso_path = QLabel()
         r, self.set_iso = self._path_row("file", "Wii disc image (*.iso *.wbfs *.rvz);;All files (*)")
-        g.addWidget(self._field(self.lbl_iso_path, r), 0, 1)
+        pl.addWidget(self.lbl_iso_path); pl.addLayout(r)
         self.lbl_mod_dir = QLabel()
         r, self.set_moddir = self._path_row("folder", "")
-        g.addWidget(self._field(self.lbl_mod_dir, r), 1, 0)
+        pl.addWidget(self.lbl_mod_dir); pl.addLayout(r)
+
         self.lbl_res = QLabel()
         self.set_res = QLineEdit()
-        g.addWidget(self._field(self.lbl_res, self.set_res), 1, 1)
+        self.set_res.setMaximumWidth(220)
+        pl.addWidget(self.lbl_res); pl.addWidget(self.set_res)
         self.lbl_lang = QLabel()
         self.set_lang = QComboBox()
+        self.set_lang.setMaximumWidth(220)
         for code, name in LANGUAGES:
             self.set_lang.addItem(name, code)
-        self.set_lang.currentIndexChanged.connect(self._preview_language)
-        g.addWidget(self._field(self.lbl_lang, self.set_lang), 2, 0)
+        pl.addWidget(self.lbl_lang); pl.addWidget(self.set_lang)
         self.set_full = QCheckBox()
         self.set_auto = QCheckBox()
-        chk = QVBoxLayout()
-        chk.setSpacing(10)
-        chk.addWidget(self.set_full)
-        chk.addWidget(self.set_auto)
-        g.addLayout(chk, 3, 0)
+        pl.addWidget(self.set_full); pl.addWidget(self.set_auto)
 
         self.save_btn = QPushButton()
         self.save_btn.setObjectName("primary")
-        self.save_btn.setFixedHeight(42)
         self.save_btn.setCursor(Qt.PointingHandCursor)
+        self.save_btn.setMaximumWidth(220)
         self.save_btn.clicked.connect(self.save_settings)
-        glow(self.save_btn, alpha=115)
-        g.addWidget(self.save_btn, 3, 1, Qt.AlignLeft | Qt.AlignVCenter)
-        g.setRowStretch(4, 1)
+        pl.addWidget(self.save_btn)
 
+        self.lbl_trouble = QLabel()
+        self.lbl_trouble.setObjectName("dim")
+        pl.addSpacing(10)
+        pl.addWidget(self.lbl_trouble)
+        tr = QHBoxLayout()
+        self.diag_btn = QPushButton(); self.diag_btn.setObjectName("ghost")
+        self.log_btn = QPushButton(); self.log_btn.setObjectName("ghost")
+        self.diag_btn.clicked.connect(lambda: self._toggle_text(self.api.get_launch_diagnostics))
+        self.log_btn.clicked.connect(lambda: self._toggle_text(self.api.get_dolphin_log_tail))
+        tr.addWidget(self.diag_btn); tr.addWidget(self.log_btn); tr.addStretch(1)
+        pl.addLayout(tr)
+        self.diag_text = QPlainTextEdit()
+        self.diag_text.setReadOnly(True)
+        self.diag_text.setObjectName("mono")
+        self.diag_text.setMinimumHeight(180)
+        self.diag_text.hide()
+        pl.addWidget(self.diag_text)
         lay.addWidget(panel)
         lay.addStretch(1)
         return w
-
-    def _preview_language(self, _i=None):
-        code = self.set_lang.currentData()
-        if not code or code == self.lang or code not in self.translations:
-            return
-        self.lang = code
-        QApplication.instance().setLayoutDirection(Qt.RightToLeft if code == "ar" else Qt.LeftToRight)
-        self._apply_texts()
 
     def _toggle_text(self, fn):
         if self.diag_text.isVisible() and getattr(self, "_diag_fn", None) is fn:
@@ -585,26 +429,18 @@ class LauncherWindow(QMainWindow):
         self.cr_back, self.cr_title, _tag = self._sub_head(lay)
         panel = QFrame(); panel.setObjectName("panel")
         pl = QVBoxLayout(panel)
-        pl.setContentsMargins(26, 22, 26, 22)
-        pl.setSpacing(0)
         self.cr_blocks = []
-        for i in range(4):
+        for _ in range(4):
             h = QLabel(); h.setObjectName("h4")
-            p = QLabel(); p.setWordWrap(True); p.setObjectName("cp")
-            p.setFixedWidth(640)
-            p.setTextFormat(Qt.RichText)
-            p.setOpenExternalLinks(False)
-            if i == 2:
-                p.linkActivated.connect(lambda _l: self.api.open_discord())
-            pl.addWidget(h); pl.addSpacing(8); pl.addWidget(p); pl.addSpacing(26)
+            p = QLabel(); p.setWordWrap(True); p.setObjectName("dim")
+            pl.addWidget(h); pl.addWidget(p)
             self.cr_blocks.append((h, p))
         self.discord_btn = QPushButton()
         self.discord_btn.setObjectName("primary")
-        self.discord_btn.setFixedHeight(42)
-        glow(self.discord_btn, alpha=115)
+        self.discord_btn.setMaximumWidth(240)
         self.discord_btn.setCursor(Qt.PointingHandCursor)
         self.discord_btn.clicked.connect(lambda: self.api.open_discord())
-        pl.addWidget(self.discord_btn, 0, Qt.AlignLeft)
+        pl.addWidget(self.discord_btn)
         lay.addWidget(panel)
         lay.addStretch(1)
         return w
@@ -663,14 +499,6 @@ class LauncherWindow(QMainWindow):
         self.brand.setText("MARIO KART <span style='color:%s'>NITRO</span>" % self.pal["--cyan"])
         self.brand.setTextFormat(Qt.RichText)
         self.ver.setText("v" + str(s.get("version", "")))
-        def _when(iso):
-            try:
-                import datetime
-                return datetime.datetime.fromisoformat(iso).strftime("%Y-%m-%d %H:%M")
-            except Exception:
-                return "-"
-        self.ver.setToolTip("Modpack updated: %s\nLauncher updated: %s" % (
-            _when(s.get("modpack_updated_at", "")), _when(s.get("launcher_updated_at", ""))))
 
         self._apply_texts()
 
@@ -705,23 +533,22 @@ class LauncherWindow(QMainWindow):
                  "credits": t("navCredits"), "settings": t("navSettings")}
         for k, b in self.tab_buttons.items():
             b.setText(names[k])
-        self.hero_close.setText(t("exitBtn"))
+        self.exit_btn.setText(t("exitBtn"))
+        self.hero_settings.setText(t("heroSettingsBtn"))
+        self.hero_credits.setText(t("heroCreditsBtn"))
         if not self._playing:
             self.play_btn.setText("▶  " + t("playLabel"))
         for key, name in (("Dolphin", "labelDolphin"), ("Iso", "labelIso"),
                           ("ActiveMod", "labelActiveMod"), ("Launcher", "labelLauncher")):
             self.stat_labels[key].setText(t(name).upper())
-        titles = {"play": (t("cardPlayTitle"), t("cardPlayDesc")),
-                  "settings": (t("cardSettingsTitle"), t("cardSettingsDesc")),
-                  "credits": (t("cardCreditsTitle"), t("cardCreditsDesc"))}
+        titles = {"play": ("▶  " + t("cardPlayTitle"), t("cardPlayDesc")),
+                  "settings": ("⚙  " + t("cardSettingsTitle"), t("cardSettingsDesc")),
+                  "credits": ("ⓘ  " + t("cardCreditsTitle"), t("cardCreditsDesc"))}
         for target, c in self.cards:
             c._t.setText(titles[target][0]); c._d.setText(titles[target][1])
 
         mt = MII_TEXT.get(self.lang, MII_TEXT["en"])
-        self.mii_back.setText(t("settingsBackBtn"))
-        self.mii_title.setText("Mii")
-        self.mii_desc.setText("Nitro Mii library · syncs on Play")
-        self.mii_info.setText(mt[1]); self.mii_btn.setText(mt[2])
+        self.mii_title.setText(mt[0]); self.mii_desc.setText(mt[1]); self.mii_btn.setText(mt[2])
 
         self.set_back.setText(t("settingsBackBtn"))
         self.set_title.setText(t("settingsTitle"))
@@ -734,6 +561,9 @@ class LauncherWindow(QMainWindow):
         self.set_full.setText(t("labelFullscreen"))
         self.set_auto.setText(t("labelAutoUpdate"))
         self.save_btn.setText(t("saveSettingsLabel"))
+        self.lbl_trouble.setText(t("troubleshootingLabel"))
+        self.diag_btn.setText(t("diagnosticsBtnLabel"))
+        self.log_btn.setText(t("dolphinLogBtnLabel"))
         for b in self._browse_buttons:
             b.setText(t("browseLabel"))
 
@@ -743,23 +573,9 @@ class LauncherWindow(QMainWindow):
                   (t("creditsLicenseTitle"), t("creditsLicenseText")),
                   (t("creditsCommunityTitle"), "discord.gg/wbU8vw8vJq"),
                   (t("creditsProfileTitle"), t("creditsProfileText"))]
-        import html as _h
-        mono = "font-family:'JetBrains Mono';font-size:12px;background-color:%s" % self.pal["--bg-2"]
-        for i, ((h, p), (ht, pt)) in enumerate(zip(self.cr_blocks, blocks)):
-            h.setText(ht)
-            if i == 2:
-                p.setText("<a href='#' style='color:%s;text-decoration:none'>%s</a>" % (self.pal["--blue-2"], _h.escape(pt)))
-            elif i == 3:
-                x = _h.escape(pt)
-                for fn in ("MKnitro.xml", "Config.pul", "Loader.pul", "Code.pul"):
-                    x = x.replace(fn, "<span style=\"%s\">&nbsp;%s&nbsp;</span>" % (mono, fn))
-                p.setText(x)
-            else:
-                p.setText(_h.escape(pt))
-            p.setMinimumHeight(p.heightForWidth(640) if p.hasHeightForWidth() else 0)
-        self.discord_btn.setIconSize(QSize(16, 16))
-        self.discord_btn.setText(" " + t("openDiscordLabel"))
-        self.discord_btn.setIcon(self._discord_icon())
+        for (h, p), (ht, pt) in zip(self.cr_blocks, blocks):
+            h.setText(ht); p.setText(pt)
+        self.discord_btn.setText(t("openDiscordLabel"))
 
         self.su_back.setText(t("settingsBackBtn"))
         self.su_title.setText(t("setupTitle"))
@@ -767,19 +583,6 @@ class LauncherWindow(QMainWindow):
         self.su_lbl_dolphin.setText(t("labelSetupDolphin"))
         self.su_lbl_iso.setText(t("labelSetupIso"))
         self.su_continue.setText(t("setupContinueLabel"))
-
-    def _discord_icon(self):
-        if not hasattr(self, "_dicon"):
-            from PySide6.QtSvg import QSvgRenderer
-            svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" fill="#1a0800">'
-                   '<path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>')
-            r = QSvgRenderer(svg.encode())
-            pm = QPixmap(32, 32); pm.fill(Qt.transparent)
-            p = QPainter(pm); p.setRenderHint(QPainter.Antialiasing)
-            r.render(p, QRectF(0, 5.5, 32, 21)); p.end()
-            pm.setDevicePixelRatio(2)
-            self._dicon = QIcon(pm)
-        return self._dicon
 
     # ------------------------------------------------------------ theme
     def _apply_theme(self, colors):
@@ -789,68 +592,45 @@ class LauncherWindow(QMainWindow):
                 pal[k] = v
         self.pal = pal
         p = pal
-        bst = _rgba(p['--blue'], 0.4)      # --border-strong
-        bor = "rgba(180,90,255,46)"        # --border
-        self.bg.base = QColor(p['--bg'])
         self.setStyleSheet(f"""
-        QWidget {{ color:{p['--text']}; font-family:'Inter','Segoe UI','Noto Sans',sans-serif; font-size:13px; }}
-        #root, QStackedWidget {{ background:transparent; }}
-        QToolTip {{ background:{p['--panel-hover']}; color:{p['--text']}; border:1px solid {bst}; padding:4px 8px; }}
-        #bar {{ background:rgba(6,10,19,240); border:0; border-bottom:1px solid {bor}; }}
-        #foot {{ background:transparent; border:0; border-top:1px solid {bor}; }}
-        #bar QLabel {{ background:transparent; }}
-        #brand {{ font-family:'Rajdhani'; font-size:17px; font-weight:700; }}
-        #pill {{ font-family:'JetBrains Mono','Consolas',monospace; color:{p['--text-dim']}; border:1px solid {bor};
-                 border-radius:10px; padding:0 9px; font-size:10.5px; }}
-        #tabs {{ background:{p['--bg-2']}; border:1px solid {bor}; border-radius:11px; }}
-        QPushButton#tab {{ background:transparent; border:1px solid transparent; border-radius:8px;
-                           padding:7px 16px; color:{p['--text-dim']}; font-weight:500; }}
+        QWidget {{ color:{p['--text']}; font-size:13px; }}
+        #root, QStackedWidget, QStackedWidget > QWidget {{ background:{p['--bg']}; }}
+        #bar {{ background:{p['--bg-2']}; border-bottom:1px solid {p['--panel-hover']}; }}
+        #brand {{ font-size:17px; font-weight:700; letter-spacing:1px; }}
+        #pill {{ color:{p['--text-dim']}; border:1px solid {p['--panel-hover']};
+                 border-radius:10px; padding:2px 9px; font-size:11px; }}
+        QPushButton#tab {{ background:transparent; border:0; border-radius:8px;
+                           padding:8px 16px; color:{p['--text-dim']}; font-weight:500; }}
         QPushButton#tab:hover {{ color:{p['--text']}; }}
-        QPushButton#tab:checked {{ background:{p['--panel-hover']}; color:{p['--text']}; border:1px solid {bst}; }}
-        QPushButton#primary {{ background:qlineargradient(x1:0,y1:0,x2:1,y2:0.3,stop:0 #ff6b00,stop:1 #ffa513);
-                               color:#1a0800; border:0; border-radius:11px; padding:0 26px; font-family:'Inter SemiBold','Inter'; font-weight:400; font-size:13.5px; }}
-        QPushButton#primary:hover {{ background:qlineargradient(x1:0,y1:0,x2:1,y2:0.3,stop:0 #ff7a14,stop:1 #ffb52e); }}
+        QPushButton#tab:checked {{ background:{p['--panel-hover']}; color:{p['--text']};
+                                    border:1px solid {p['--blue']}; }}
+        QPushButton#primary {{ background:{p['--blue']}; color:#1a0800; border:0;
+                               border-radius:11px; padding:12px 26px; font-weight:700; font-size:14px; }}
+        QPushButton#primary:hover {{ background:{p['--blue-2']}; }}
         QPushButton#primary:disabled {{ background:{p['--panel-hover']}; color:{p['--text-dim']}; }}
-        QPushButton#dghost {{ background:rgba(255,255,255,5); color:{p['--text-dim']}; border:1px solid {bor};
-                              border-radius:11px; padding:0 26px; font-family:'Inter SemiBold','Inter'; font-weight:400; font-size:13.5px; }}
-        QPushButton#dghost:hover {{ color:#ff8f8f; border-color:rgba(255,110,110,102); }}
-        QPushButton#back {{ color:{p['--cyan']}; background:{_rgba(p['--blue'],0.06)}; border:1px solid {bst};
-                            border-radius:9px; padding:7px 14px; font-family:'Inter SemiBold','Inter'; font-weight:400; font-size:12.5px; }}
-        QPushButton#back:hover {{ background:{_rgba(p['--blue'],0.14)}; }}
-        QPushButton#browse {{ color:{p['--cyan']}; background:transparent; border:1px solid {bst}; border-radius:9px;
-                              padding:0 16px; font-family:'Inter SemiBold','Inter'; font-weight:400; font-size:12px; }}
-        QPushButton#browse:hover {{ background:{_rgba(p['--blue'],0.1)}; }}
         QPushButton#ghost {{ background:{p['--panel']}; border:1px solid {p['--panel-hover']};
                              border-radius:10px; padding:10px 18px; font-weight:600; }}
-        QPushButton#card {{ background:{p['--panel']}; border:1px solid {bor}; border-radius:14px; text-align:left; }}
-        QPushButton#card:hover {{ background:{p['--panel-hover']}; border-color:{bst}; }}
-        #stat, #panel {{ background:{p['--panel']}; border:1px solid {bor}; border-radius:14px; }}
+        QPushButton#ghost:hover {{ background:{p['--panel-hover']}; }}
+        QPushButton#card {{ background:{p['--panel']}; border:1px solid {p['--panel-hover']};
+                            border-radius:14px; padding:8px; text-align:left; }}
+        QPushButton#card:hover {{ background:{p['--panel-hover']}; border-color:{p['--blue']}; }}
+        #stat, #panel {{ background:{p['--panel']}; border:1px solid {p['--panel-hover']}; border-radius:14px; }}
         #panel QLabel, #stat QLabel {{ background:transparent; border:0; }}
-        #cardIcon {{ background:{_rgba(p['--blue'],0.12)}; border:1px solid {bst}; border-radius:9px;
-                     color:{p['--cyan']}; font-size:16px; }}
-        #cardTitle {{ font-family:'Rajdhani'; font-size:16px; font-weight:700; background:transparent; }}
-        #cardDesc {{ color:{p['--text-dim']}; font-size:12.5px; background:transparent; }}
-        #statLabel {{ color:{p['--text-faint']}; font-size:11px; }}
-        #statVal {{ font-family:'JetBrains Mono','Consolas',monospace; font-size:17px; }}
-        #statVal[dim="true"] {{ color:{p['--text-faint']}; }}
-        #h2 {{ font-family:'Rajdhani'; font-size:26px; font-weight:700; background:transparent; }}
-        #tag {{ color:{p['--text-faint']}; font-size:13px; background:transparent; }}
-        #h4 {{ font-family:'Rajdhani'; font-size:17px; font-weight:700; color:{p['--cyan']}; }}
-        #cp {{ color:{p['--text-dim']}; font-size:13.5px; }}
-        #fieldLabel {{ color:{p['--text-dim']}; font-size:12.5px; font-family:'Inter SemiBold','Inter'; font-weight:400; background:transparent; }}
-        #dim {{ color:{p['--text-dim']}; font-size:13.5px; background:transparent; }}
-        #notice {{ color:{p['--text']}; background:{p['--panel-hover']}; border:1px solid {bst};
-                   border-radius:11px; padding:10px 14px; }}
-        QLineEdit, QComboBox, QPlainTextEdit {{ background:{p['--bg-2']}; border:1px solid {bor}; color:{p['--text']};
-                  font-family:'JetBrains Mono','Consolas',monospace; font-size:12.5px;
-                  border-radius:9px; padding:11px 14px; selection-background-color:{_rgba(p['--blue'],0.35)}; }}
-        QLineEdit:focus, QComboBox:focus {{ border-color:{p['--blue']}; }}
-        QComboBox::drop-down {{ border:0; width:26px; }}
-        QPlainTextEdit#mono {{ font-size:11.5px; color:{p['--text-dim']}; }}
-        QComboBox QAbstractItemView {{ background:{p['--panel']}; selection-background-color:{p['--panel-hover']}; border:1px solid {bst}; }}
-        QCheckBox {{ spacing:10px; color:{p['--text-dim']}; font-size:13px; background:transparent; }}
-        QCheckBox::indicator {{ width:15px; height:15px; border-radius:3px; border:1px solid {bst}; background:{p['--bg-2']}; }}
-        QCheckBox::indicator:checked {{ background:{p['--blue']}; border-color:{p['--blue']}; }}
+        #cardTitle {{ font-size:15px; font-weight:700; background:transparent; }}
+        #cardDesc {{ color:{p['--text-dim']}; background:transparent; }}
+        #statLabel {{ color:{p['--text-faint']}; font-size:10.5px; letter-spacing:1px; }}
+        #statVal {{ font-size:15px; font-weight:700; }}
+        #statVal[dim="true"] {{ color:{p['--text-dim']}; font-weight:500; }}
+        #h2 {{ font-size:22px; font-weight:700; }}
+        #h4 {{ font-size:14px; font-weight:700; color:{p['--cyan']}; margin-top:8px; }}
+        #dim {{ color:{p['--text-dim']}; }}
+        #notice {{ color:{p['--text']}; background:{p['--panel']}; border:1px solid {p['--panel-hover']};
+                   border-radius:10px; padding:10px 14px; }}
+        QLineEdit, QComboBox, QPlainTextEdit {{ background:{p['--bg-2']}; border:1px solid {p['--panel-hover']};
+                  border-radius:8px; padding:8px 10px; selection-background-color:{p['--blue']}; }}
+        QPlainTextEdit#mono {{ font-family:Consolas,'DejaVu Sans Mono',monospace; font-size:11.5px; color:{p['--text-dim']}; }}
+        QComboBox QAbstractItemView {{ background:{p['--panel']}; selection-background-color:{p['--panel-hover']}; }}
+        QCheckBox {{ spacing:8px; padding:4px 0; }}
         QProgressBar {{ background:{p['--bg-2']}; border:0; border-radius:3px; }}
         QProgressBar::chunk {{ background:{p['--blue']}; border-radius:3px; }}
         QDialog {{ background:{p['--panel']}; }}
@@ -979,6 +759,7 @@ class LauncherWindow(QMainWindow):
             self.toast(res.get("message") or self.t("toastLaunched"))
         else:
             self.toast((res or {}).get("error") or self.t("toastCouldNotLaunch"), True)
+            self.show_screen("setup")
 
     # ------------------------------------------------------------ launcher self-update
     def _startup_update_check(self):
@@ -1048,10 +829,9 @@ class LauncherWindow(QMainWindow):
 def run(api, main_module):
     """Entry point used by main.py. Returns the process exit code."""
     app = QApplication.instance() or QApplication(sys.argv)
-    load_fonts(main_module.resource_path)
     font = QFont()
-    font.setFamilies(["Inter", "Segoe UI", "Noto Sans", "DejaVu Sans"])
-    font.setPixelSize(13)
+    font.setFamilies(["Segoe UI", "Inter", "Noto Sans", "DejaVu Sans"])
+    font.setPointSize(10)
     app.setFont(font)
     win = LauncherWindow(api, main_module)
     # Centre on the primary screen.

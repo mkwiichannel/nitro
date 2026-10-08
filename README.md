@@ -51,13 +51,6 @@ settings, and folder structures by hand.
 4. Press Play. Updates are checked every time the launcher opens.
 
 
-## Building
-
-The launcher is a C# / WPF app (.NET 8). Install the .NET 8 SDK on your build PC
-only, then run `build.bat`. The result is a single self-contained
-`dist\MarioKartNitro.exe`. The older Python builds remain as `build_qt.bat` and
-`build_web.bat`.
-
 ## How updates work
 
 | What | Source | How it applies |
