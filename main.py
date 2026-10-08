@@ -2348,17 +2348,45 @@ def _start_webview_with_webview2_check():
         _apply_optional_webview2_args()
         webview.start(gui="edgechromium", private_mode=False, storage_path=storage_path)
     except Exception as e:
-        _show_windows_message(
-            "Mario Kart Nitro",
-            "Mario Kart Nitro needs the Microsoft Edge WebView2 Runtime "
-            "to display its window, and it looks like it isn't "
-            "installed on this PC (this is also the real cause behind "
-            "the app seeming to randomly freeze on some computers).\n\n"
-            "Download it here (free, about a minute):\n"
-            f"{WEBVIEW2_DOWNLOAD_URL}\n\n"
-            "After installing it, just reopen Mario Kart Nitro.\n\n"
-            f"(Technical detail: {e})"
-        )
+        _offer_webview2_install(e)
+
+
+def _offer_webview2_install(error):
+    """No usable WebView2 runtime: offer to install Microsoft's small
+    bootstrapper right now (Yes/No), then start the launcher again. Falls back
+    to a message with the download link if the user declines or it fails."""
+    fallback = (
+        "Mario Kart Nitro needs the Microsoft Edge WebView2 Runtime to display its "
+        "window, and it isn't installed (or can't start) on this PC.\n\n"
+        "Download it here (free, about a minute):\n"
+        f"{WEBVIEW2_DOWNLOAD_URL}\n\n"
+        "After installing it, just reopen Mario Kart Nitro.\n\n"
+        f"(Technical detail: {error})"
+    )
+    if os.name != "nt":
+        _show_windows_message("Mario Kart Nitro", fallback)
+        return
+    try:
+        import ctypes
+        MB_YESNO, MB_ICONQUESTION, IDYES = 0x4, 0x20, 6
+        ask = ctypes.windll.user32.MessageBoxW(
+            0,
+            "Mario Kart Nitro needs the Microsoft Edge WebView2 Runtime, which is "
+            "missing on this PC.\n\nInstall it now? (free, from Microsoft, needs internet)",
+            "Mario Kart Nitro", MB_YESNO | MB_ICONQUESTION)
+        if ask != IDYES:
+            _show_windows_message("Mario Kart Nitro", fallback)
+            return
+        setup = os.path.join(tempfile.gettempdir(), "MicrosoftEdgeWebview2Setup.exe")
+        with urllib.request.urlopen(_browser_request(WEBVIEW2_DOWNLOAD_URL), timeout=60) as r, \
+                open(setup, "wb") as f:
+            shutil.copyfileobj(r, f)
+        subprocess.run([setup, "/silent", "/install"], timeout=600, check=False)
+        env = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT="1")
+        args = [sys.executable] + ([] if getattr(sys, "frozen", False) else [os.path.abspath(__file__)])
+        subprocess.Popen(args + sys.argv[1:], env=env, close_fds=True)
+    except Exception as e2:  # noqa: BLE001
+        _show_windows_message("Mario Kart Nitro", fallback + f"\n\n(Automatic install failed: {e2})")
 
 
 def _close_splash_screen():
