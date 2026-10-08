@@ -397,13 +397,13 @@ def _set_progress(**kwargs):
 
 class Api:
     def __init__(self):
-        self.window = None  # set after window creation, needed for dialogs
+        self._window = None  # set after window creation, needed for dialogs
         # Native (Qt) UI mode: no webview window exists, so anything that
-        # used to reach into self.window goes through these two optional
+        # used to reach into self._window goes through these two optional
         # callables instead (both must be thread-safe; native_ui.py
         # implements them with Qt signals). None in the web-UI modes.
-        self.on_launcher_update_error = None  # callable(message: str)
-        self.on_request_quit = None           # callable()
+        self._on_launcher_update_error = None  # callable(message: str)
+        self._on_request_quit = None           # callable()
         self._pending_sync = None
 
     # ---------- state ----------
@@ -797,14 +797,14 @@ class Api:
 
     # ---------- file dialogs ----------
     def browse_path(self, kind, file_types=None):
-        if self.window is None:
+        if self._window is None:
             return None
         try:
             if kind == "folder":
-                result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+                result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
             else:
                 types = tuple(file_types) if file_types else ()
-                result = self.window.create_file_dialog(
+                result = self._window.create_file_dialog(
                     webview.OPEN_DIALOG, allow_multiple=False, file_types=types
                 )
             if result:
@@ -815,9 +815,9 @@ class Api:
 
     # ---------- mods ----------
     def import_mod(self):
-        if self.window is None:
+        if self._window is None:
             return {"error": "Window not ready"}
-        result = self.window.create_file_dialog(
+        result = self._window.create_file_dialog(
             webview.OPEN_DIALOG, allow_multiple=False,
             file_types=("Riivolution XML (*.xml)", "All files (*.*)"),
         )
@@ -853,9 +853,9 @@ class Api:
         folders (e.g. MKWiiTwo, ctgpr) — wherever they already live on
         disk. No copying: Dolphin's preset just reads directly from
         here at launch, so this is a one-time pointer, not a transfer."""
-        if self.window is None:
+        if self._window is None:
             return {"error": "Window not ready"}
-        result = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
         if not result:
             return {"ok": False, "cancelled": True}
 
@@ -1754,10 +1754,10 @@ class Api:
         return {"ok": True}
 
     def quit_app(self):
-        if self.on_request_quit is not None:
-            self.on_request_quit()
-        elif self.window is not None:
-            self.window.destroy()
+        if self._on_request_quit is not None:
+            self._on_request_quit()
+        elif self._window is not None:
+            self._window.destroy()
         return {"ok": True}
 
     # ---------- whole-launcher self-update (manifest.json's launcher_nitro) ----------
@@ -1818,16 +1818,16 @@ class Api:
         already uses) so the popup shows a real message instead of
         hanging on "Installing..." forever."""
         def fail(message):
-            if self.on_launcher_update_error is not None:
+            if self._on_launcher_update_error is not None:
                 try:
-                    self.on_launcher_update_error(str(message))
+                    self._on_launcher_update_error(str(message))
                 except Exception:
                     pass
                 return
-            if self.window is not None:
+            if self._window is not None:
                 try:
                     safe = json.dumps(str(message))
-                    self.window.evaluate_js(
+                    self._window.evaluate_js(
                         "(function(){ var m=document.getElementById('launcherUpdateMsg'); "
                         "var b=document.getElementById('launcherUpdateBtn'); "
                         f"if(m) m.textContent = {safe}; if(b) b.disabled=false; }})();"
@@ -1957,14 +1957,14 @@ class Api:
         # keep retrying regardless, this just avoids a near-certain
         # first failed attempt in the common case.
         time.sleep(0.5)
-        if self.on_request_quit is not None:
+        if self._on_request_quit is not None:
             try:
-                self.on_request_quit()
+                self._on_request_quit()
             except Exception:
                 pass
-        elif self.window is not None:
+        elif self._window is not None:
             try:
-                self.window.destroy()
+                self._window.destroy()
             except Exception:
                 pass
 
@@ -2000,18 +2000,18 @@ def _background_remote_update_loop(api, interval_seconds=120):
 
             ui_path, ui_changed = Api._apply_remote_ui(cfg)
 
-            if api.window is not None:
+            if api._window is not None:
                 if ui_changed:
                     # A real layout push -- swap the already-open
                     # window straight onto the new page. No restart.
-                    api.window.load_url(ui_path)
+                    api._window.load_url(ui_path)
                 else:
                     # Colors/logo/banner/default Mii don't need a page
                     # reload -- just ask the page already open to
                     # re-pull state and re-apply them live, the same
                     # function it already calls on its own startup.
                     try:
-                        api.window.evaluate_js("typeof refreshState === 'function' && refreshState()")
+                        api._window.evaluate_js("typeof refreshState === 'function' && refreshState()")
                     except Exception:
                         pass
         except Exception:
@@ -2881,7 +2881,7 @@ def _run_web(api, mii_only=False):
         background_color="#060a13",
         js_api=api,
     )
-    api.window = window
+    api._window = window
     window.events.shown += _close_splash_screen
     if mii_only:
         def _open_mii():

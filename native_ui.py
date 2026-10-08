@@ -120,8 +120,8 @@ class LauncherWindow(QMainWindow):
         self.bridge.launcher_update_error.connect(self._on_launcher_update_error)
         self.bridge.quit_requested.connect(QApplication.instance().quit)
         self.bridge.launcher_update_available.connect(self._show_launcher_popup)
-        api.on_launcher_update_error = self.bridge.launcher_update_error.emit
-        api.on_request_quit = self.bridge.quit_requested.emit
+        api._on_launcher_update_error = self.bridge.launcher_update_error.emit
+        api._on_request_quit = self.bridge.quit_requested.emit
 
         self.setWindowTitle("Mario Kart Nitro — Launcher")
         self.resize(1100, 760)
