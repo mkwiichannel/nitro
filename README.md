@@ -43,7 +43,7 @@ settings, and folder structures by hand.
 
 ## Requirements
 
-- Windows 10/11 (with the WebView2 runtime, included in current Windows)
+- Windows 10/11 (nothing else to install - the launcher is a single standalone `.exe`)
 - [Dolphin Emulator](https://dolphin-emu.org/) with Riivolution support
 - A legally obtained Mario Kart Wii ISO/WBFS (not provided here or anywhere by
   this project)
