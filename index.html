@@ -507,6 +507,7 @@
       <div class="mii-section" id="miitab-extras">
         <div class="mii-row2"><div class="mii-field"><label id="miiLblGlasses">Glasses</label><select id="miiGlassType"></select></div><div class="mii-field"><label id="miiLblGlassesColor">Glasses color</label><select id="miiGlassColor"></select></div></div>
         <div class="mii-row2"><div class="mii-field"><label id="miiLblMustache">Mustache</label><select id="miiMustache"></select></div><div class="mii-field"><label id="miiLblBeard">Beard</label><select id="miiBeard"></select></div></div>
+        <div class="mii-field"><label id="miiLblBeardColor">Beard color</label><select id="miiBeardColor"></select></div>
         <div class="mii-field"><label id="miiLblCreator">Creator name</label><input type="text" id="miiCreator" maxlength="10"></div>
         <div class="mii-status" id="miiStatus"></div>
       </div>
@@ -742,7 +743,8 @@ function fillSelect(id, arr) {
   "miiGlassType",
   "miiGlassColor",
   "miiMustache",
-  "miiBeard"
+  "miiBeard",
+  "miiBeardColor"
 ].forEach((id, i) => {
   const map = [
     "fav",
@@ -759,7 +761,8 @@ function fillSelect(id, arr) {
     "glass",
     "glassColor",
     "mustache",
-    "beard"
+    "beard",
+    "hair"
   ];
 
   fillSelect(id, MII_ENUMS[map[i]]);
@@ -1176,6 +1179,11 @@ function loadMiiForm(m) {
     g("beardType") ?? 0
   );
 
+  miiSet(
+    "miiBeardColor",
+    miiColorCanonicalToWii(MII_HAIRS_COLORS_TABLE, g("beardColor") ?? 0)
+  );
+
   const heightV =
     document.getElementById("miiHeightV");
 
@@ -1286,6 +1294,7 @@ async function applyMiiForm() {
 
   set("mustacheType", miiVal("miiMustache"));
   set("beardType", miiVal("miiBeard"));
+  set("beardColor", miiVal("miiBeardColor")); /* identity 0-7, verified */
 }
 
 /* =========================================================
@@ -1693,6 +1702,7 @@ miiGridPicker("glasses", "miiGlassType");
 miiSwatchPicker("miiGlassColor", MII_SWATCHES.glass, MII_ENUMS.glassColor);
 miiGridPicker("mustache", "miiMustache");
 miiGridPicker("beard", "miiBeard");
+miiSwatchPicker("miiBeardColor", MII_SWATCHES.hair, MII_ENUMS.hair);
 
 /* Live pictures: the baked sprites are only placeholders. Every style picture
    is re-rendered on a copy of the Mii being edited (only the tab that is open,
@@ -1754,19 +1764,15 @@ async function miiThumbsRun(){
       const i = miiTileOrder(p).find(i => p.items[i]._key !== key);
       if (i !== undefined){ job = [p, i]; break; }
     }
-    if (!job && performance.now() - miiLastActivity > 700){
-      /* idle: prepare the first screen of the other tabs */
+    if (!job){
+      /* then every other tab, so switching tabs is instant */
       for (const p of miiPickers){
         if (!p.cat || act.includes(p)) continue;
-        const i = p.items.findIndex((b, n) => n < 18 && b._key !== key);
+        const i = p.items.findIndex(b => b._key !== key);
         if (i >= 0){ job = [p, i]; break; }
       }
     }
-    if (!job){
-      if (miiPickers.some(q => q.cat && q.items.some((b, n) => n < 18 && b._key !== key)) &&
-          !act.length === false) { await miiSleep(250); continue; }
-      return;
-    }
+    if (!job) return;
     const [p, i] = job, b = p.items[i];
     while (miiRenderBusy || miiRenderAgain) await miiSleep(30);
     if (key !== miiSnapKey) continue;
@@ -1782,6 +1788,7 @@ async function miiThumbsRun(){
       if (!m || m.key !== key){
         m = clones[p.cat] = { key, mii: await Mii.create(snap) };
         if (bald) m.mii.set("hairType", 30);
+        if (bald && p.cat !== "glasses") m.mii.set("glassesType", 0);
       }
       for (const [k, v] of Object.entries(fields(i))) m.mii.set(k, v);
       if (!b._cv){
@@ -1802,7 +1809,7 @@ async function miiThumbsRun(){
       miiRenderBusy = false;
       if (miiRenderAgain) renderCurrentMii();
     }
-    await miiSleep(performance.now() - miiLastActivity > 700 ? 20 : 0);
+    await miiSleep(4);
   }
 }
 
@@ -2051,7 +2058,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Size", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Spacing",
       miiLblNoseType:"Nose type", miiLblNoseSize:"Size", miiLblNoseVert:"Vertical",
       miiLblMouthStyle:"Mouth style", miiLblLipColorField:"Color", miiLblLipSize:"Size", miiLblLipVert:"Vertical",
-      miiLblGlasses:"Glasses", miiLblGlassesColor:"Glasses color", miiLblMustache:"Mustache", miiLblBeard:"Beard",
+      miiLblGlasses:"Glasses", miiLblGlassesColor:"Glasses color", miiLblMustache:"Mustache", miiLblBeard:"Beard", miiLblBeardColor:"Beard – Color",
       miiLblCreator:"Creator name",
       launcherUpdateMsg:"A new launcher version is available.", launcherUpdateBtn:"Update!",
       launcherUpdateInstalling:"Downloading and installing — this window will restart automatically.",
@@ -2111,7 +2118,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Größe", miiLblBrowVert:"Vertikal", miiLblBrowSpace:"Abstand",
       miiLblNoseType:"Nasentyp", miiLblNoseSize:"Größe", miiLblNoseVert:"Vertikal",
       miiLblMouthStyle:"Mund", miiLblLipColorField:"Farbe", miiLblLipSize:"Größe", miiLblLipVert:"Vertikal",
-      miiLblGlasses:"Brille", miiLblGlassesColor:"Brillenfarbe", miiLblMustache:"Schnurrbart", miiLblBeard:"Bart",
+      miiLblGlasses:"Brille", miiLblGlassesColor:"Brillenfarbe", miiLblMustache:"Schnurrbart", miiLblBeard:"Bart", miiLblBeardColor:"Bart – Farbe",
       miiLblCreator:"Ersteller-Name",
       launcherUpdateMsg:"Eine neue Launcher-Version ist verfügbar.", launcherUpdateBtn:"Aktualisieren!",
       launcherUpdateInstalling:"Wird heruntergeladen und installiert — dieses Fenster startet automatisch neu.",
@@ -2171,7 +2178,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Taille", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espacement",
       miiLblNoseType:"Type de nez", miiLblNoseSize:"Taille", miiLblNoseVert:"Vertical",
       miiLblMouthStyle:"Bouche", miiLblLipColorField:"Couleur", miiLblLipSize:"Taille", miiLblLipVert:"Vertical",
-      miiLblGlasses:"Lunettes", miiLblGlassesColor:"Couleur des lunettes", miiLblMustache:"Moustache", miiLblBeard:"Barbe",
+      miiLblGlasses:"Lunettes", miiLblGlassesColor:"Couleur des lunettes", miiLblMustache:"Moustache", miiLblBeard:"Barbe", miiLblBeardColor:"Barbe – Couleur",
       miiLblCreator:"Nom du créateur",
       launcherUpdateMsg:"Une nouvelle version du launcher est disponible.", launcherUpdateBtn:"Mettre à jour !",
       launcherUpdateInstalling:"Téléchargement et installation en cours — cette fenêtre redémarrera automatiquement.",
@@ -2231,7 +2238,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Tamaño", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espaciado",
       miiLblNoseType:"Tipo de nariz", miiLblNoseSize:"Tamaño", miiLblNoseVert:"Vertical",
       miiLblMouthStyle:"Boca", miiLblLipColorField:"Color", miiLblLipSize:"Tamaño", miiLblLipVert:"Vertical",
-      miiLblGlasses:"Gafas", miiLblGlassesColor:"Color de gafas", miiLblMustache:"Bigote", miiLblBeard:"Barba",
+      miiLblGlasses:"Gafas", miiLblGlassesColor:"Color de gafas", miiLblMustache:"Bigote", miiLblBeard:"Barba", miiLblBeardColor:"Barba – Color",
       miiLblCreator:"Nombre del creador",
       launcherUpdateMsg:"Hay una nueva versión del launcher disponible.", launcherUpdateBtn:"¡Actualizar!",
       launcherUpdateInstalling:"Descargando e instalando — esta ventana se reiniciará automáticamente.",
@@ -2291,7 +2298,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Dimensione", miiLblBrowVert:"Verticale", miiLblBrowSpace:"Distanza",
       miiLblNoseType:"Tipo di naso", miiLblNoseSize:"Dimensione", miiLblNoseVert:"Verticale",
       miiLblMouthStyle:"Bocca", miiLblLipColorField:"Colore", miiLblLipSize:"Dimensione", miiLblLipVert:"Verticale",
-      miiLblGlasses:"Occhiali", miiLblGlassesColor:"Colore occhiali", miiLblMustache:"Baffi", miiLblBeard:"Barba",
+      miiLblGlasses:"Occhiali", miiLblGlassesColor:"Colore occhiali", miiLblMustache:"Baffi", miiLblBeard:"Barba", miiLblBeardColor:"Barba – Colore",
       miiLblCreator:"Nome del creatore",
       launcherUpdateMsg:"È disponibile una nuova versione del launcher.", launcherUpdateBtn:"Aggiorna!",
       launcherUpdateInstalling:"Download e installazione in corso — questa finestra si riavvierà automaticamente.",
@@ -2351,7 +2358,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Tamanho", miiLblBrowVert:"Vertical", miiLblBrowSpace:"Espaçamento",
       miiLblNoseType:"Tipo de nariz", miiLblNoseSize:"Tamanho", miiLblNoseVert:"Vertical",
       miiLblMouthStyle:"Boca", miiLblLipColorField:"Cor", miiLblLipSize:"Tamanho", miiLblLipVert:"Vertical",
-      miiLblGlasses:"Óculos", miiLblGlassesColor:"Cor dos óculos", miiLblMustache:"Bigode", miiLblBeard:"Barba",
+      miiLblGlasses:"Óculos", miiLblGlassesColor:"Cor dos óculos", miiLblMustache:"Bigode", miiLblBeard:"Barba", miiLblBeardColor:"Barba – Cor",
       miiLblCreator:"Nome do criador",
       launcherUpdateMsg:"Uma nova versão do launcher está disponível.", launcherUpdateBtn:"Atualizar!",
       launcherUpdateInstalling:"Baixando e instalando — esta janela será reiniciada automaticamente.",
@@ -2411,7 +2418,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Grootte", miiLblBrowVert:"Verticaal", miiLblBrowSpace:"Afstand",
       miiLblNoseType:"Neustype", miiLblNoseSize:"Grootte", miiLblNoseVert:"Verticaal",
       miiLblMouthStyle:"Mond", miiLblLipColorField:"Kleur", miiLblLipSize:"Grootte", miiLblLipVert:"Verticaal",
-      miiLblGlasses:"Bril", miiLblGlassesColor:"Brilkleur", miiLblMustache:"Snor", miiLblBeard:"Baard",
+      miiLblGlasses:"Bril", miiLblGlassesColor:"Brilkleur", miiLblMustache:"Snor", miiLblBeard:"Baard", miiLblBeardColor:"Baard – Kleur",
       miiLblCreator:"Naam maker",
       launcherUpdateMsg:"Er is een nieuwe launcherversie beschikbaar.", launcherUpdateBtn:"Updaten!",
       launcherUpdateInstalling:"Downloaden en installeren — dit venster herstart automatisch.",
@@ -2471,7 +2478,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Rozmiar", miiLblBrowVert:"Pionowo", miiLblBrowSpace:"Odstęp",
       miiLblNoseType:"Typ nosa", miiLblNoseSize:"Rozmiar", miiLblNoseVert:"Pionowo",
       miiLblMouthStyle:"Usta", miiLblLipColorField:"Kolor", miiLblLipSize:"Rozmiar", miiLblLipVert:"Pionowo",
-      miiLblGlasses:"Okulary", miiLblGlassesColor:"Kolor okularów", miiLblMustache:"Wąsy", miiLblBeard:"Broda",
+      miiLblGlasses:"Okulary", miiLblGlassesColor:"Kolor okularów", miiLblMustache:"Wąsy", miiLblBeard:"Broda", miiLblBeardColor:"Broda – Kolor",
       miiLblCreator:"Nazwa twórcy",
       launcherUpdateMsg:"Dostępna jest nowa wersja launchera.", launcherUpdateBtn:"Zaktualizuj!",
       launcherUpdateInstalling:"Pobieranie i instalowanie — to okno uruchomi się ponownie automatycznie.",
@@ -2531,7 +2538,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Boyut", miiLblBrowVert:"Dikey", miiLblBrowSpace:"Aralık",
       miiLblNoseType:"Burun tipi", miiLblNoseSize:"Boyut", miiLblNoseVert:"Dikey",
       miiLblMouthStyle:"Ağız stili", miiLblLipColorField:"Renk", miiLblLipSize:"Boyut", miiLblLipVert:"Dikey",
-      miiLblGlasses:"Gözlük", miiLblGlassesColor:"Gözlük rengi", miiLblMustache:"Bıyık", miiLblBeard:"Sakal",
+      miiLblGlasses:"Gözlük", miiLblGlassesColor:"Gözlük rengi", miiLblMustache:"Bıyık", miiLblBeard:"Sakal", miiLblBeardColor:"Sakal – Renk",
       miiLblCreator:"Oluşturan adı",
       launcherUpdateMsg:"Yeni bir launcher sürümü mevcut.", launcherUpdateBtn:"Güncelle!",
       launcherUpdateInstalling:"İndiriliyor ve kuruluyor — bu pencere otomatik olarak yeniden başlayacak.",
@@ -2591,7 +2598,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Размер", miiLblBrowVert:"Вертикаль", miiLblBrowSpace:"Расстояние",
       miiLblNoseType:"Тип носа", miiLblNoseSize:"Размер", miiLblNoseVert:"Вертикаль",
       miiLblMouthStyle:"Рот", miiLblLipColorField:"Цвет", miiLblLipSize:"Размер", miiLblLipVert:"Вертикаль",
-      miiLblGlasses:"Очки", miiLblGlassesColor:"Цвет очков", miiLblMustache:"Усы", miiLblBeard:"Борода",
+      miiLblGlasses:"Очки", miiLblGlassesColor:"Цвет очков", miiLblMustache:"Усы", miiLblBeard:"Борода", miiLblBeardColor:"Борода – Цвет",
       miiLblCreator:"Имя создателя",
       launcherUpdateMsg:"Доступна новая версия лаунчера.", launcherUpdateBtn:"Обновить!",
       launcherUpdateInstalling:"Загрузка и установка — это окно перезапустится автоматически.",
@@ -2651,7 +2658,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"大きさ", miiLblBrowVert:"縦位置", miiLblBrowSpace:"間隔",
       miiLblNoseType:"鼻のタイプ", miiLblNoseSize:"大きさ", miiLblNoseVert:"縦位置",
       miiLblMouthStyle:"口", miiLblLipColorField:"色", miiLblLipSize:"大きさ", miiLblLipVert:"縦位置",
-      miiLblGlasses:"メガネ", miiLblGlassesColor:"メガネの色", miiLblMustache:"口ひげ", miiLblBeard:"ひげ",
+      miiLblGlasses:"メガネ", miiLblGlassesColor:"メガネの色", miiLblMustache:"口ひげ", miiLblBeard:"ひげ", miiLblBeardColor:"ひげ – 色",
       miiLblCreator:"作成者名",
       launcherUpdateMsg:"新しいランチャーのバージョンが利用可能です。", launcherUpdateBtn:"更新する！",
       launcherUpdateInstalling:"ダウンロードしてインストール中です — このウィンドウは自動的に再起動します。",
@@ -2711,7 +2718,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"크기", miiLblBrowVert:"수직", miiLblBrowSpace:"간격",
       miiLblNoseType:"코 유형", miiLblNoseSize:"크기", miiLblNoseVert:"수직",
       miiLblMouthStyle:"입 스타일", miiLblLipColorField:"색상", miiLblLipSize:"크기", miiLblLipVert:"수직",
-      miiLblGlasses:"안경", miiLblGlassesColor:"안경 색상", miiLblMustache:"콧수염", miiLblBeard:"턱수염",
+      miiLblGlasses:"안경", miiLblGlassesColor:"안경 색상", miiLblMustache:"콧수염", miiLblBeard:"턱수염", miiLblBeardColor:"턱수염 – 색상",
       miiLblCreator:"작성자 이름",
       launcherUpdateMsg:"새 런처 버전을 사용할 수 있습니다.", launcherUpdateBtn:"업데이트!",
       launcherUpdateInstalling:"다운로드 및 설치 중입니다 — 이 창은 자동으로 재시작됩니다.",
@@ -2771,7 +2778,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"大小", miiLblBrowVert:"垂直位置", miiLblBrowSpace:"间距",
       miiLblNoseType:"鼻型", miiLblNoseSize:"大小", miiLblNoseVert:"垂直位置",
       miiLblMouthStyle:"嘴型", miiLblLipColorField:"颜色", miiLblLipSize:"大小", miiLblLipVert:"垂直位置",
-      miiLblGlasses:"眼镜", miiLblGlassesColor:"眼镜颜色", miiLblMustache:"胡子", miiLblBeard:"胡须",
+      miiLblGlasses:"眼镜", miiLblGlassesColor:"眼镜颜色", miiLblMustache:"胡子", miiLblBeard:"胡须", miiLblBeardColor:"胡须 – 颜色",
       miiLblCreator:"创建者名称",
       launcherUpdateMsg:"有新的启动器版本可用。", launcherUpdateBtn:"更新！",
       launcherUpdateInstalling:"正在下载并安装——此窗口将自动重启。",
@@ -2831,7 +2838,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"الحجم", miiLblBrowVert:"عمودي", miiLblBrowSpace:"التباعد",
       miiLblNoseType:"نوع الأنف", miiLblNoseSize:"الحجم", miiLblNoseVert:"عمودي",
       miiLblMouthStyle:"الفم", miiLblLipColorField:"اللون", miiLblLipSize:"الحجم", miiLblLipVert:"عمودي",
-      miiLblGlasses:"النظارات", miiLblGlassesColor:"لون النظارات", miiLblMustache:"الشنب", miiLblBeard:"اللحية",
+      miiLblGlasses:"النظارات", miiLblGlassesColor:"لون النظارات", miiLblMustache:"الشنب", miiLblBeard:"اللحية", miiLblBeardColor:"اللحية – اللون",
       miiLblCreator:"اسم المنشئ",
       launcherUpdateMsg:"يتوفر إصدار جديد من المشغّل.", launcherUpdateBtn:"تحديث!",
       launcherUpdateInstalling:"جاري التنزيل والتثبيت — ستُعاد تشغيل هذه النافذة تلقائيًا.",
@@ -2891,7 +2898,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Storlek", miiLblBrowVert:"Vertikal", miiLblBrowSpace:"Avstånd",
       miiLblNoseType:"Näsa-typ", miiLblNoseSize:"Storlek", miiLblNoseVert:"Vertikal",
       miiLblMouthStyle:"Mun", miiLblLipColorField:"Färg", miiLblLipSize:"Storlek", miiLblLipVert:"Vertikal",
-      miiLblGlasses:"Glasögon", miiLblGlassesColor:"Glasögonfärg", miiLblMustache:"Mustasch", miiLblBeard:"Skägg",
+      miiLblGlasses:"Glasögon", miiLblGlassesColor:"Glasögonfärg", miiLblMustache:"Mustasch", miiLblBeard:"Skägg", miiLblBeardColor:"Skägg – Färg",
       miiLblCreator:"Skaparens namn",
       launcherUpdateMsg:"En ny launcher-version är tillgänglig.", launcherUpdateBtn:"Uppdatera!",
       launcherUpdateInstalling:"Laddar ner och installerar — det här fönstret startar om automatiskt.",
@@ -2951,7 +2958,7 @@ function toast(msg, isError, sticky) {
       miiLblBrowSize:"Koko", miiLblBrowVert:"Pysty", miiLblBrowSpace:"Väli",
       miiLblNoseType:"Nenän tyyppi", miiLblNoseSize:"Koko", miiLblNoseVert:"Pysty",
       miiLblMouthStyle:"Suu", miiLblLipColorField:"Väri", miiLblLipSize:"Koko", miiLblLipVert:"Pysty",
-      miiLblGlasses:"Silmälasit", miiLblGlassesColor:"Silmälasien väri", miiLblMustache:"Viikset", miiLblBeard:"Parta",
+      miiLblGlasses:"Silmälasit", miiLblGlassesColor:"Silmälasien väri", miiLblMustache:"Viikset", miiLblBeard:"Parta", miiLblBeardColor:"Parta – Väri",
       miiLblCreator:"Luojan nimi",
       launcherUpdateMsg:"Uusi launcher-versio on saatavilla.", launcherUpdateBtn:"Päivitä!",
       launcherUpdateInstalling:"Ladataan ja asennetaan — tämä ikkuna käynnistyy automaattisesti uudelleen.",
