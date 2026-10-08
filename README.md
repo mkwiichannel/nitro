@@ -4,7 +4,6 @@
 
 # Mario Kart Nitro
 
-**A custom Mario Kart Wii mod + desktop launcher, built on Riivolution and Dolphin.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE.txt)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#requirements)
