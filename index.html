@@ -406,7 +406,7 @@
     will-change: transform;
     animation: fogdrift 18s ease-in-out infinite alternate;
   }
-  body.idle *, body.idle *::before, body.idle *::after{ animation-play-state:paused !important; }
+  body.idle::after, body.idle .window-glow::after{ animation-play-state:paused !important; }
   @keyframes fogdrift{
     from{ transform: translate(-2%, 0) scale(1); }
     to{ transform: translate(2%, -1%) scale(1.06); }
