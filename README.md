@@ -29,14 +29,10 @@ settings, and folder structures by hand.
   that changed are downloaded and every file is hash-checked.
 - **Self-updating launcher** – new launcher builds are applied in place, with no
   reinstalling or manual replacing.
-- **Update history** – hover the version pill to see when the modpack and the
-  launcher were last updated.
 - **Mii editor** – a live close-up preview with visual pickers for every part
   (face, hair, brows, eyes, nose, mouth, beard, glasses, …), colour swatches and
-  sliders. Miis can be imported and exported as standard Wii Mii data.
+  sliders.
 - **Fits your window** – every page fits the window without page scrolling
-  (only the Mii part table scrolls).
-- **Home page** – full-width banner with Play and Close buttons.
 - **16 languages** – see `translations.json`.
 - **Light on resources** – a single standalone `.exe`, tuned to load fast and stay
   smooth on modest hardware.
@@ -55,8 +51,6 @@ settings, and folder structures by hand.
 3. The mod content is downloaded automatically.
 4. Press Play. Updates are checked every time the launcher opens.
 
-Windows SmartScreen may warn about the app because it is not code-signed; choose
-*More info → Run anyway*.
 
 ## How updates work
 
@@ -70,7 +64,7 @@ config and shown on the version pill.
 
 
 
----
+
 
 ## License
 
