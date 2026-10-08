@@ -2244,6 +2244,24 @@ def _acquire_single_instance_lock():
         return True  # never let this check itself be the reason the app won't start
 
 
+def _focus_existing_window():
+    """Restores and focuses the already-running launcher window, if any."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        user32.FindWindowW.restype = ctypes.c_void_p
+        user32.ShowWindow.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        user32.SetForegroundWindow.argtypes = [ctypes.c_void_p]
+        hwnd = user32.FindWindowW(None, "Mario Kart Nitro \u2014 Launcher")
+        if hwnd:
+            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
 def _show_windows_message(title, message):
     """A plain native Windows message box via ctypes -- no extra
     dependency, works even if the webview itself never manages to
@@ -2605,14 +2623,14 @@ def _restart_launcher():
     os._exit(0)
 
 
-def _page_load_watchdog(window, loaded, wait_after_shown=10):
+def _page_load_watchdog(window, loaded, wait_after_shown=25):
     """The window can appear but its page never load (a stuck WebView2
     start). Seen as "it does nothing, then works on the 2nd or 3rd try".
     If the page hasn't finished loading wait_after_shown seconds after the
     window appeared, write a snapshot and restart the launcher once."""
     if not window.events.shown.wait(timeout=60):
         return
-    if loaded.wait(timeout=wait_after_shown):
+    if loaded.wait(timeout=wait_after_shown) or loaded.is_set():
         return
     freeze_watch.log("PAGE DID NOT LOAD within %ds of the window appearing - process snapshot:\n%s"
                      % (wait_after_shown, freeze_watch._process_snapshot()))
@@ -2861,7 +2879,10 @@ def _run_web(api, mii_only=False):
         js_api=api,
     )
     api.window = window
-    window.events.shown += _close_splash_screen
+    # Keep the splash up until the page itself is ready, so a slow first start
+    # never shows a blank, seemingly frozen window. Fallback: close after 25 s.
+    window.events.loaded += _close_splash_screen
+    threading.Timer(25, _close_splash_screen).start()
     if mii_only:
         def _open_mii():
             try:
@@ -2894,12 +2915,9 @@ def _run_web(api, mii_only=False):
 def main():
     mii_only = "--mii" in sys.argv[1:]
     if not mii_only and not _acquire_single_instance_lock():
-        _show_windows_message(
-            "Mario Kart Nitro",
-            "Mario Kart Nitro is already running — check your taskbar "
-            "or Alt-Tab for the existing window instead of opening a "
-            "new one."
-        )
+        # Never leave a modal message box (and a whole extra process) behind:
+        # just bring the running window to the front and quit quietly.
+        _focus_existing_window()
         return
 
     seed_builtin_mod()
