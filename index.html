@@ -308,6 +308,26 @@
   .mii-step button:disabled{opacity:.3;cursor:default}
   .mii-pips{flex:1;height:8px;border-radius:4px;background:#0b0e16;border:1px solid var(--border);position:relative;overflow:hidden}
   .mii-pips i{position:absolute;top:0;bottom:0;width:10px;margin-left:-5px;border-radius:4px;background:#ff8c00}
+
+  /* ---------- Mii editor: extra polish ---------- */
+  .mii-preview{background:radial-gradient(ellipse 70% 55% at 50% 38%,rgba(255,130,20,.20),transparent 62%),radial-gradient(ellipse 90% 40% at 50% 100%,rgba(130,60,220,.22),transparent 70%),#080b12;box-shadow:inset 0 0 60px rgba(0,0,0,.55),0 10px 40px rgba(0,0,0,.45)}
+  .mii-preview::after{content:"";position:absolute;left:50%;bottom:19%;width:50%;height:26px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(0,0,0,.65),transparent 70%);border-radius:50%;pointer-events:none}
+  .mii-preview canvas#miiCanvas{z-index:1;filter:drop-shadow(0 14px 22px rgba(0,0,0,.55));animation:miiPop .22s ease-out}
+  @keyframes miiPop{from{opacity:.55;transform:scale(.97)}to{opacity:1;transform:none}}
+  .mii-opt.mc{transition:transform .14s ease,background .14s ease,border-color .14s ease,box-shadow .14s ease}
+  .mii-opt.mc:hover{transform:translateY(-2px) scale(1.04);border-color:rgba(255,140,0,.6);box-shadow:0 6px 16px rgba(0,0,0,.45),0 0 14px rgba(255,140,0,.18)}
+  .mii-opt.mc.active{background:linear-gradient(160deg,rgba(255,140,0,.24),rgba(255,90,0,.08));border-color:#ff9a1f;box-shadow:0 0 0 1px rgba(255,154,31,.5),0 0 20px rgba(255,120,0,.4)}
+  .mii-tab{transition:background .15s,border-color .15s,color .15s,transform .15s}
+  .mii-tab:hover{transform:translateY(-1px);border-color:rgba(255,140,0,.4)}
+  .mii-tab.active{box-shadow:0 0 14px rgba(255,120,0,.28)}
+  .mii-tab.mc-ico::before{width:17px;height:17px;vertical-align:-4px}
+  .mii-field label{letter-spacing:.06em;text-transform:uppercase;font-size:10px;font-weight:600}
+  .mii-sw{transition:transform .12s,box-shadow .12s}
+  .mii-sw.active{transform:scale(1.12);box-shadow:0 0 0 2px #ff8c00,0 0 12px rgba(255,140,0,.55)}
+  .mii-step button{transition:transform .1s,border-color .12s,background .12s}
+  .mii-step button:active{transform:scale(.93)}
+  .mii-pips i{box-shadow:0 0 8px rgba(255,140,0,.7);transition:left .12s}
+  .mii-editor .mii-section.active{scrollbar-width:thin;scrollbar-color:rgba(255,140,0,.4) transparent}
   @media(max-width:900px){.mii-shell,.mii-main{grid-template-columns:1fr}.mii-list{max-height:240px}}
 
   /* ---------- Halloween shaders ---------- */
@@ -1657,18 +1677,21 @@ function mcPaint(cat, value, cv){
   if (!im.complete || !im.naturalWidth) return false;
   const cell = MC.cell, cols = MC.cols[key];
   const idx = cat === "beard" ? value + 4 : value;
+  const S = cv.width;
   const T = mcPaint.tmp || (mcPaint.tmp = document.createElement("canvas"));
-  T.width = T.height = cell;
+  if (T.width !== S) T.width = T.height = S;
   const t = T.getContext("2d", { willReadFrequently: true });
-  t.clearRect(0, 0, cell, cell);
-  t.drawImage(im, (idx % cols) * cell, Math.floor(idx / cols) * cell, cell, cell, 0, 0, cell, cell);
+  t.clearRect(0, 0, S, S);
+  t.imageSmoothingEnabled = true; t.imageSmoothingQuality = "high";
+  /* the game's icons are 64px: scale up first, then sharpen the edge so lines stay crisp */
+  t.drawImage(im, (idx % cols) * cell, Math.floor(idx / cols) * cell, cell, cell, 0, 0, S, S);
   let tint = null;
   if (MC_TINT[cat]){
     const [id, set] = MC_TINT[cat], l = MII_SWATCHES[set];
     tint = mcRGB(l[Math.max(0, Math.min(l.length - 1, Number(miiVal(id)) || 0))]);
   }
   {
-    const img = t.getImageData(0, 0, cell, cell), d = img.data;
+    const img = t.getImageData(0, 0, S, S), d = img.data;
     const lip = [214, 84, 66];
     for (let p = 0; p < d.length; p += 4){
       const r = d[p] / 255, g = d[p + 1] / 255, b = d[p + 2] / 255, al = d[p + 3];
@@ -1688,26 +1711,37 @@ function mcPaint(cat, value, cv){
         const l = (r + g + b) / 3, sat = Math.max(r, g, b) - Math.min(r, g, b);
         if (sat <= 0.25){ d[p] = d[p + 1] = d[p + 2] = 242; d[p + 3] = al * (1 - l); }
       }
+      { const a = d[p + 3] / 255, k = a <= .22 ? 0 : a >= .78 ? 1 : (a - .22) / .56; d[p + 3] = 255 * k * k * (3 - 2 * k); }
     }
     t.putImageData(img, 0, 0);
   }
   const c = cv.getContext("2d");
   c.clearRect(0, 0, cv.width, cv.height);
   c.imageSmoothingQuality = "high";
-  c.drawImage(T, 0, 0, cv.width, cv.height);
+  c.drawImage(T, 0, 0);
   return true;
 }
 let miiMcBusy = false;
 function miiMcPaint(force){
   if (!MC) return;
+  const todo = [];
   for (const p of miiPickers){
     if (!p.mc) continue;
     const tint = MC_TINT[p.cat] ? String(miiVal(MC_TINT[p.cat][0])) : "";
     if (!force && p.mcKey === tint) continue;
+    p.mcKey = tint; p.done = false; todo.push(p);
+  }
+  const run = p => {
     let ok = true;
     p.items.forEach((b, i) => { if (!mcPaint(p.cat, i, b._cv)) ok = false; });
-    p.mcKey = ok ? tint : null;
-  }
+    p.done = ok;
+    if (!ok) p.mcKey = null;
+  };
+  const shown = p => p.items[0].offsetParent !== null;
+  todo.filter(shown).forEach(run);                 /* the open tab right now */
+  const rest = todo.filter(p => !shown(p));        /* the other tabs quietly, one per tick */
+  const step = () => { const p = rest.shift(); if (p){ run(p); setTimeout(step, 16); } };
+  setTimeout(step, 30);
 }
 function miiMcPicker(cat, host, m){
   const sz = 74, dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -1830,6 +1864,7 @@ const miiSleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function miiThumbsInvalidate(exceptInputId){
   if (!currentMii) return;
+  if (MC && miiPickers.every(p => !p.cat || p.mc)) return; /* icons are pre-drawn: nothing to re-render */
   const { MiiFormats } = await ensureMiiJS();
   miiSnap = await currentMii.encode(MiiFormats.RCD);
   miiSnapKey = Array.from(miiSnap).join(",");
@@ -1988,6 +2023,7 @@ if (MC && MC.sym) document.querySelectorAll(".mii-tab").forEach(btn => {
 });
 document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click", () => {
   setTimeout(() => {
+    if (MC) { miiPickers.forEach(p => { if (p.mc && !p.done) p.mcKey = null; }); miiMcPaint(); }
     miiThumbsKick();
     const a = document.querySelector(".mii-section.active .mii-opt.active");
     if (a) a.scrollIntoView({ block: "nearest" });
