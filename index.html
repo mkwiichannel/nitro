@@ -287,6 +287,11 @@
   /* ---------- Mii visual pickers (pictures baked by tools/gen_mii_thumbs.py) ---------- */
   .mii-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
   .mii-opt{padding:0;border:1px solid var(--border);border-radius:9px;background-color:#171b29;background-repeat:no-repeat;cursor:pointer;flex:0 0 auto;transition:border-color .12s, box-shadow .12s}
+  .mii-opt.mc{background:#fff;border:2px solid #5f7776;border-radius:13px;overflow:hidden}
+  .mii-opt.mc.active{border-color:#ff8c00}
+  .mii-opt.mc canvas{display:block;width:100%;height:100%;pointer-events:none}
+  .mii-step button img{width:22px;height:22px;display:block;margin:auto;pointer-events:none;opacity:.92}
+  .mii-tab.mc-ico::before{content:"";display:inline-block;width:15px;height:15px;margin-right:6px;vertical-align:-3px;background:var(--mc-tab) center/contain no-repeat}
   .mii-opt:hover{border-color:rgba(255,140,0,.55)}
   .mii-opt.active{border-color:#ff8c00;box-shadow:0 0 0 2px rgba(255,140,0,.45)}
   .mii-swatches{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}
@@ -607,6 +612,7 @@
 </section>
 </main><footer> </footer>
 <script src="mii_renderer/fflModule.cjs"></script>
+<script src="mii_renderer/mc_icons/mc_icons.js" onerror="void 0"></script>
 <script>
   function go(id){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1631,10 +1637,104 @@ function miiPickAndRender(input, value){
   syncMiiPickers();
 }
 
+/* ---- Mii Channel icons (read from the user's own Mii Channel files; optional) ---- */
+const MC = window.MC_ICONS || null;
+const MC_SHEET_OF = { hair:"hair", eyes:"eye", brows:"brow", nose:"nose", mouth:"mouth", face:"face", feature:"facetex",
+                      glasses:"glasses", mustache:"mustache", beard:"mustache" };
+const MC_TINT = { hair:["miiHairColor","hair"], eyes:["miiEyeColor","eye"], mouth:["miiLipColor","lip"] };
+const mcImgs = {};
+function mcSheet(key){
+  if (!mcImgs[key]){
+    const im = new Image(); im.src = MC.sheets[key]; mcImgs[key] = im;
+    im.decode && im.decode().then(() => miiMcPaint(true)).catch(() => {});
+  }
+  return mcImgs[key];
+}
+const mcRGB = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+function mcPaint(cat, value, cv){
+  const key = MC_SHEET_OF[cat], im = mcSheet(key);
+  if (!im.complete || !im.naturalWidth) return false;
+  const cell = MC.cell, cols = MC.cols[key];
+  const idx = cat === "beard" ? value + 4 : value;
+  const T = mcPaint.tmp || (mcPaint.tmp = document.createElement("canvas"));
+  T.width = T.height = cell;
+  const t = T.getContext("2d", { willReadFrequently: true });
+  t.clearRect(0, 0, cell, cell);
+  t.drawImage(im, (idx % cols) * cell, Math.floor(idx / cols) * cell, cell, cell, 0, 0, cell, cell);
+  let tint = null;
+  if (MC_TINT[cat]){
+    const [id, set] = MC_TINT[cat], l = MII_SWATCHES[set];
+    tint = mcRGB(l[Math.max(0, Math.min(l.length - 1, Number(miiVal(id)) || 0))]);
+  }
+  if (tint || cat === "brows" || cat === "nose"){
+    const img = t.getImageData(0, 0, cell, cell), d = img.data;
+    for (let p = 0; p < d.length; p += 4){
+      const r = d[p] / 255, g = d[p + 1] / 255, b = d[p + 2] / 255;
+      if (cat === "brows" || cat === "nose"){ /* white-on-alpha masks -> black line art, like the Mii Channel */
+        d[p] = d[p + 1] = d[p + 2] = 20; continue;
+      }
+      if (cat === "hair"){ /* black = hair colour, white face / grey rim stay */
+        const l = (r + g + b) / 3;
+        d[p] = tint[0] + (255 - tint[0]) * l; d[p + 1] = tint[1] + (255 - tint[1]) * l; d[p + 2] = tint[2] + (255 - tint[2]) * l;
+      } else if (cat === "eyes"){ /* B = iris colour, G = white of the eye, R = lid accent */
+        d[p] = Math.min(255, b * tint[0] + g * 255 + r * 0);
+        d[p + 1] = Math.min(255, b * tint[1] + g * 255 + r * 230);
+        d[p + 2] = Math.min(255, b * tint[2] + g * 255 + r * 255);
+      } else { /* mouth: G upper lip, R lower lip, B teeth */
+        d[p] = Math.min(255, g * tint[0] + r * tint[0] * .8 + b * 255);
+        d[p + 1] = Math.min(255, g * tint[1] + r * tint[1] * .8 + b * 255);
+        d[p + 2] = Math.min(255, g * tint[2] + r * tint[2] * .8 + b * 255);
+      }
+    }
+    t.putImageData(img, 0, 0);
+  }
+  const c = cv.getContext("2d");
+  c.clearRect(0, 0, cv.width, cv.height);
+  c.imageSmoothingQuality = "high";
+  c.drawImage(T, 0, 0, cv.width, cv.height);
+  return true;
+}
+let miiMcBusy = false;
+function miiMcPaint(force){
+  if (!MC) return;
+  for (const p of miiPickers){
+    if (!p.mc) continue;
+    const tint = MC_TINT[p.cat] ? String(miiVal(MC_TINT[p.cat][0])) : "";
+    if (!force && p.mcKey === tint) continue;
+    let ok = true;
+    p.items.forEach((b, i) => { if (!mcPaint(p.cat, i, b._cv)) ok = false; });
+    p.mcKey = ok ? tint : null;
+  }
+}
+function miiMcPicker(cat, host, m){
+  const sz = 74, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const wrap = document.createElement("div");
+  wrap.className = "mii-picker";
+  const items = [];
+  for (let i = 0; i < m.count; i++){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "mii-opt mc";
+    b.style.width = b.style.height = sz + "px";
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = Math.round(sz * dpr);
+    b.appendChild(cv); b._cv = cv;
+    b.onclick = () => miiPickAndRender(host.input, i);
+    items.push(b);
+  }
+  /* tiles in the Mii Channel's own menu order (the values stay the real ones) */
+  const key = MC_SHEET_OF[cat];
+  const ord = (MC.order[key] || []).filter(v => cat === "beard" ? false : v < m.count);
+  const seq = cat === "beard" || !ord.length ? items.map((_, i) => i) : ord.slice(0, m.count);
+  seq.forEach(i => wrap.appendChild(items[i]));
+  host.label.insertAdjacentElement("afterend", wrap);
+  miiPickers.push({ input: host.input, items, cat, mc: true, stale: false });
+}
+
 function miiGridPicker(cat, inputId){
   const host = miiPickerHost(inputId);
   const m = MII_SHEETS[cat];
   if (!host || !m) return;
+  if (MC && MC_SHEET_OF[cat]) return miiMcPicker(cat, host, m);
   const k = m.tile / m.cell[0];
   const tw = m.tile, th = Math.round(m.cell[1] * k);
   const wrap = document.createElement("div");
@@ -1683,6 +1783,7 @@ function syncMiiPickers(){
     p.items.forEach((b, i) => b.classList.toggle("active", String(i) === v));
   }
   for (const f of miiSteppers) f();
+  miiMcPaint();
 }
 
 miiSwatchPicker("miiFav", MII_SWATCHES.fav, MII_ENUMS.fav);
@@ -1703,6 +1804,7 @@ miiSwatchPicker("miiGlassColor", MII_SWATCHES.glass, MII_ENUMS.glassColor);
 miiGridPicker("mustache", "miiMustache");
 miiGridPicker("beard", "miiBeard");
 miiSwatchPicker("miiBeardColor", MII_SWATCHES.hair, MII_ENUMS.hair);
+miiMcPaint(true);
 
 /* Live pictures: the baked sprites are only placeholders. Every style picture
    is re-rendered on a copy of the Mii being edited (only the tab that is open,
@@ -1758,7 +1860,7 @@ async function miiThumbsRun(){
   const clones = {};
   for (;;){
     const key = miiSnapKey, snap = miiSnap;
-    const act = miiPickers.filter(q => q.cat && q.items[0].closest(".mii-section.active"));
+    const act = miiPickers.filter(q => q.cat && !q.mc && q.items[0].closest(".mii-section.active"));
     let job = null;
     for (const p of act){
       const i = miiTileOrder(p).find(i => p.items[i]._key !== key);
@@ -1767,7 +1869,7 @@ async function miiThumbsRun(){
     if (!job){
       /* then every other tab, so switching tabs is instant */
       for (const p of miiPickers){
-        if (!p.cat || act.includes(p)) continue;
+        if (!p.cat || p.mc || act.includes(p)) continue;
         const i = p.items.findIndex(b => b._key !== key);
         if (i >= 0){ job = [p, i]; break; }
       }
@@ -1815,7 +1917,7 @@ async function miiThumbsRun(){
 
 /* If live rendering is impossible, fall back to the baked sprites. */
 function miiThumbsFallback(){
-  for (const p of miiPickers) if (p.cat) p.items.forEach(b => {
+  for (const p of miiPickers) if (p.cat && !p.mc) p.items.forEach(b => {
     if (b._cv) return;
     b.style.backgroundImage = b.dataset.bgImg;
     b.style.backgroundSize = b.dataset.bgSize;
@@ -1826,10 +1928,10 @@ function miiThumbsFallback(){
 /* Mii-Channel style steppers: every remaining slider becomes two buttons
    (hold to repeat) with a small position marker. */
 const MII_STEP_ICONS = [
-  [/Rot$/,   "\u21BA", "\u21BB", 1],
-  [/Vert$/,  "\u25B2", "\u25BC", -1],
-  [/Space$/, "\u2192\u2190", "\u2190\u2192", 1],
-  [/(Size|Height|Weight)$/, "\u2212", "+", 1]
+  [/Rot$/,   "\u21BA", "\u21BB", 1, "rotL", "rotR"],
+  [/Vert$/,  "\u25B2", "\u25BC", -1, "up", "down"],
+  [/Space$/, "\u2192\u2190", "\u2190\u2192", 1, "near", "wide"],
+  [/(Size|Height|Weight)$/, "\u2212", "+", 1, "reduce", "enlarge"]
 ];
 const miiSteppers = [];
 function miiMakeStepper(input){
@@ -1838,9 +1940,11 @@ function miiMakeStepper(input){
   const dir = icon[3];
   const wrap = document.createElement("div");
   wrap.className = "mii-step";
-  const mk = (txt, d) => {
+  const mk = (txt, d, sym) => {
     const b = document.createElement("button");
-    b.type = "button"; b.textContent = txt;
+    b.type = "button";
+    if (MC && MC.sym && MC.sym[sym]){ const im = new Image(); im.src = MC.sym[sym]; b.appendChild(im); }
+    else b.textContent = txt;
     const step = () => {
       const lo = Number(input.min), hi = Number(input.max);
       const v = Math.max(lo, Math.min(hi, Number(input.value) + d * dir));
@@ -1855,7 +1959,7 @@ function miiMakeStepper(input){
     ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
     return b;
   };
-  const less = mk(icon[1], -1), more = mk(icon[2], 1);
+  const less = mk(icon[1], -1, icon[4]), more = mk(icon[2], 1, icon[5]);
   const pips = document.createElement("div"); pips.className = "mii-pips";
   const mark = document.createElement("i"); pips.appendChild(mark);
   wrap.append(less, pips, more);
@@ -1875,6 +1979,10 @@ document.querySelectorAll("#mii input[type=range]").forEach(inp => {
   if (inp.style.display !== "none") miiMakeStepper(inp);
 });
 
+if (MC && MC.sym) document.querySelectorAll(".mii-tab").forEach(btn => {
+  const u = MC.sym["tab_" + btn.dataset.miitab];
+  if (u){ btn.style.setProperty("--mc-tab", "url(" + u + ")"); btn.classList.add("mc-ico"); }
+});
 document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click", () => {
   setTimeout(() => {
     miiThumbsKick();
