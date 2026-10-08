@@ -68,49 +68,8 @@ Windows SmartScreen may warn about the app because it is not code-signed; choose
 The time of the last modpack sync and launcher update is stored in the launcher
 config and shown on the version pill.
 
-## Building from source (developers only)
 
-> Players don't need any of this - just download `MarioKartNitro.exe` from
-> Releases. This section is only for people who want to modify or rebuild the
-> launcher.
 
-Requirements: Python 3.10+ on Windows.
-
-```bat
-pip install -r requirements.txt
-python main.py        :: run directly
-build.bat             :: build a single-file MarioKartNitro.exe into dist\
-```
-
-An experimental Qt interface is available with `python main.py --native`
-(needs `pip install PySide6`; it is not part of the release build).
-
-### Mii Channel icons (optional)
-
-The editor can show the original Mii Channel part icons. These are Nintendo
-artwork and are **not** part of this repository: they are generated locally from
-your own Mii Channel data into `mii_renderer/mc_icons/` (git-ignored). Without
-them the editor automatically falls back to live-rendered previews.
-
-## Repository layout
-
-```
-main.py              launcher backend (config, Dolphin, updates, Mii I/O)
-modpack_sync.py      incremental modpack sync from GitHub
-index.html           the whole UI (HTML/CSS/JS)
-translations.json    UI strings, 16 languages
-native_ui.py         optional Qt interface
-manifest.json        launcher update channel
-mii_renderer/        bundled 3D Mii renderer (FFL / miijs) and thumbnails
-RFL_Res.dat          Mii resource data used by the renderer
-starter.mii          default Mii
-logo.png, banner.png branding
-build.bat            one-file PyInstaller build
-build_assets/        icon and splash used by the build
-version_info.txt     Windows version resource
-MarioKartNitro.manifest  Windows app manifest
-rcedit.exe           sets exe icon/metadata during the build
-requirements.txt     Python dependencies
 ```
 
 ## License
