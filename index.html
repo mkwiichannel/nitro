@@ -3396,6 +3396,11 @@ function toast(msg, isError, sticky) {
   }
 
   window.addEventListener('pywebviewready', async ()=>{
+    try{
+      const nav = performance.getEntriesByType('navigation')[0] || {};
+      const fcp = (performance.getEntriesByName('first-contentful-paint')[0] || {}).startTime;
+      window.pywebview.api.log_ui('page timing: domReady ' + Math.round(nav.domContentLoadedEventEnd||0) + 'ms, load ' + Math.round(nav.loadEventEnd||0) + 'ms, first paint ' + Math.round(fcp||0) + 'ms, bridge ready at ' + Math.round(performance.now()) + 'ms');
+    }catch(e){}
     const state = await refreshState();
 
     // Pulls the manifest.json theme block (colors/logo/banner/icon)

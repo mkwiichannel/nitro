@@ -106,12 +106,13 @@ class Watch:
         threading.Thread(target=self._watcher, daemon=True).start()
 
     def _facts(self):
-        time.sleep(6)  # stay out of the way of startup
+        time.sleep(2)
         flags = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "-")
         log(_system_facts("webview args: " + flags))
 
     def _pinger(self):
-        time.sleep(8)
+        log("watch started (window shown)")
+        time.sleep(1.5)
         while True:
             t0 = time.time()
             self._pending_since = t0
@@ -127,7 +128,7 @@ class Watch:
             if self._reported:
                 log(f"window answered again after {took:.1f}s")
                 self._reported = False
-            elif took > 1.5:
+            elif took > 1.0:
                 log(f"slow answer from the page: {took:.1f}s")
             time.sleep(2)
 

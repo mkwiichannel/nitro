@@ -2844,7 +2844,8 @@ def _run_web(api, mii_only=False):
         threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
     freeze_watch.init(app_data_dir())
-    freeze_watch.Watch(window, "webview args: " + os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "-")).start()
+    freeze_watch.log("process start (main running)")
+    window.events.shown += lambda: freeze_watch.Watch(window).start()
     threading.Thread(target=_memory_guard, daemon=True).start()
     threading.Thread(target=_hang_guard, args=("Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",), daemon=True).start()
     threading.Thread(
