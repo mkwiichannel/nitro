@@ -14,6 +14,8 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --manifest "MarioKartNitro.manifest" ^
   --version-file "version_info.txt" ^
   --splash "build_assets\splash.png" ^
+  --exclude-module PySide6 --exclude-module PyQt5 --exclude-module PyQt6 --exclude-module shiboken6 ^
+  --exclude-module native_ui --exclude-module tkinter --exclude-module numpy ^
   --add-data "index.html;." ^
   --add-data "logo.png;." ^
   --add-data "banner.png;." ^
