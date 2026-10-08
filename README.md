@@ -68,7 +68,11 @@ Windows SmartScreen may warn about the app because it is not code-signed; choose
 The time of the last modpack sync and launcher update is stored in the launcher
 config and shown on the version pill.
 
-## Building from source
+## Building from source (developers only)
+
+> Players don't need any of this - just download `MarioKartNitro.exe` from
+> Releases. This section is only for people who want to modify or rebuild the
+> launcher.
 
 Requirements: Python 3.10+ on Windows.
 
