@@ -19,7 +19,7 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --splash "build_assets\splash.png" ^
   --exclude-module PyQt5 --exclude-module PyQt6 --exclude-module tkinter --exclude-module numpy ^
   --exclude-module PySide6.QtNetwork --exclude-module PySide6.QtQml --exclude-module PySide6.QtQuick ^
-  --exclude-module PySide6.QtPdf --exclude-module PySide6.QtSvg --exclude-module PySide6.QtOpenGL ^
+  --exclude-module PySide6.QtPdf --exclude-module PySide6.QtOpenGL ^
   --add-data "index.html;." ^
   --add-data "logo.png;." ^
   --add-data "banner.png;." ^
