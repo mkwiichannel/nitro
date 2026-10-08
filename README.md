@@ -38,7 +38,7 @@ settings, and folder structures by hand.
 
 ## Requirements
 
-- Windows 10/11, 64-bit (nothing else to install - the launcher is a single standalone `.exe`)
+- Windows 10/11,
 - [Dolphin Emulator](https://dolphin-emu.org/) with Riivolution support
 - A legally obtained Mario Kart Wii ISO/WBFS (not provided here or anywhere by
   this project)
@@ -46,7 +46,7 @@ settings, and folder structures by hand.
 ## Getting started
 
 1. Grab the latest `MarioKartNitro.exe` from the [Releases](../../releases) page.
-2. Run it. On first launch it asks for your Dolphin folder and your game file.
+2. Run it.
 3. The mod content is downloaded automatically.
 4. Press Play. Updates are checked every time the launcher opens.
 
