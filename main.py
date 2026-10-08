@@ -2667,7 +2667,10 @@ def _trim_webview2_cache(storage_path):
     profile_root = os.path.join(storage_path, "EBWebView", "Default")
     if not os.path.isdir(profile_root):
         return
-    for name in ("Cache", "Code Cache", "GPUCache", "DawnGraphiteCache", "DawnWebGPUCache"):
+    # Only the HTTP cache is dropped. The compiled-JS and GPU shader caches
+    # are kept: deleting them every launch forced a full recompile of the
+    # page scripts and WebGL shaders on each start, which is slow on low-end PCs.
+    for name in ("Cache",):
         shutil.rmtree(os.path.join(profile_root, name), ignore_errors=True)
 
 
