@@ -268,7 +268,7 @@
   .mii-preview img{width:100%;height:100%;max-height:520px;object-fit:contain}
   .mii-preview{position:relative}
   .mii-preview canvas#miiCanvas{position:absolute;inset:10px;width:calc(100% - 20px);height:calc(100% - 20px);object-fit:contain}
-  .mii-opt canvas{width:100%;height:100%;display:block;border-radius:8px}
+  .mii-opt.none::after{content:"\2205";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8a949d;font-size:26px}
   .mii-preview .loading{color:var(--text-faint);font-family:var(--mono);font-size:12px}
   .mii-editor{padding:16px;max-height:610px;overflow:hidden;display:flex;flex-direction:column}
   .mii-editor .mii-section.active{overflow-y:auto;flex:1 1 auto;min-height:0;padding-right:4px}
@@ -284,9 +284,9 @@
   .mii-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .mii-status{font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:10px;min-height:14px}
 
-  /* ---------- Mii visual pickers (pictures baked by tools/gen_mii_thumbs.py) ---------- */
+  /* ---------- Mii visual pickers (part pictures come from the game resource, see mii_parts.js) ---------- */
   .mii-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-  .mii-opt{padding:0;border:1px solid var(--border);border-radius:9px;background-color:#171b29;background-repeat:no-repeat;cursor:pointer;flex:0 0 auto;transition:border-color .12s, box-shadow .12s}
+  .mii-opt{padding:0;border:1px solid var(--border);border-radius:9px;background-color:#dfe4e8;background-repeat:no-repeat;cursor:pointer;position:relative;flex:0 0 auto;transition:border-color .12s, box-shadow .12s}
   .mii-opt:hover{border-color:rgba(255,140,0,.55)}
   .mii-opt.active{border-color:#ff8c00;box-shadow:0 0 0 2px rgba(255,140,0,.45)}
   .mii-swatches{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}
@@ -487,22 +487,22 @@
       <div class="mii-section" id="miitab-eyes">
         <div class="mii-field"><label><span id="miiLblEyeStyle">Eye style ID</span> <span id="eyeTypeV">0</span></label><input id="miiEyeType" type="range" min="0" max="63"></div>
         <div class="mii-row2"><div class="mii-field"><label id="miiLblEyeColorField">Color</label><select id="miiEyeColor"></select></div><div class="mii-field"><label id="miiLblEyeRot">Rotation</label><input id="miiEyeRot" type="range" min="0" max="7"></div></div>
-        <div class="mii-row2"><div class="mii-field"><label id="miiLblEyeVert">Vertical</label><input id="miiEyeVert" type="range" min="0" max="31"></div><div class="mii-field"><label id="miiLblEyeSize">Size</label><input id="miiEyeSize" type="range" min="0" max="7"></div></div>
-        <div class="mii-field"><label id="miiLblEyeSpace">Spacing</label><input id="miiEyeSpace" type="range" min="0" max="15"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblEyeVert">Vertical</label><input id="miiEyeVert" type="range" min="0" max="18"></div><div class="mii-field"><label id="miiLblEyeSize">Size</label><input id="miiEyeSize" type="range" min="0" max="7"></div></div>
+        <div class="mii-field"><label id="miiLblEyeSpace">Spacing</label><input id="miiEyeSpace" type="range" min="0" max="12"></div>
       </div>
       <div class="mii-section" id="miitab-brows">
         <div class="mii-field"><label id="miiLblBrowStyle">Eyebrow style ID</label><input id="miiBrowType" type="range" min="0" max="31"></div>
-        <div class="mii-row2"><div class="mii-field"><label id="miiLblBrowColorField">Color</label><select id="miiBrowColor"></select></div><div class="mii-field"><label id="miiLblBrowRot">Rotation</label><input id="miiBrowRot" type="range" min="0" max="15"></div></div>
-        <div class="mii-row2"><div class="mii-field"><label id="miiLblBrowSize">Size</label><input id="miiBrowSize" type="range" min="0" max="15"></div><div class="mii-field"><label id="miiLblBrowVert">Vertical</label><input id="miiBrowVert" type="range" min="0" max="31"></div></div>
-        <div class="mii-field"><label id="miiLblBrowSpace">Spacing</label><input id="miiBrowSpace" type="range" min="0" max="15"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblBrowColorField">Color</label><select id="miiBrowColor"></select></div><div class="mii-field"><label id="miiLblBrowRot">Rotation</label><input id="miiBrowRot" type="range" min="0" max="11"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblBrowSize">Size</label><input id="miiBrowSize" type="range" min="0" max="8"></div><div class="mii-field"><label id="miiLblBrowVert">Vertical</label><input id="miiBrowVert" type="range" min="0" max="15"></div></div>
+        <div class="mii-field"><label id="miiLblBrowSpace">Spacing</label><input id="miiBrowSpace" type="range" min="0" max="12"></div>
       </div>
       <div class="mii-section" id="miitab-nose">
-        <div class="mii-row2"><div class="mii-field"><label id="miiLblNoseType">Nose type</label><select id="miiNoseType"></select></div><div class="mii-field"><label id="miiLblNoseSize">Size</label><input id="miiNoseSize" type="range" min="0" max="15"></div></div>
-        <div class="mii-field"><label id="miiLblNoseVert">Vertical</label><input id="miiNoseVert" type="range" min="0" max="31"></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblNoseType">Nose type</label><select id="miiNoseType"></select></div><div class="mii-field"><label id="miiLblNoseSize">Size</label><input id="miiNoseSize" type="range" min="0" max="8"></div></div>
+        <div class="mii-field"><label id="miiLblNoseVert">Vertical</label><input id="miiNoseVert" type="range" min="0" max="18"></div>
       </div>
       <div class="mii-section" id="miitab-mouth">
         <div class="mii-row2"><div class="mii-field"><label id="miiLblMouthStyle">Mouth style ID</label><input id="miiLipType" type="range" min="0" max="31"></div><div class="mii-field"><label id="miiLblLipColorField">Color</label><select id="miiLipColor"></select></div></div>
-        <div class="mii-row2"><div class="mii-field"><label id="miiLblLipSize">Size</label><input id="miiLipSize" type="range" min="0" max="15"></div><div class="mii-field"><label id="miiLblLipVert">Vertical</label><input id="miiLipVert" type="range" min="0" max="31"></div></div>
+        <div class="mii-row2"><div class="mii-field"><label id="miiLblLipSize">Size</label><input id="miiLipSize" type="range" min="0" max="8"></div><div class="mii-field"><label id="miiLblLipVert">Vertical</label><input id="miiLipVert" type="range" min="0" max="18"></div></div>
       </div>
       <div class="mii-section" id="miitab-extras">
         <div class="mii-row2"><div class="mii-field"><label id="miiLblGlasses">Glasses</label><select id="miiGlassType"></select></div><div class="mii-field"><label id="miiLblGlassesColor">Glasses color</label><select id="miiGlassColor"></select></div></div>
@@ -607,6 +607,7 @@
 </section>
 </main><footer> </footer>
 <script src="mii_renderer/fflModule.cjs"></script>
+<script src="mii_renderer/mii_parts.js"></script>
 <script>
   function go(id){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -784,6 +785,10 @@ document.querySelectorAll(".mii-tab").forEach(button => {
 
     if (section) {
       section.classList.add("active");
+    }
+    if (typeof miiApplyParts === "function") {
+      miiPickers.forEach(p => { if (p.items[0] && p.items[0].offsetParent !== null) p.shown = true; });
+      miiPaintQueue.sort((x, y) => (y.p.items[0].offsetParent !== null) - (x.p.items[0].offsetParent !== null));
     }
   };
 });
@@ -1063,7 +1068,6 @@ async function selectMii(i) {
     );
 
     loadMiiForm(currentMii);
-    miiThumbsInvalidate();
 
     await renderCurrentMii();
 
@@ -1563,7 +1567,6 @@ async function newMii() {
       );
 
     loadMiiForm(currentMii);
-    miiThumbsInvalidate();
 
     await renderCurrentMii();
 
@@ -1603,7 +1606,7 @@ async function newMii() {
    no rendering. The hidden <select>/<input> elements stay the single
    source of truth, so loading/saving/live-render work exactly as before.
    ========================================================= */
-const MII_SHEETS = {"hair":{"file":"hair.png","cell":[128,128],"cols":8,"count":72,"tile":76},"face":{"file":"face.png","cell":[128,128],"cols":8,"count":8,"tile":76},"feature":{"file":"feature.png","cell":[128,128],"cols":8,"count":12,"tile":76},"eyes":{"file":"eyes.png","cell":[160,64],"cols":6,"count":48,"tile":100},"brows":{"file":"brows.png","cell":[160,61],"cols":6,"count":24,"tile":100},"nose":{"file":"nose.png","cell":[112,112],"cols":8,"count":12,"tile":68},"mouth":{"file":"mouth.png","cell":[160,80],"cols":6,"count":24,"tile":100},"glasses":{"file":"glasses.png","cell":[160,69],"cols":6,"count":9,"tile":100},"mustache":{"file":"mustache.png","cell":[128,82],"cols":8,"count":4,"tile":84},"beard":{"file":"beard.png","cell":[128,94],"cols":8,"count":4,"tile":84}};
+const MII_SHEETS = {hair:{count:72,none:30,tile:[78,78]},face:{count:8,none:null,tile:[72,72]},feature:{count:12,none:0,tile:[72,72]},eyes:{count:48,none:null,tile:[100,56]},brows:{count:24,none:null,tile:[100,44]},nose:{count:12,none:null,tile:[68,68]},mouth:{count:24,none:null,tile:[100,56]},glasses:{count:9,none:0,tile:[100,50]},mustache:{count:4,none:0,tile:[84,56]},beard:{count:4,none:0,tile:[84,70]}};
 const MII_SWATCHES = {
   hair: ["#1e1a18", "#402010", "#5c180a", "#7c3a14", "#787880", "#4e3e10", "#885818", "#d0a04a"],
   skin: ["#ffd3ad", "#ffb66b", "#de7942", "#ffaa8c", "#ad5129", "#632c18"],
@@ -1635,8 +1638,7 @@ function miiGridPicker(cat, inputId){
   const host = miiPickerHost(inputId);
   const m = MII_SHEETS[cat];
   if (!host || !m) return;
-  const k = m.tile / m.cell[0];
-  const tw = m.tile, th = Math.round(m.cell[1] * k);
+  const [tw, th] = m.tile, dpr = Math.min(2, window.devicePixelRatio || 1);
   const wrap = document.createElement("div");
   wrap.className = "mii-picker";
   const items = [];
@@ -1646,16 +1648,16 @@ function miiGridPicker(cat, inputId){
     b.className = "mii-opt";
     b.style.width = tw + "px";
     b.style.height = th + "px";
-    b.dataset.bgImg = "url(mii_renderer/thumbs/" + m.file + ")";
-    b.dataset.bgSize = (m.cols * tw) + "px auto";
-    b.dataset.bgPos = "-" + ((i % m.cols) * tw) + "px -" +
-      (Math.floor(i / m.cols) * m.cell[1] * k) + "px";
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(tw * dpr); cv.height = Math.round(th * dpr);
+    cv.style.cssText = "width:100%;height:100%;display:block;pointer-events:none";
+    if (m.none === i) b.classList.add("none"); else b.appendChild(cv);
     b.onclick = () => miiPickAndRender(host.input, i);
     wrap.appendChild(b);
     items.push(b);
   }
   host.label.insertAdjacentElement("afterend", wrap);
-  miiPickers.push({ input: host.input, items, cat, stale: true });
+  miiPickers.push({ input: host.input, items, cat, key: null });
 }
 
 function miiSwatchPicker(inputId, colors, names){
@@ -1677,12 +1679,69 @@ function miiSwatchPicker(inputId, colors, names){
   miiPickers.push({ input: host.input, items });
 }
 
+/* Part pictures come from the game's own resource file (MiiParts), painted
+   in the colours of the Mii being edited; a colour change repaints at once. */
+const MII_PART_COLORS = {
+  hair: o => [o.skin, o.hair], face: o => [o.skin], feature: o => [o.skin], eyes: o => [o.eye],
+  brows: o => [o.brow], nose: () => [""], mouth: o => [o.lip], glasses: o => [o.glass],
+  mustache: o => [o.beard], beard: o => [o.beard] };
+const MII_SWATCH_OF = { skin:["miiSkin","skin"], hair:["miiHairColor","hair"], brow:["miiBrowColor","hair"],
+  eye:["miiEyeColor","eye"], lip:["miiLipColor","lip"], glass:["miiGlassColor","glass"], beard:["miiBeardColor","hair"] };
+let miiPartsReady = null;
+function miiPartColors(){
+  const o = {};
+  for (const k in MII_SWATCH_OF){
+    const [id, set] = MII_SWATCH_OF[k], l = MII_SWATCHES[set];
+    o[k] = l[Math.max(0, Math.min(l.length - 1, Number(miiVal(id)) || 0))];
+  }
+  return o;
+}
+let miiPaintQueue = [], miiPaintBusy = false;
+function miiPaintPump(){
+  if (miiPaintBusy) return;
+  miiPaintBusy = true;
+  const step = () => {
+    const t0 = performance.now();
+    while (miiPaintQueue.length && performance.now() - t0 < 12){
+      const j = miiPaintQueue.shift();
+      if (j.p.key === j.key) MiiParts.draw(j.p.cat, j.i, j.cv, j.o);
+    }
+    if (miiPaintQueue.length) requestAnimationFrame(step); else miiPaintBusy = false;
+  };
+  requestAnimationFrame(step);
+}
+function miiApplyParts(){
+  if (!window.MiiParts) return;
+  if (!miiPartsReady) {
+    miiPartsReady = ensureFFLResource().then(r => MiiParts.init(r)).catch(() => false);
+  }
+  miiPartsReady.then(ok => {
+    if (!ok) return;
+    const o = miiPartColors(), front = [], back = [];
+    for (const p of miiPickers){
+      if (!p.cat) continue;
+      const key = MII_PART_COLORS[p.cat](o).join("|");
+      if (p.key === key) continue;
+      p.key = key;
+      const visible = p.items[0].offsetParent !== null;
+      p.items.forEach((b, i) => {
+        const cv = b.firstElementChild;
+        if (cv) (visible ? front : back).push({ p, i, cv, o, key });
+      });
+    }
+    /* open tab first, the other tabs fill in quietly behind it */
+    miiPaintQueue = front.concat(back, miiPaintQueue.filter(j => j.p.key === j.key));
+    if (front.length || back.length) miiPaintPump();
+  });
+}
+
 function syncMiiPickers(){
   for (const p of miiPickers){
     const v = String(p.input.value);
     p.items.forEach((b, i) => b.classList.toggle("active", String(i) === v));
   }
   for (const f of miiSteppers) f();
+  miiApplyParts();
 }
 
 miiSwatchPicker("miiFav", MII_SWATCHES.fav, MII_ENUMS.fav);
@@ -1703,125 +1762,6 @@ miiSwatchPicker("miiGlassColor", MII_SWATCHES.glass, MII_ENUMS.glassColor);
 miiGridPicker("mustache", "miiMustache");
 miiGridPicker("beard", "miiBeard");
 miiSwatchPicker("miiBeardColor", MII_SWATCHES.hair, MII_ENUMS.hair);
-
-/* Live pictures: the baked sprites are only placeholders. Every style picture
-   is re-rendered on a copy of the Mii being edited (only the tab that is open,
-   one at a time, after the main preview), then cached. */
-const MII_LIVE = {
-  hair:     [i => ({ hairType: i }), [28, 10, 228, 210], false],
-  face:     [i => ({ faceType: i }), [50, 30, 210, 220], true],
-  feature:  [i => { const f = MII_FACE_FEATURE_WII_TO_CANON[i] || [0, 0]; return { faceFeature: f[0], makeup: f[1] }; }, [50, 30, 210, 220], true],
-  eyes:     [i => ({ eyeType: i }), [67, 100, 193, 153], true],
-  brows:    [i => ({ eyebrowType: i }), [67, 87, 193, 135], true],
-  nose:     [i => ({ noseType: i }), [97, 149, 157, 194], true],
-  mouth:    [i => ({ mouthType: i }), [85, 160, 170, 203], true],
-  glasses:  [i => ({ glassesType: i }), [55, 95, 205, 160], true],
-  mustache: [i => ({ mustacheType: i }), [80, 145, 175, 205], true],
-  beard:    [i => ({ beardType: i }), [80, 145, 175, 215], true]
-};
-/* boxes above are in a 256px frame; the renderer works in 512 */
-let miiSnap = null, miiSnapKey = "", miiThumbRunning = false, miiLastActivity = 0;
-const miiSleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function miiThumbsInvalidate(exceptInputId){
-  if (!currentMii) return;
-  const { MiiFormats } = await ensureMiiJS();
-  miiSnap = await currentMii.encode(MiiFormats.RCD);
-  miiSnapKey = Array.from(miiSnap).join(",");
-  /* the grid whose own value was just picked does not depend on that value */
-  for (const p of miiPickers)
-    if (p.cat && p.input.id === exceptInputId) p.items.forEach(b => { if (b._cv) b._key = miiSnapKey; });
-  miiLastActivity = performance.now();
-  miiThumbsKick();
-}
-function miiThumbsKick(){
-  if (miiThumbRunning || !currentMii || !miiSnap) return;
-  miiThumbRunning = true;
-  miiThumbsRun().catch(e => { console.warn("thumbs:", e); miiThumbsFallback(); })
-    .finally(() => { miiThumbRunning = false; });
-}
-function miiTileOrder(p, onlyVisible){
-  /* tiles on screen first (top to bottom) so the open tab fills in at once */
-  const sec = p.items[0].closest(".mii-section");
-  const r = sec.getBoundingClientRect();
-  const vis = [], rest = [];
-  p.items.forEach((b, i) => {
-    const t = b.getBoundingClientRect();
-    (t.bottom > r.top && t.top < r.bottom && r.height > 0 ? vis : rest).push(i);
-  });
-  return onlyVisible ? vis : vis.concat(rest);
-}
-async function miiThumbsRun(){
-  const { Mii } = await ensureMiiJS();
-  const res = await ensureFFLResource();
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const clones = {};
-  for (;;){
-    const key = miiSnapKey, snap = miiSnap;
-    const act = miiPickers.filter(q => q.cat && q.items[0].closest(".mii-section.active"));
-    let job = null;
-    for (const p of act){
-      const i = miiTileOrder(p).find(i => p.items[i]._key !== key);
-      if (i !== undefined){ job = [p, i]; break; }
-    }
-    if (!job){
-      /* then every other tab, so switching tabs is instant */
-      for (const p of miiPickers){
-        if (!p.cat || act.includes(p)) continue;
-        const i = p.items.findIndex(b => b._key !== key);
-        if (i >= 0){ job = [p, i]; break; }
-      }
-    }
-    if (!job) return;
-    const [p, i] = job, b = p.items[i];
-    while (miiRenderBusy || miiRenderAgain) await miiSleep(30);
-    if (key !== miiSnapKey) continue;
-    const [fields, box, bald] = MII_LIVE[p.cat];
-    const tw = b.clientWidth || parseInt(b.style.width), th = b.clientHeight || parseInt(b.style.height);
-    const cw = Math.round(tw * dpr), ch = Math.round(th * dpr);
-    /* render just big enough that the crop has the tile's pixel width */
-    const SZ = Math.max(128, Math.min(512, Math.ceil(512 * cw / ((box[2] - box[0]) * 2) / 64) * 64));
-    const K = SZ / 256;
-    miiRenderBusy = true;
-    try {
-      let m = clones[p.cat];
-      if (!m || m.key !== key){
-        m = clones[p.cat] = { key, mii: await Mii.create(snap) };
-        if (bald) m.mii.set("hairType", 30);
-        if (bald && p.cat !== "glasses") m.mii.set("glassesType", 0);
-      }
-      for (const [k, v] of Object.entries(fields(i))) m.mii.set(k, v);
-      if (!b._cv){
-        b._cv = document.createElement("canvas");
-        b._cv.width = cw; b._cv.height = ch;
-        b.appendChild(b._cv);
-      }
-      await m.mii.render(false, {
-        size: SZ, fflResBuffer: res,
-        onCanvas: gl => {
-          const ctx = b._cv.getContext("2d");
-          ctx.clearRect(0, 0, cw, ch);
-          ctx.drawImage(gl, box[0] * K, box[1] * K, (box[2] - box[0]) * K, (box[3] - box[1]) * K, 0, 0, cw, ch);
-        }
-      });
-      b._key = key;
-    } finally {
-      miiRenderBusy = false;
-      if (miiRenderAgain) renderCurrentMii();
-    }
-    await miiSleep(4);
-  }
-}
-
-/* If live rendering is impossible, fall back to the baked sprites. */
-function miiThumbsFallback(){
-  for (const p of miiPickers) if (p.cat) p.items.forEach(b => {
-    if (b._cv) return;
-    b.style.backgroundImage = b.dataset.bgImg;
-    b.style.backgroundSize = b.dataset.bgSize;
-    b.style.backgroundPosition = b.dataset.bgPos;
-  });
-}
 
 /* Mii-Channel style steppers: every remaining slider becomes two buttons
    (hold to repeat) with a small position marker. */
@@ -1877,7 +1817,6 @@ document.querySelectorAll("#mii input[type=range]").forEach(inp => {
 
 document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click", () => {
   setTimeout(() => {
-    miiThumbsKick();
     const a = document.querySelector(".mii-section.active .mii-opt.active");
     if (a) a.scrollIntoView({ block: "nearest" });
   }, 40);
@@ -1908,7 +1847,6 @@ document.addEventListener("input", event => {
   }
 
   clearTimeout(renderTimer);
-  miiLastActivity = performance.now();
 
   /* picks and arrow buttons render at once; only typing/real sliders wait */
   renderTimer = setTimeout(async () => {
@@ -1917,7 +1855,6 @@ document.addEventListener("input", event => {
     try {
       await applyMiiForm();
       await renderCurrentMii();
-      miiThumbsInvalidate(event.target && event.target.id);
     } catch (e) {
       console.error(
         "Live Mii render failed:",
