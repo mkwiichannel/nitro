@@ -312,7 +312,7 @@
   /* ---------- Mii editor: extra polish ---------- */
   .mii-preview{background:radial-gradient(ellipse 70% 55% at 50% 38%,rgba(255,130,20,.20),transparent 62%),radial-gradient(ellipse 90% 40% at 50% 100%,rgba(130,60,220,.22),transparent 70%),#080b12;box-shadow:inset 0 0 60px rgba(0,0,0,.55),0 10px 40px rgba(0,0,0,.45)}
   .mii-preview::after{content:"";position:absolute;left:50%;bottom:19%;width:50%;height:26px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(0,0,0,.65),transparent 70%);border-radius:50%;pointer-events:none}
-  .mii-preview canvas#miiCanvas{z-index:1;filter:drop-shadow(0 14px 22px rgba(0,0,0,.55));animation:miiPop .22s ease-out}
+  .mii-preview canvas#miiCanvas{z-index:1;animation:miiPop .22s ease-out}
   @keyframes miiPop{from{opacity:.55;transform:scale(.97)}to{opacity:1;transform:none}}
   .mii-opt.mc{transition:transform .14s ease,background .14s ease,border-color .14s ease,box-shadow .14s ease}
   .mii-opt.mc:hover{transform:translateY(-2px) scale(1.04);border-color:rgba(255,140,0,.6);box-shadow:0 6px 16px rgba(0,0,0,.45),0 0 14px rgba(255,140,0,.18)}
@@ -365,7 +365,7 @@
 
   /* Home: the whole banner is the hero, buttons sit in front of it on a fade */
   #home .hero{ position:relative; padding:0; background:#07040d; }
-  #home .hero::before{ content:""; position:absolute; inset:-30px; background:url(banner.png) center/cover; filter:blur(26px) brightness(.55) saturate(1.2); }
+  #home .hero::before{ content:""; position:absolute; inset:0; background:var(--hero-bg, none) center/cover; }
   #home .hero-banner{ position:absolute; inset:0; margin:0; border:0; border-radius:0; box-shadow:none; flex:none; min-height:0; }
   #home .hero-banner img{ width:100%; height:100%; object-fit:contain; display:block; }
   #home .hero-banner::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:46%; background:linear-gradient(180deg,rgba(10,5,18,0) 0%,rgba(10,5,18,.72) 62%,#0a0512 100%); pointer-events:none; }
@@ -407,6 +407,7 @@
     will-change: transform;
     animation: fogdrift 18s ease-in-out infinite alternate;
   }
+  body.idle *, body.idle *::before, body.idle *::after{ animation-play-state:paused !important; }
   @keyframes fogdrift{
     from{ transform: translate(-2%, 0) scale(1); }
     to{ transform: translate(2%, -1%) scale(1.06); }
@@ -3460,6 +3461,34 @@ function toast(msg, isError, sticky) {
       go('setup');
     }
   });
+</script>
+
+<script>
+// Housekeeping for low-end PCs: (1) pause the decorative animations while the
+// window is hidden/unfocused, (2) build the soft blurred backdrop behind the
+// Home banner from a tiny downscaled copy instead of a live CSS blur.
+(function(){
+  const setIdle = () => document.body.classList.toggle("idle", document.hidden || !document.hasFocus());
+  ["visibilitychange"].forEach(e => document.addEventListener(e, setIdle));
+  window.addEventListener("blur", setIdle); window.addEventListener("focus", setIdle);
+  function backdrop(img){
+    try{
+      const w = 64, h = 36, c = document.createElement("canvas"); c.width = w; c.height = h;
+      const x = c.getContext("2d");
+      x.drawImage(img, 0, 0, w, h);
+      x.fillStyle = "rgba(7,4,13,.45)"; x.fillRect(0, 0, w, h);
+      const hero = document.querySelector("#home .hero");
+      if(hero) hero.style.setProperty("--hero-bg", "url(" + c.toDataURL("image/png") + ")");
+    }catch(e){}
+  }
+  window.addEventListener("DOMContentLoaded", () => {
+    const img = document.querySelector(".hero-banner img"); if(!img) return;
+    img.decoding = "async";
+    const run = () => backdrop(img);
+    if(img.complete && img.naturalWidth) run();
+    img.addEventListener("load", run);
+  });
+})();
 </script>
 </body>
 </html>
