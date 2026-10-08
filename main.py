@@ -2882,10 +2882,7 @@ def _run_web(api, mii_only=False):
         js_api=api,
     )
     api.window = window
-    # Keep the splash up until the page itself is ready, so a slow first start
-    # never shows a blank, seemingly frozen window. Fallback: close after 25 s.
-    window.events.loaded += _close_splash_screen
-    threading.Timer(25, _close_splash_screen).start()
+    window.events.shown += _close_splash_screen
     if mii_only:
         def _open_mii():
             try:
