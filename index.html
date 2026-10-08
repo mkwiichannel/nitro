@@ -3283,7 +3283,6 @@ function toast(msg, isError, sticky) {
       toast(res.message || t.toastLaunched);
     } else {
       toast((res && res.error) || t.toastCouldNotLaunch, true);
-      go('setup');
     }
   }
 
@@ -3415,10 +3414,6 @@ function toast(msg, isError, sticky) {
         }
       })
       .catch(() => {});
-
-    if(!state.dolphin_path || !state.iso_path){
-      go('setup');
-    }
   });
 </script>
 
