@@ -362,6 +362,16 @@
   #home .card .icon{ margin-bottom:6px; }
   #home .card h3{ font-size:15px; margin-bottom:3px; }
   @media(max-height:760px){ #home .card p{ display:none; } #home .stat{ padding:8px 14px; } }
+
+  /* Home: the whole banner is the hero, buttons sit in front of it on a fade */
+  #home .hero{ position:relative; padding:0; background:#07040d; }
+  #home .hero::before{ content:""; position:absolute; inset:-30px; background:url(banner.png) center/cover; filter:blur(26px) brightness(.55) saturate(1.2); }
+  #home .hero-banner{ position:absolute; inset:0; margin:0; border:0; border-radius:0; box-shadow:none; flex:none; min-height:0; }
+  #home .hero-banner img{ width:100%; height:100%; object-fit:contain; display:block; }
+  #home .hero-banner::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:46%; background:linear-gradient(180deg,rgba(10,5,18,0) 0%,rgba(10,5,18,.72) 62%,#0a0512 100%); pointer-events:none; }
+  #home .hero-overlay{ position:absolute; left:0; right:0; bottom:0; z-index:2; padding:0 28px 22px; display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
+  #home .hero-overlay .path-bar:empty{ display:none; }
+  #home .hero-actions .btn{ box-shadow:0 8px 24px rgba(0,0,0,.45); }
   /* Settings: two columns so everything is visible at once */
   #home .grid-4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
   @media(max-width:1000px){
@@ -474,10 +484,10 @@
 <section class="screen active" id="home">
 <div class="hero">
 <div class="hero-banner"><img src="banner.png" alt="Mario Kart Nitro — Season 1" /></div>
-<div class="stripe"></div>
-<p class="hero-sub"> </p>
-<div class="hero-actions"><button class="btn btn-primary" id="heroPlayBtn"><span id="heroPlayLabel">▶ Play</span></button> <button class="btn btn-ghost" onclick="go('settings')" id="heroSettingsBtn">Settings</button> <button class="btn btn-ghost" onclick="go('credits')" id="heroCreditsBtn">Credits</button> <button class="btn btn-danger-ghost" id="exitBtn">Exit</button></div>
+<div class="hero-overlay">
 <div class="path-bar" id="playNotice"><span><b> </b></span></div>
+<div class="hero-actions"><button class="btn btn-primary" id="heroPlayBtn"><span id="heroPlayLabel">▶ Play</span></button> <button class="btn btn-danger-ghost" id="exitBtn">Close</button></div>
+</div>
 </div>
 <div class="grid-4">
 <div class="stat">
@@ -631,13 +641,6 @@
 <div class="field-inline"><input type="checkbox" id="settingsFullscreen" /> <span id="labelFullscreen">Fullscreen</span></div>
 <div class="field-inline"><input type="checkbox" id="settingsAutoUpdate" checked="checked" /> <span id="labelAutoUpdate">Automatic updates</span></div>
 <button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button>
-<div style="margin-top:26px; padding-top:22px; border-top:1px solid var(--border);">
-<div style="font-size:12px; color:var(--text-faint); margin-bottom:12px;" id="troubleshootingLabel">Troubleshooting</div>
-<button class="btn btn-ghost" id="diagnosticsBtn"><span id="diagnosticsBtnLabel">Show diagnostics</span></button> <button class="btn btn-ghost" id="dolphinLogBtn"><span id="dolphinLogBtnLabel">Show Dolphin's log</span></button>
-<div id="diagnosticsPanel" style="display:none; margin-top:16px;">
-  <pre id="diagnosticsText" style="white-space:pre-wrap; font-family:var(--mono); font-size:11.5px; color:var(--text-dim); margin:0; max-height:400px; overflow:auto; background:var(--bg-2); border:1px solid var(--border); border-radius:9px; padding:14px;"></pre>
-</div>
-</div>
 </div>
 </section>
 <!-- CREDITS -->
@@ -1407,7 +1410,7 @@ async function renderCurrentMiiOnce() {
 
   if (!preview.querySelector("#miiCanvas")) {
     preview.innerHTML =
-      '<div class="loading">Rendering real Mii…</div>';
+      '<div class="loading">Loading…</div>';
   }
 
   try {
@@ -1452,9 +1455,7 @@ async function renderCurrentMiiOnce() {
       throw new Error("MiiJS returned no rendered image.");
     }
 
-    setMiiStatus(
-      "Real Nintendo-style Mii rendered."
-    );
+    setMiiStatus("");
 
   } catch (e) {
     console.error(
@@ -2194,7 +2195,7 @@ function toast(msg, isError, sticky) {
   // ---------- translations ----------
   const TRANSLATIONS = {
     en: { navHome:"Home", navCredits:"Credits", navSettings:"Settings",
-      heroSettingsBtn:"Settings", heroCreditsBtn:"Credits", exitBtn:"Exit",
+      heroSettingsBtn:"Settings", heroCreditsBtn:"Credits", exitBtn:"Close",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Active Mod", labelLauncher:"Launcher",
       notSet:"NOT SET", none:"NONE",
       cardPlayTitle:"Play", cardPlayDesc:"Launch Mario Kart Wii through Dolphin with your active mod.",
@@ -2254,7 +2255,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Downloading and installing — this window will restart automatically.",
       launcherUpdateFailed:"Update failed. You can keep using this version for now." },
     de: { navHome:"Start", navCredits:"Credits", navSettings:"Einstellungen",
-      heroSettingsBtn:"Einstellungen", heroCreditsBtn:"Credits", exitBtn:"Beenden",
+      heroSettingsBtn:"Einstellungen", heroCreditsBtn:"Credits", exitBtn:"Schließen",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiver Mod", labelLauncher:"Launcher",
       notSet:"NICHT GESETZT", none:"KEINER",
       cardPlayTitle:"Spielen", cardPlayDesc:"Starte Mario Kart Wii über Dolphin mit deinem aktiven Mod.",
@@ -2314,7 +2315,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Wird heruntergeladen und installiert — dieses Fenster startet automatisch neu.",
       launcherUpdateFailed:"Update fehlgeschlagen. Du kannst diese Version vorerst weiter benutzen." },
     fr: { navHome:"Accueil", navCredits:"Crédits", navSettings:"Paramètres",
-      heroSettingsBtn:"Paramètres", heroCreditsBtn:"Crédits", exitBtn:"Quitter",
+      heroSettingsBtn:"Paramètres", heroCreditsBtn:"Crédits", exitBtn:"Fermer",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod actif", labelLauncher:"Launcher",
       notSet:"NON DÉFINI", none:"AUCUN",
       cardPlayTitle:"Jouer", cardPlayDesc:"Lancez Mario Kart Wii via Dolphin avec votre mod actif.",
@@ -2374,7 +2375,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Téléchargement et installation en cours — cette fenêtre redémarrera automatiquement.",
       launcherUpdateFailed:"Mise à jour échouée. Vous pouvez continuer à utiliser cette version pour l'instant." },
     es: { navHome:"Inicio", navCredits:"Créditos", navSettings:"Ajustes",
-      heroSettingsBtn:"Ajustes", heroCreditsBtn:"Créditos", exitBtn:"Salir",
+      heroSettingsBtn:"Ajustes", heroCreditsBtn:"Créditos", exitBtn:"Cerrar",
       labelDolphin:"Dolphin", labelIso:"ISO de MKW", labelActiveMod:"Mod activo", labelLauncher:"Launcher",
       notSet:"NO CONFIGURADO", none:"NINGUNO",
       cardPlayTitle:"Jugar", cardPlayDesc:"Inicia Mario Kart Wii mediante Dolphin con tu mod activo.",
@@ -2434,7 +2435,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Descargando e instalando — esta ventana se reiniciará automáticamente.",
       launcherUpdateFailed:"Error al actualizar. Por ahora puedes seguir usando esta versión." },
     it: { navHome:"Home", navCredits:"Crediti", navSettings:"Impostazioni",
-      heroSettingsBtn:"Impostazioni", heroCreditsBtn:"Crediti", exitBtn:"Esci",
+      heroSettingsBtn:"Impostazioni", heroCreditsBtn:"Crediti", exitBtn:"Chiudi",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod attiva", labelLauncher:"Launcher",
       notSet:"NON IMPOSTATO", none:"NESSUNO",
       cardPlayTitle:"Gioca", cardPlayDesc:"Avvia Mario Kart Wii tramite Dolphin con la tua mod attiva.",
@@ -2494,7 +2495,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Download e installazione in corso — questa finestra si riavvierà automaticamente.",
       launcherUpdateFailed:"Aggiornamento non riuscito. Per ora puoi continuare a usare questa versione." },
     pt: { navHome:"Início", navCredits:"Créditos", navSettings:"Config.",
-      heroSettingsBtn:"Configurações", heroCreditsBtn:"Créditos", exitBtn:"Sair",
+      heroSettingsBtn:"Configurações", heroCreditsBtn:"Créditos", exitBtn:"Fechar",
       labelDolphin:"Dolphin", labelIso:"ISO do MKW", labelActiveMod:"Mod ativo", labelLauncher:"Launcher",
       notSet:"NÃO DEFINIDO", none:"NENHUM",
       cardPlayTitle:"Jogar", cardPlayDesc:"Inicie Mario Kart Wii pelo Dolphin com seu mod ativo.",
@@ -2554,7 +2555,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Baixando e instalando — esta janela será reiniciada automaticamente.",
       launcherUpdateFailed:"Falha na atualização. Você pode continuar usando esta versão por agora." },
     nl: { navHome:"Start", navCredits:"Credits", navSettings:"Instellingen",
-      heroSettingsBtn:"Instellingen", heroCreditsBtn:"Credits", exitBtn:"Afsluiten",
+      heroSettingsBtn:"Instellingen", heroCreditsBtn:"Credits", exitBtn:"Sluiten",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Actieve mod", labelLauncher:"Launcher",
       notSet:"NIET INGESTELD", none:"GEEN",
       cardPlayTitle:"Spelen", cardPlayDesc:"Start Mario Kart Wii via Dolphin met je actieve mod.",
@@ -2614,7 +2615,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Downloaden en installeren — dit venster herstart automatisch.",
       launcherUpdateFailed:"Update mislukt. Je kunt deze versie voorlopig blijven gebruiken." },
     pl: { navHome:"Start", navCredits:"Twórcy", navSettings:"Ustawienia",
-      heroSettingsBtn:"Ustawienia", heroCreditsBtn:"Twórcy", exitBtn:"Wyjście",
+      heroSettingsBtn:"Ustawienia", heroCreditsBtn:"Twórcy", exitBtn:"Zamknij",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Aktywny mod", labelLauncher:"Launcher",
       notSet:"NIEUSTAWIONE", none:"BRAK",
       cardPlayTitle:"Graj", cardPlayDesc:"Uruchom Mario Kart Wii przez Dolphin z aktywnym modem.",
@@ -2674,7 +2675,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Pobieranie i instalowanie — to okno uruchomi się ponownie automatycznie.",
       launcherUpdateFailed:"Aktualizacja nie powiodła się. Możesz na razie korzystać z tej wersji." },
     tr: { navHome:"Ana Sayfa", navCredits:"Emek Verenler", navSettings:"Ayarlar",
-      heroSettingsBtn:"Ayarlar", heroCreditsBtn:"Emek Verenler", exitBtn:"Çıkış",
+      heroSettingsBtn:"Ayarlar", heroCreditsBtn:"Emek Verenler", exitBtn:"Kapat",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktif Mod", labelLauncher:"Launcher",
       notSet:"AYARLANMADI", none:"YOK",
       cardPlayTitle:"Oyna", cardPlayDesc:"Aktif modunla Dolphin üzerinden Mario Kart Wii'yi başlat.",
@@ -2734,7 +2735,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"İndiriliyor ve kuruluyor — bu pencere otomatik olarak yeniden başlayacak.",
       launcherUpdateFailed:"Güncelleme başarısız oldu. Şimdilik bu sürümü kullanmaya devam edebilirsiniz." },
     ru: { navHome:"Главная", navCredits:"Авторы", navSettings:"Настройки",
-      heroSettingsBtn:"Настройки", heroCreditsBtn:"Авторы", exitBtn:"Выход",
+      heroSettingsBtn:"Настройки", heroCreditsBtn:"Авторы", exitBtn:"Закрыть",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Активный мод", labelLauncher:"Лаунчер",
       notSet:"НЕ ЗАДАНО", none:"НЕТ",
       cardPlayTitle:"Играть", cardPlayDesc:"Запустите Mario Kart Wii через Dolphin с активным модом.",
@@ -2794,7 +2795,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Загрузка и установка — это окно перезапустится автоматически.",
       launcherUpdateFailed:"Обновление не удалось. Пока можно продолжать использовать эту версию." },
     ja: { navHome:"ホーム", navCredits:"クレジット", navSettings:"設定",
-      heroSettingsBtn:"設定", heroCreditsBtn:"クレジット", exitBtn:"終了",
+      heroSettingsBtn:"設定", heroCreditsBtn:"クレジット", exitBtn:"閉じる",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"有効なMod", labelLauncher:"ランチャー",
       notSet:"未設定", none:"なし",
       cardPlayTitle:"プレイ", cardPlayDesc:"Dolphinで有効なModを使ってマリオカートWiiを起動します。",
@@ -2854,7 +2855,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"ダウンロードしてインストール中です — このウィンドウは自動的に再起動します。",
       launcherUpdateFailed:"更新に失敗しました。今はこのバージョンを使い続けられます。" },
     ko: { navHome:"홈", navCredits:"크레딧", navSettings:"설정",
-      heroSettingsBtn:"설정", heroCreditsBtn:"크레딧", exitBtn:"종료",
+      heroSettingsBtn:"설정", heroCreditsBtn:"크레딧", exitBtn:"닫기",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"활성 모드", labelLauncher:"런처",
       notSet:"설정 안 됨", none:"없음",
       cardPlayTitle:"플레이", cardPlayDesc:"활성 모드로 Dolphin을 통해 마리오 카트 Wii를 실행합니다.",
@@ -2914,7 +2915,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"다운로드 및 설치 중입니다 — 이 창은 자동으로 재시작됩니다.",
       launcherUpdateFailed:"업데이트에 실패했습니다. 지금은 이 버전을 계속 사용할 수 있습니다." },
     zh: { navHome:"主页", navCredits:"鸣谢", navSettings:"设置",
-      heroSettingsBtn:"设置", heroCreditsBtn:"鸣谢", exitBtn:"退出",
+      heroSettingsBtn:"设置", heroCreditsBtn:"鸣谢", exitBtn:"关闭",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"当前模组", labelLauncher:"启动器",
       notSet:"未设置", none:"无",
       cardPlayTitle:"开始游戏", cardPlayDesc:"通过 Dolphin 使用当前模组启动马里奥赛车 Wii。",
@@ -2974,7 +2975,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"正在下载并安装——此窗口将自动重启。",
       launcherUpdateFailed:"更新失败。你可以暂时继续使用此版本。" },
     ar: { navHome:"الرئيسية", navCredits:"الشكر والتقدير", navSettings:"الإعدادات",
-      heroSettingsBtn:"الإعدادات", heroCreditsBtn:"الشكر والتقدير", exitBtn:"خروج",
+      heroSettingsBtn:"الإعدادات", heroCreditsBtn:"الشكر والتقدير", exitBtn:"إغلاق",
       labelDolphin:"Dolphin", labelIso:"ISO الخاص باللعبة", labelActiveMod:"التعديل النشط", labelLauncher:"المشغّل",
       notSet:"غير محدد", none:"لا شيء",
       cardPlayTitle:"العب", cardPlayDesc:"شغّل ماريو كارت Wii عبر Dolphin باستخدام التعديل النشط.",
@@ -3034,7 +3035,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"جاري التنزيل والتثبيت — ستُعاد تشغيل هذه النافذة تلقائيًا.",
       launcherUpdateFailed:"فشل التحديث. يمكنك الاستمرار في استخدام هذا الإصدار الآن." },
     sv: { navHome:"Hem", navCredits:"Credits", navSettings:"Inställningar",
-      heroSettingsBtn:"Inställningar", heroCreditsBtn:"Credits", exitBtn:"Avsluta",
+      heroSettingsBtn:"Inställningar", heroCreditsBtn:"Credits", exitBtn:"Stäng",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiv mod", labelLauncher:"Launcher",
       notSet:"EJ INSTÄLLD", none:"INGEN",
       cardPlayTitle:"Spela", cardPlayDesc:"Starta Mario Kart Wii via Dolphin med din aktiva mod.",
@@ -3094,7 +3095,7 @@ function toast(msg, isError, sticky) {
       launcherUpdateInstalling:"Laddar ner och installerar — det här fönstret startar om automatiskt.",
       launcherUpdateFailed:"Uppdateringen misslyckades. Du kan fortsätta använda den här versionen för nu." },
     fi: { navHome:"Koti", navCredits:"Tekijät", navSettings:"Asetukset",
-      heroSettingsBtn:"Asetukset", heroCreditsBtn:"Tekijät", exitBtn:"Poistu",
+      heroSettingsBtn:"Asetukset", heroCreditsBtn:"Tekijät", exitBtn:"Sulje",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiivinen modi", labelLauncher:"Käynnistin",
       notSet:"EI ASETETTU", none:"EI MITÄÄN",
       cardPlayTitle:"Pelaa", cardPlayDesc:"Käynnistä Mario Kart Wii Dolphinin kautta aktiivisella modilla.",
@@ -3380,26 +3381,6 @@ function toast(msg, isError, sticky) {
     await window.pywebview.api.save_settings(payload);
     await refreshState();
     go('home');
-  });
-
-  document.getElementById('diagnosticsBtn').addEventListener('click', async ()=>{
-    const panel = document.getElementById('diagnosticsPanel');
-    const text = document.getElementById('diagnosticsText');
-    if(panel.style.display === 'none'){
-      text.textContent = 'Loading...';
-      panel.style.display = 'block';
-      text.textContent = await window.pywebview.api.get_launch_diagnostics();
-    } else {
-      panel.style.display = 'none';
-    }
-  });
-
-  document.getElementById('dolphinLogBtn').addEventListener('click', async ()=>{
-    const panel = document.getElementById('diagnosticsPanel');
-    const text = document.getElementById('diagnosticsText');
-    text.textContent = 'Loading...';
-    panel.style.display = 'block';
-    text.textContent = await window.pywebview.api.get_dolphin_log_tail();
   });
 
   // ---------- launcher self-update popup ----------
