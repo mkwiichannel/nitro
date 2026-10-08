@@ -96,7 +96,7 @@ class Watch:
 
     def __init__(self, window, extra=""):
         self.window = window
-        self.extra = extra
+        self.extra = extra  # kept for callers; the live flags are read when logging
         self._pending_since = None
         self._reported = False
 
@@ -107,7 +107,8 @@ class Watch:
 
     def _facts(self):
         time.sleep(6)  # stay out of the way of startup
-        log(_system_facts(self.extra))
+        flags = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "-")
+        log(_system_facts("webview args: " + flags))
 
     def _pinger(self):
         time.sleep(8)
