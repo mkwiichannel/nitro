@@ -25,10 +25,20 @@ public partial class App : Application
         }
 
         DispatcherUnhandledException += OnUnhandled;
-        Tr.Init();
-        var w = new MainWindow();
-        MainWindow = w;
-        w.Show();
+        try
+        {
+            Tr.Init();
+            var w = new MainWindow();
+            MainWindow = w;
+            w.Show();
+        }
+        catch (Exception ex)
+        {
+            // Startup failed: say why instead of closing silently.
+            MessageBox.Show("Mario Kart Nitro could not start.\n\n" + ex, "Mario Kart Nitro",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
     }
 
     static void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
