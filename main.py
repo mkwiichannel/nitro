@@ -2934,10 +2934,11 @@ def main():
         threading.Thread(target=_deferred_startup_chores, daemon=True).start()
     api = Api()
 
-    # Your original web UI is the default. The Qt version (native_ui.py)
-    # is experimental and only used with --native.
+    # Native Qt UI whenever it is available (no browser engine for everyday
+    # use; only the Mii editor opens a web window, on demand). The web UI is
+    # used when PySide6 isn't bundled/installed, or with --web.
     use_web = True
-    if "--native" in sys.argv[1:] and not mii_only:
+    if not mii_only and "--web" not in sys.argv[1:]:
         try:
             import PySide6  # noqa: F401
             use_web = False

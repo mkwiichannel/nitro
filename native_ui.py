@@ -16,7 +16,9 @@ import sys
 import threading
 
 from PySide6.QtCore import QObject, QTimer, Qt, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QIcon, QPixmap
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import (QColor, QDesktopServices, QFont, QIcon, QLinearGradient,
+                           QPainter, QPainterPath, QPen, QPixmap)
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame,
@@ -101,6 +103,51 @@ class BannerLabel(QLabel):
         self._rescale()
 
 
+class HeroFrame(QFrame):
+    """Home hero: the whole banner, with the buttons in front of it and a fade
+    at the bottom (same look as the web UI)."""
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("hero")
+        self._pm = None
+        self._scaled = None
+        self._scaled_for = None
+        self.border = QColor("#241340")
+
+    def set_path(self, path):
+        pm = QPixmap(path) if path and os.path.isfile(path) else QPixmap()
+        self._pm = pm if not pm.isNull() else None
+        self._scaled_for = None
+        self.update()
+
+    def paintEvent(self, e):
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        clip = QPainterPath()
+        clip.addRoundedRect(r, 18, 18)
+        p.setClipPath(clip)
+        p.fillRect(self.rect(), QColor("#07040d"))
+        if self._pm is not None:
+            size = self.size()
+            if self._scaled_for != size:
+                self._scaled = self._pm.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self._scaled_for = size
+            x = (size.width() - self._scaled.width()) // 2
+            y = (size.height() - self._scaled.height()) // 2
+            p.drawPixmap(x, y, self._scaled)
+        h = self.height()
+        g = QLinearGradient(0, h * 0.54, 0, h)
+        g.setColorAt(0.0, QColor(10, 5, 18, 0))
+        g.setColorAt(0.62, QColor(10, 5, 18, 184))
+        g.setColorAt(1.0, QColor(10, 5, 18, 255))
+        p.fillRect(self.rect(), g)
+        p.setClipping(False)
+        p.setPen(QPen(self.border, 1))
+        p.drawRoundedRect(r, 18, 18)
+
+
 class LauncherWindow(QMainWindow):
     def __init__(self, api, main_module):
         super().__init__()
@@ -133,8 +180,6 @@ class LauncherWindow(QMainWindow):
         self._build()
         state = api.get_state()
         self.apply_state(state)
-        if not state.get("dolphin_path") or not state.get("iso_path"):
-            self.show_screen("setup")
 
         # Pick up remote theme changes the background updater writes to
         # config.json (cheap stat() once a second; no web page involved).
@@ -190,12 +235,6 @@ class LauncherWindow(QMainWindow):
             b.clicked.connect(lambda _=False, k=key: self.show_screen(k))
             self.tab_buttons[key] = b
             bl.addWidget(b)
-        bl.addStretch(1)
-        self.exit_btn = QPushButton()
-        self.exit_btn.setObjectName("ghost")
-        self.exit_btn.setCursor(Qt.PointingHandCursor)
-        self.exit_btn.clicked.connect(QApplication.instance().quit)
-        bl.addWidget(self.exit_btn)
         outer.addWidget(bar)
 
         self.stack = QStackedWidget()
@@ -221,38 +260,38 @@ class LauncherWindow(QMainWindow):
 
     def _build_home(self):
         w, lay = self._page()
-        self.banner = BannerLabel()
-        lay.addWidget(self.banner)
-
-        row = QHBoxLayout()
-        self.play_btn = QPushButton()
-        self.play_btn.setObjectName("primary")
-        self.play_btn.setMinimumHeight(48)
-        self.play_btn.setMinimumWidth(260)
-        self.play_btn.setCursor(Qt.PointingHandCursor)
-        self.play_btn.clicked.connect(self.do_play)
-        self.hero_settings = QPushButton()
-        self.hero_settings.setObjectName("ghost")
-        self.hero_settings.clicked.connect(lambda: self.show_screen("settings"))
-        self.hero_credits = QPushButton()
-        self.hero_credits.setObjectName("ghost")
-        self.hero_credits.clicked.connect(lambda: self.show_screen("credits"))
-        row.addWidget(self.play_btn)
-        row.addWidget(self.hero_settings)
-        row.addWidget(self.hero_credits)
-        row.addStretch(1)
-        lay.addLayout(row)
-
+        self.banner = HeroFrame()
+        hl = QVBoxLayout(self.banner)
+        hl.setContentsMargins(28, 0, 28, 22)
+        hl.setSpacing(10)
+        hl.addStretch(1)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setFixedHeight(6)
         self.progress.hide()
-        lay.addWidget(self.progress)
+        hl.addWidget(self.progress)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
         self.notice.setObjectName("notice")
         self.notice.hide()
-        lay.addWidget(self.notice)
+        hl.addWidget(self.notice)
+        row = QHBoxLayout()
+        self.play_btn = QPushButton()
+        self.play_btn.setObjectName("primary")
+        self.play_btn.setMinimumHeight(44)
+        self.play_btn.setMinimumWidth(110)
+        self.play_btn.setCursor(Qt.PointingHandCursor)
+        self.play_btn.clicked.connect(self.do_play)
+        self.hero_close = QPushButton()
+        self.hero_close.setObjectName("ghost")
+        self.hero_close.setMinimumHeight(44)
+        self.hero_close.setCursor(Qt.PointingHandCursor)
+        self.hero_close.clicked.connect(QApplication.instance().quit)
+        row.addWidget(self.play_btn)
+        row.addWidget(self.hero_close)
+        row.addStretch(1)
+        hl.addLayout(row)
+        lay.addWidget(self.banner, 1)
 
         stats = QHBoxLayout()
         stats.setSpacing(14)
@@ -296,7 +335,6 @@ class LauncherWindow(QMainWindow):
             self.cards.append((target, c))
             cards.addWidget(c, 1)
         lay.addLayout(cards)
-        lay.addStretch(1)
         return w
 
     def _build_mii(self):
@@ -394,23 +432,6 @@ class LauncherWindow(QMainWindow):
         self.save_btn.clicked.connect(self.save_settings)
         pl.addWidget(self.save_btn)
 
-        self.lbl_trouble = QLabel()
-        self.lbl_trouble.setObjectName("dim")
-        pl.addSpacing(10)
-        pl.addWidget(self.lbl_trouble)
-        tr = QHBoxLayout()
-        self.diag_btn = QPushButton(); self.diag_btn.setObjectName("ghost")
-        self.log_btn = QPushButton(); self.log_btn.setObjectName("ghost")
-        self.diag_btn.clicked.connect(lambda: self._toggle_text(self.api.get_launch_diagnostics))
-        self.log_btn.clicked.connect(lambda: self._toggle_text(self.api.get_dolphin_log_tail))
-        tr.addWidget(self.diag_btn); tr.addWidget(self.log_btn); tr.addStretch(1)
-        pl.addLayout(tr)
-        self.diag_text = QPlainTextEdit()
-        self.diag_text.setReadOnly(True)
-        self.diag_text.setObjectName("mono")
-        self.diag_text.setMinimumHeight(180)
-        self.diag_text.hide()
-        pl.addWidget(self.diag_text)
         lay.addWidget(panel)
         lay.addStretch(1)
         return w
@@ -499,6 +520,14 @@ class LauncherWindow(QMainWindow):
         self.brand.setText("MARIO KART <span style='color:%s'>NITRO</span>" % self.pal["--cyan"])
         self.brand.setTextFormat(Qt.RichText)
         self.ver.setText("v" + str(s.get("version", "")))
+        def _when(iso):
+            try:
+                import datetime
+                return datetime.datetime.fromisoformat(iso).strftime("%Y-%m-%d %H:%M")
+            except Exception:
+                return "-"
+        self.ver.setToolTip("Modpack updated: %s\nLauncher updated: %s" % (
+            _when(s.get("modpack_updated_at", "")), _when(s.get("launcher_updated_at", ""))))
 
         self._apply_texts()
 
@@ -533,9 +562,7 @@ class LauncherWindow(QMainWindow):
                  "credits": t("navCredits"), "settings": t("navSettings")}
         for k, b in self.tab_buttons.items():
             b.setText(names[k])
-        self.exit_btn.setText(t("exitBtn"))
-        self.hero_settings.setText(t("heroSettingsBtn"))
-        self.hero_credits.setText(t("heroCreditsBtn"))
+        self.hero_close.setText(t("exitBtn"))
         if not self._playing:
             self.play_btn.setText("▶  " + t("playLabel"))
         for key, name in (("Dolphin", "labelDolphin"), ("Iso", "labelIso"),
@@ -561,9 +588,6 @@ class LauncherWindow(QMainWindow):
         self.set_full.setText(t("labelFullscreen"))
         self.set_auto.setText(t("labelAutoUpdate"))
         self.save_btn.setText(t("saveSettingsLabel"))
-        self.lbl_trouble.setText(t("troubleshootingLabel"))
-        self.diag_btn.setText(t("diagnosticsBtnLabel"))
-        self.log_btn.setText(t("dolphinLogBtnLabel"))
         for b in self._browse_buttons:
             b.setText(t("browseLabel"))
 
@@ -592,6 +616,8 @@ class LauncherWindow(QMainWindow):
                 pal[k] = v
         self.pal = pal
         p = pal
+        if hasattr(self, "banner"):
+            self.banner.border = QColor(p['--panel-hover'])
         self.setStyleSheet(f"""
         QWidget {{ color:{p['--text']}; font-size:13px; }}
         #root, QStackedWidget, QStackedWidget > QWidget {{ background:{p['--bg']}; }}
@@ -759,7 +785,6 @@ class LauncherWindow(QMainWindow):
             self.toast(res.get("message") or self.t("toastLaunched"))
         else:
             self.toast((res or {}).get("error") or self.t("toastCouldNotLaunch"), True)
-            self.show_screen("setup")
 
     # ------------------------------------------------------------ launcher self-update
     def _startup_update_check(self):
