@@ -2592,6 +2592,37 @@ def _hang_guard(window_title, hung_seconds=15):
         return
 
 
+def _restart_launcher():
+    """Starts a fresh copy of the launcher and ends this one. Only ever done
+    once per run chain (env NITRO_RESTARTED), so it can never loop."""
+    env = dict(os.environ, NITRO_RESTARTED="1", PYINSTALLER_RESET_ENVIRONMENT="1")
+    args = [sys.executable] + ([] if getattr(sys, "frozen", False) else [os.path.abspath(__file__)])
+    args += [a for a in sys.argv[1:]]
+    try:
+        subprocess.Popen(args, env=env, close_fds=True)
+    except OSError:
+        return False
+    os._exit(0)
+
+
+def _page_load_watchdog(window, loaded, wait_after_shown=10):
+    """The window can appear but its page never load (a stuck WebView2
+    start). Seen as "it does nothing, then works on the 2nd or 3rd try".
+    If the page hasn't finished loading wait_after_shown seconds after the
+    window appeared, write a snapshot and restart the launcher once."""
+    if not window.events.shown.wait(timeout=60):
+        return
+    if loaded.wait(timeout=wait_after_shown):
+        return
+    freeze_watch.log("PAGE DID NOT LOAD within %ds of the window appearing - process snapshot:\n%s"
+                     % (wait_after_shown, freeze_watch._process_snapshot()))
+    if os.environ.get("NITRO_RESTARTED"):
+        freeze_watch.log("already restarted once; leaving it")
+        return
+    freeze_watch.log("restarting the launcher once")
+    _restart_launcher()
+
+
 def _startup_watchdog(window, t_process_created=None, t_main_start=None, t_before_webview_start=None):
     """Safety net for a WebView2 initialization that HANGS instead of
     erroring out -- window.events.shown firing is pywebview's own
@@ -2846,6 +2877,10 @@ def _run_web(api, mii_only=False):
     freeze_watch.init(app_data_dir())
     freeze_watch.log("process start (main running)")
     window.events.shown += lambda: freeze_watch.Watch(window).start()
+    window.events.shown += lambda: freeze_watch.log("window shown event")
+    _page_loaded = threading.Event()
+    window.events.loaded += lambda: (freeze_watch.log("page loaded event"), _page_loaded.set())
+    threading.Thread(target=_page_load_watchdog, args=(window, _page_loaded), daemon=True).start()
     threading.Thread(target=_memory_guard, daemon=True).start()
     threading.Thread(target=_hang_guard, args=("Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",), daemon=True).start()
     threading.Thread(
