@@ -167,14 +167,14 @@ def git_blob_sha_progress(path, on_bytes):
 
 
 def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
-    """Compare Dolphin's folder with the repo listing, byte for byte.
+    """Compare Dolphin's folder with the repo listing.
 
-    Every file is read and checked against its git SHA on every call,
-    so a file whose CONTENT differs is always caught, even when it has
-    the same size and the same modified-time (copying a file over
-    another preserves the timestamp, so size/mtime alone can't be
-    trusted). Missing files and wrong sizes are found first with plain
-    stat() calls and never need reading.
+    Missing files and wrong sizes are found with plain stat() calls.
+    A file that was verified earlier and still has the same size and
+    modified-time is trusted without being read, so a normal check
+    takes a fraction of a second. Anything new or changed since the
+    last verification (a replaced or edited file gets a new
+    modified-time) is read and checked against its git SHA.
 
     Returns dict(download=[(rel, sha, size)], delete=[rel],
     ok={rel: [size, mtime_ns, sha]}). progress_cb(done_bytes,
@@ -182,7 +182,7 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
     norm = os.path.normcase(os.path.abspath(dest))
     prev = state.get("files", {}) if state.get("dest") == norm else {}
 
-    download, to_hash = [], []
+    download, to_hash, trusted = [], [], {}
     for rel, (sha, size) in remote_files.items():  # pass 1: stat only
         p = _local_path(dest, rel)
         try:
@@ -197,7 +197,11 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
         elif st.st_size != size:
             download.append((rel, sha, size))
         else:
-            to_hash.append(rel)
+            fp = prev.get(rel)
+            if fp and len(fp) == 3 and fp[0] == size and fp[1] == st.st_mtime_ns and fp[2] == sha:
+                trusted[rel] = list(fp)  # verified before, untouched since: no read
+            else:
+                to_hash.append(rel)
 
     total = sum(remote_files[r][1] for r in to_hash)
     lock = threading.Lock()
@@ -224,7 +228,7 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
             return rel, [size, st.st_mtime_ns, sha]
         return rel, None
 
-    ok = {}
+    ok = dict(trusted)
     with ThreadPoolExecutor(max_workers=workers, initializer=_lower_thread_priority) as pool:
         for rel, entry in pool.map(check, to_hash):
             if entry:
@@ -377,3 +381,19 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
     if error is not None:
         raise error
     return new_state
+
+
+def remember_verified(repo, branch, dest, remote, plan, state, state_path):
+    """Nothing to download: still store what was just verified, so the
+    next check can skip reading those files again."""
+    prev = state.get("files", {})
+    files = dict(plan["ok"])
+    for rel, entry in prev.items():
+        if rel in remote["files"] and _protected(rel):
+            files[rel] = entry
+    save_state(state_path, {
+        "repo": repo, "branch": branch,
+        "dest": os.path.normcase(os.path.abspath(dest)),
+        "files": files, "tree_sha": remote["tree_sha"],
+        "etag": remote.get("etag", ""), "remote": remote["files"],
+    })

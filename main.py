@@ -1532,6 +1532,11 @@ class Api:
                 _set_progress(status="verifying", downloaded_bytes=done, total_bytes=total or None)
             plan = modpack_sync.make_plan(dest, remote["files"], state, progress_cb=_verify_progress)
             _set_progress(status="idle", downloaded_bytes=0, total_bytes=None)
+            if not plan["download"] and not plan["delete"] and state.get("files"):
+                try:
+                    modpack_sync.remember_verified(repo, branch, dest, remote, plan, state, MODPACK_STATE_PATH)
+                except OSError:
+                    pass
         except modpack_sync.SyncError as e:
             return {"update_available": False, "error": str(e), **launcher_info}
         except OSError as e:
