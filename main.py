@@ -1292,7 +1292,7 @@ class Api:
             docstring for the exact mechanics and its honest limits.
         """
         # If "theme" is missing entirely (e.g. a manifest.json that only
-        # has version/content_url/launcher_nitro, no image-pushing at
+        # has version/launcher_nitro, no image-pushing at
         # all), treat it exactly like an empty theme block below --
         # clear out any override cached from an EARLIER manifest that
         # did have one, rather than silently leaving it in place
@@ -1467,7 +1467,7 @@ class Api:
         """Fetch the manifest.json (hardcoded GitHub URL, controlled
         entirely by editing that file's content — never needs an app
         rebuild) and compare its version against what's installed.
-        Format: {"version": "0.0.1", "content_url": "<drive link>"}"""
+        Format: {"launcher_nitro": "<exe download link>"}"""
         try:
             manifest = json.loads(fetch_url_bytes(MANIFEST_URL, timeout=10).decode("utf-8"))
         except (OSError, ValueError) as e:
@@ -1477,7 +1477,7 @@ class Api:
         self._apply_remote_theme(manifest, cfg)
 
         # launcher_nitro (the whole-exe self-update) is checked
-        # FIRST and independently of content_url/version below -- it
+        # FIRST and independently of the modpack sync below -- it
         # used to be gated behind "manifest.json has both version AND
         # content_url", so as long as content_url was empty (e.g. mod
         # content not published yet), the launcher_nitro check never
