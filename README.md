@@ -70,7 +70,7 @@ config and shown on the version pill.
 
 
 
-```
+---
 
 ## License
 
