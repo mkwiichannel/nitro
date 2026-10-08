@@ -19,6 +19,7 @@ import base64
 import configparser
 import hashlib
 import http.cookiejar
+import datetime
 import json
 import os
 import re
@@ -1610,6 +1611,7 @@ class Api:
             cfg = load_config()
             cfg["content_version"] = (remote.get("tree_sha") or "")[:7] or cfg.get("content_version", "0")
             cfg["installed_from_url"] = download_url
+            cfg["modpack_updated_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
             for m in cfg["mods"]:
                 if m.get("name") == "Nitro Pack":
                     m["content_root"] = dest
@@ -1932,6 +1934,7 @@ class Api:
 
         cfg = load_config()
         cfg["installed_launcher_url"] = download_url
+        cfg["launcher_updated_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
         save_config(cfg)
 
         # A short head start before this process actually disappears

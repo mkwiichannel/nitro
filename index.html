@@ -3000,6 +3000,12 @@ function toast(msg, isError, sticky) {
     mEl.classList.toggle('dim', !state.active_mod);
     document.getElementById('statVersion').textContent = 'v' + state.version;
     document.getElementById('verPill').textContent = 'v' + state.version;
+    try {
+      const fmt = v => v ? new Date(v).toLocaleString() : 'never';
+      document.getElementById('verPill').title =
+        'Mod pack last updated: ' + fmt(state.modpack_updated_at) +
+        '\nLauncher last updated: ' + fmt(state.launcher_updated_at);
+    } catch (e) {}
   }
 
   function renderSettings(state){
