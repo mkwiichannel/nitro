@@ -856,7 +856,8 @@ function setMiiStatus(message, error = false) {
   const e = document.getElementById("miiStatus");
   if (!e) return;
 
-  e.textContent = message;
+  // Only real problems are shown; routine notes (loaded slot, saved...) stay hidden.
+  e.textContent = error ? message : "";
   e.style.color = error ? "#ff8f8f" : "";
 }
 
@@ -3207,6 +3208,8 @@ function toast(msg, isError, sticky) {
       if(el) el.textContent = text;
     }
     document.querySelectorAll('.browseLabel').forEach(el => el.textContent = t.browseLabel);
+    const hp = document.getElementById('heroPlayBtn'), hl = document.getElementById('heroPlayLabel');
+    if(hl && !(hp && hp.disabled)) hl.textContent = `▶ ${t.playLabel}`;
     document.documentElement.setAttribute('lang', langCode);
     document.documentElement.setAttribute('dir', langCode === 'ar' ? 'rtl' : 'ltr');
     window._currentLang = langCode;
