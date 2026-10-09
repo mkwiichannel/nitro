@@ -29,6 +29,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -393,6 +394,50 @@ _progress_lock = threading.Lock()
 def _set_progress(**kwargs):
     with _progress_lock:
         _download_progress.update(kwargs)
+
+
+_LAUNCHER_REPO_DEFAULT = "mkwiichannel/nitro"
+_launcher_release_cache = {"t": 0.0, "etag": "", "data": None}
+
+
+def _latest_launcher_release(url_hint="", force=False):
+    """The newest published GitHub release of the launcher's repo, as
+    {"fp": <id of its exe asset>, "url": <direct download>, "name": ...},
+    or None when it can't be read (offline, rate limited, no exe attached).
+    Publishing a release (or re-uploading its exe) is all it takes for
+    every installed launcher to offer the update -- nothing else to edit.
+    Answers are cached for 10 minutes and use ETag, so this stays cheap."""
+    c = _launcher_release_cache
+    if c["data"] is not None and not force and time.time() - c["t"] < 600:
+        return c["data"]
+    m = re.search(r"github\.com/([^/]+/[^/]+)/releases", str(url_hint or ""))
+    repo = m.group(1) if m else _LAUNCHER_REPO_DEFAULT
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/releases/latest",
+        headers={"User-Agent": "MarioKartNitro-Launcher", "Accept": "application/vnd.github+json"})
+    if c["etag"] and c["data"] is not None:
+        req.add_header("If-None-Match", c["etag"])
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            rel = json.loads(r.read().decode("utf-8"))
+            c["etag"] = r.headers.get("ETag", "") or ""
+    except urllib.error.HTTPError as e:
+        if e.code == 304 and c["data"] is not None:
+            c["t"] = time.time()
+            return c["data"]
+        return c["data"]
+    except (OSError, ValueError):
+        return c["data"]
+    assets = [a for a in (rel.get("assets") or []) if isinstance(a, dict) and a.get("browser_download_url")]
+    pick = next((a for a in assets if str(a.get("name", "")).lower() == "mariokartnitro.exe"), None) \
+        or next((a for a in assets if str(a.get("name", "")).lower().endswith(".exe")), None) \
+        or next((a for a in assets if str(a.get("name", "")).lower().endswith(".zip")), None)
+    if not pick:
+        return c["data"]
+    c["data"] = {"fp": "rel:%s" % pick.get("id"), "url": pick["browser_download_url"],
+                 "name": rel.get("name") or rel.get("tag_name") or ""}
+    c["t"] = time.time()
+    return c["data"]
 
 
 class Api:
@@ -1495,22 +1540,25 @@ class Api:
         # new .exe build vs a new mod content zip) and shouldn't be
         # able to block each other.
         launcher_url = str(manifest.get("launcher_nitro", "")).strip()
+        # The newest GitHub release of the launcher repo decides; the manifest
+        # link is only a fallback when GitHub's release list can't be read.
+        rel = _latest_launcher_release(launcher_url, force=not light)
+        if rel:
+            launcher_url, launcher_fp = rel["url"], rel["fp"]
+        else:
+            launcher_fp = launcher_url
+        self._launcher_pending_fp = launcher_fp
         installed_launcher_url = cfg.get("installed_launcher_url", "")
-        if launcher_url and not installed_launcher_url and not cfg.get("_launcher_baseline_set"):
-            # First check ever on this machine (installed_launcher_url
-            # has never been set) -- whatever's currently running IS
-            # this build, by definition (nobody can be "out of date"
-            # before their first check), so adopt the live
-            # launcher_nitro value as the baseline instead of
-            # immediately nagging a brand-new download with an
-            # "Update!" popup for the exact build they just got.
-            cfg["installed_launcher_url"] = launcher_url
+        if launcher_fp and (not installed_launcher_url or
+                            (launcher_fp.startswith("rel:") and not installed_launcher_url.startswith("rel:"))):
+            # First check with this scheme: whatever is running right now IS
+            # the current build, so adopt it instead of nagging an update
+            # popup for the exact build the player just got.
+            cfg["installed_launcher_url"] = launcher_fp
             cfg["_launcher_baseline_set"] = True
             save_config(cfg)
-            installed_launcher_url = launcher_url
-        launcher_update_available = bool(
-            launcher_url and launcher_url != installed_launcher_url
-        )
+            installed_launcher_url = launcher_fp
+        launcher_update_available = bool(launcher_fp and launcher_fp != installed_launcher_url)
 
         # ---- modpack: synced straight from the GitHub repo into Dolphin's
         # Load/Riivolution folder (see modpack_sync.py). manifest.json can
@@ -1542,11 +1590,17 @@ class Api:
                 _set_progress(status="verifying", downloaded_bytes=done, total_bytes=total or None)
             plan = modpack_sync.make_plan(dest, remote["files"], state, progress_cb=_verify_progress)
             _set_progress(status="idle", downloaded_bytes=0, total_bytes=None)
-            if not plan["download"] and not plan["delete"] and state.get("files"):
+            if not plan["download"] and not plan["delete"]:
                 try:
                     modpack_sync.remember_verified(repo, branch, dest, remote, plan, state, MODPACK_STATE_PATH)
                 except OSError:
                     pass
+                # Files are all there and correct: make sure the Nitro Pack entry
+                # points at them (otherwise Play would start the plain game).
+                cfg2 = load_config()
+                if self._point_mod_at_modpack(cfg2, dest, remote):
+                    cfg2["content_version"] = (remote.get("tree_sha") or "")[:7] or cfg2.get("content_version", "0")
+                    save_config(cfg2)
         except modpack_sync.SyncError as e:
             return {"update_available": False, "error": str(e), **launcher_info}
         except OSError as e:
@@ -1564,6 +1618,26 @@ class Api:
             "download_url": f"repo:{repo}@{branch}",
             **launcher_info,
         }
+
+    @staticmethod
+    def _point_mod_at_modpack(cfg, dest, remote):
+        """Make the "Nitro Pack" entry use the synced modpack in Dolphin's
+        Riivolution folder. Returns True when cfg was changed."""
+        xml_candidates = sorted(p for p in remote["files"] if p.lower().endswith(".xml"))
+        top_xml = [p for p in xml_candidates if p.lower().startswith("riivolution/") and p.count("/") == 1]
+        chosen = (top_xml or xml_candidates or [""])[0]
+        changed = False
+        for m in cfg["mods"]:
+            if m.get("name") == "Nitro Pack":
+                if m.get("content_root") != dest:
+                    m["content_root"] = dest
+                    changed = True
+                if chosen:
+                    xml = os.path.join(dest, *chosen.split("/"))
+                    if m.get("xml_path") != xml:
+                        m["xml_path"] = xml
+                        changed = True
+        return changed
 
     def start_update(self, download_url, latest_version):
         """Kick off the download+install in a background thread and
@@ -1620,18 +1694,11 @@ class Api:
             _set_progress(status="extracting")  # finishing up: config + cleanup
 
             # point the Nitro Pack entry at the synced files
-            xml_candidates = sorted(p for p in remote["files"] if p.lower().endswith(".xml"))
-            top_xml = [p for p in xml_candidates if p.lower().startswith("riivolution/") and p.count("/") == 1]
-            chosen = (top_xml or xml_candidates or [""])[0]
             cfg = load_config()
             cfg["content_version"] = (remote.get("tree_sha") or "")[:7] or cfg.get("content_version", "0")
             cfg["installed_from_url"] = download_url
             cfg["modpack_updated_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
-            for m in cfg["mods"]:
-                if m.get("name") == "Nitro Pack":
-                    m["content_root"] = dest
-                    if chosen:
-                        m["xml_path"] = os.path.join(dest, *chosen.split("/"))
+            self._point_mod_at_modpack(cfg, dest, remote)
             save_config(cfg)
 
             # Old-format leftovers: stale mod folders in Dolphin's folder and
@@ -1948,7 +2015,7 @@ class Api:
             return
 
         cfg = load_config()
-        cfg["installed_launcher_url"] = download_url
+        cfg["installed_launcher_url"] = getattr(self, "_launcher_pending_fp", "") or download_url
         cfg["launcher_updated_at"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
         save_config(cfg)
 

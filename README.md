@@ -56,7 +56,7 @@ settings, and folder structures by hand.
 | What | Source | How it applies |
 |---|---|---|
 | Modpack | `mkwiichannel/Nitropack` (GitHub) | Incremental, hash-checked sync into Dolphin's Riivolution folder |
-| Launcher | `launcher_nitro` in [`manifest.json`](manifest.json) | "Update available" prompt, then the `.exe` is swapped and relaunched |
+| Launcher | Latest [release](../../releases/latest) of this repository | "Update available" prompt, then the `.exe` is swapped and relaunched |
 
 The time of the last modpack sync and launcher update is stored in the launcher
 config and shown on the version pill.
