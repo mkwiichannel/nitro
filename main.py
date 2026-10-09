@@ -2833,14 +2833,7 @@ def _initial_ui_path(cfg):
     opens."""
     bundled = resource_path("index.html")
     cached_path = cfg.get("ui_html_path", "")
-    try:
-        # a cached remote page older than this build's own page is stale: use the bundled one
-        if cached_path and os.path.isfile(cached_path) and \
-                os.path.getmtime(cached_path) >= os.path.getmtime(bundled):
-            return cached_path
-    except OSError:
-        pass
-    return bundled
+    return cached_path if cached_path and os.path.isfile(cached_path) else bundled
 
 
 def _write_initial_state_js(index_file, cfg):
