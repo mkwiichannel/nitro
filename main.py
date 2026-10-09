@@ -2999,6 +2999,24 @@ def _run_web(api, mii_only=False):
     _start_webview_with_webview2_check()
 
 
+def _cleanup_update_leftovers():
+    """After a launcher update, remove everything the swap left behind: the
+    old exe backup, the helper script and the downloaded/extracted files."""
+    try:
+        if getattr(sys, "frozen", False):
+            old = sys.executable + ".old.exe"
+            if os.path.isfile(old):
+                os.remove(old)
+        d = app_data_dir()
+        for name in ("apply_launcher_update.bat", "_launcher_update_new.exe", "_launcher_update.download"):
+            fp = os.path.join(d, name)
+            if os.path.isfile(fp):
+                os.remove(fp)
+        shutil.rmtree(os.path.join(d, "_launcher_extract"), ignore_errors=True)
+    except OSError:
+        pass
+
+
 def main():
     mii_only = "--mii" in sys.argv[1:]
     if not mii_only and not _acquire_single_instance_lock():
@@ -3013,6 +3031,7 @@ def main():
         # folders: a second copy doing it earlier used to delete files the
         # first, running copy still needed -> that window froze.
         threading.Thread(target=_cleanup_orphaned_extraction_folders, daemon=True).start()
+        threading.Thread(target=_cleanup_update_leftovers, daemon=True).start()
         # Neither is needed to show the window; SHChangeNotify in
         # particular can stall for a while when Explorer is busy.
         def _deferred_startup_chores():
