@@ -87,7 +87,7 @@ DEFAULT_CONFIG = {
     "dolphin_path": "",
     "iso_path": "",
     "mod_directory": os.path.join(app_data_dir(), "mods"),
-    "resolution": "1920x1080",
+    "resolution": "1920x1584",
     "language": "en",
     "fullscreen": False,
     "auto_update": True,
@@ -1235,9 +1235,6 @@ class Api:
         ]
         if cfg.get("fullscreen"):
             launch_args.append("--config=Dolphin.Display.Fullscreen=True")
-            resolution = cfg.get("resolution", "").strip()
-            if resolution:
-                launch_args.append(f"--config=Dolphin.Display.FullscreenDisplayRes={resolution}")
         else:
             launch_args.append("--config=Dolphin.Display.Fullscreen=False")
         if cfg.get("performance_mode"):
@@ -1252,14 +1249,15 @@ class Api:
                 "--config=Graphics.Settings.BackendMultithreading=True",
                 "--config=Dolphin.Core.CPUThread=True",
             ]
-        # The chosen resolution also sets how sharp Dolphin renders: Dolphin's
-        # internal scale is a multiple of the Wii's 528-line picture, so pick
-        # the smallest multiple that reaches the chosen height. Performance
-        # mode keeps the light native setting instead.
+        # Resolution = Dolphin's internal resolution (a multiple of the Wii's
+        # 640x528 picture). Performance mode keeps the light native setting.
         if not cfg.get("performance_mode"):
             rm = re.match(r"^\s*(\d{3,5})\s*[xX]\s*(\d{3,5})\s*$", str(cfg.get("resolution", "")))
             if rm:
-                scale = max(1, min(6, -(-int(rm.group(2)) // 528)))
+                w, h = int(rm.group(1)), int(rm.group(2))
+                # exact Dolphin sizes are n*640 x n*528; older values (1920x1080) round up by height
+                scale = w // 640 if (w % 640 == 0 and h == (w // 640) * 528) else -(-h // 528)
+                scale = max(1, min(12, scale))
                 launch_args.append(f"--config=Graphics.Settings.InternalResolution={scale}")
         self._enable_dolphin_file_logging(user_dir)
         manual_command = " ".join(f'"{a}"' if " " in a else a for a in launch_args)
