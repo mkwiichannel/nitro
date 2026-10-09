@@ -596,6 +596,12 @@
 <option value="sv">Svenska</option>
 <option value="fi">Suomi</option>
 </select></div>
+<div class="field"><label id="labelInternalRes">Dolphin internal resolution</label><select id="settingsInternalRes" style="max-width: 220px;">
+<option value="auto">Auto</option>
+<option value="1">1x</option>
+<option value="2">2x</option>
+<option value="3">3x</option>
+</select></div>
 <div class="field-inline"><input type="checkbox" id="settingsFullscreen" /> <span id="labelFullscreen">Fullscreen</span></div>
 <div class="field-inline"><input type="checkbox" id="settingsAutoUpdate" checked="checked" /> <span id="labelAutoUpdate">Automatic updates</span></div>
 <div class="field-inline" title="Runs Dolphin with light graphics settings (native resolution, no anti-aliasing or anisotropic filtering, multithreaded video) for smoother play on weaker laptops."><input type="checkbox" id="settingsPerformance" /> <span id="labelPerformance">Performance mode (for weaker PCs)</span></div>
@@ -1699,20 +1705,23 @@ function mcPaint(cat, value, cv){
   const cell = MC.cell, cols = MC.cols[key];
   const idx = cat === "beard" ? value + 4 : value;
   const S = cv.width;
+  /* work at a higher resolution than shown, then scale down: the game's 64px icons
+     get smooth curves instead of stair-stepped edges */
+  const W = S * (window.MC_SS || 2);
   const T = mcPaint.tmp || (mcPaint.tmp = document.createElement("canvas"));
-  if (T.width !== S) T.width = T.height = S;
+  if (T.width !== W) T.width = T.height = W;
   const t = T.getContext("2d", { willReadFrequently: true });
-  t.clearRect(0, 0, S, S);
+  t.clearRect(0, 0, W, W);
   t.imageSmoothingEnabled = true; t.imageSmoothingQuality = "high";
   /* the game's icons are 64px: scale up first, then sharpen the edge so lines stay crisp */
-  t.drawImage(im, (idx % cols) * cell, Math.floor(idx / cols) * cell, cell, cell, 0, 0, S, S);
+  t.drawImage(im, (idx % cols) * cell, Math.floor(idx / cols) * cell, cell, cell, 0, 0, W, W);
   let tint = null;
   if (MC_TINT[cat]){
     const [id, set] = MC_TINT[cat], l = MII_SWATCHES[set];
     tint = mcRGB(l[Math.max(0, Math.min(l.length - 1, Number(miiVal(id)) || 0))]);
   }
   {
-    const img = t.getImageData(0, 0, S, S), d = img.data;
+    const img = t.getImageData(0, 0, W, W), d = img.data;
     const lip = [214, 84, 66];
     for (let p = 0; p < d.length; p += 4){
       const r = d[p] / 255, g = d[p + 1] / 255, b = d[p + 2] / 255, al = d[p + 3];
@@ -1740,7 +1749,7 @@ function mcPaint(cat, value, cv){
   const c = cv.getContext("2d");
   c.clearRect(0, 0, cv.width, cv.height);
   c.imageSmoothingQuality = "high";
-  c.drawImage(T, 0, 0);
+  c.drawImage(T, 0, 0, W, W, 0, 0, S, S);
   return true;
 }
 let miiMcBusy = false;
@@ -1753,16 +1762,26 @@ function miiMcPaint(force){
     if (!force && p.mcKey === tint) continue;
     p.mcKey = tint; p.done = false; todo.push(p);
   }
-  const run = p => {
-    let ok = true;
-    p.items.forEach((b, i) => { if (!mcPaint(p.cat, i, b._cv)) ok = false; });
+  /* painted in short slices so the window never stalls, even on a slow PC */
+  const run = async p => {
+    const tok = p.mcTok = (p.mcTok || 0) + 1;
+    let ok = true, i = 0;
+    while (i < p.items.length){
+      const t0 = performance.now();
+      while (i < p.items.length && performance.now() - t0 < 10){
+        if (!mcPaint(p.cat, i, p.items[i]._cv)) ok = false;
+        i++;
+      }
+      if (i < p.items.length) await new Promise(r => setTimeout(r, 0));
+      if (p.mcTok !== tok) return; /* a newer paint of this picker took over */
+    }
     p.done = ok;
     if (!ok) p.mcKey = null;
   };
   const shown = p => p.items[0].offsetParent !== null;
   todo.filter(shown).forEach(run);                 /* the open tab right now */
   const rest = todo.filter(p => !shown(p));        /* the other tabs quietly, one per tick */
-  const step = () => { const p = rest.shift(); if (p){ run(p); setTimeout(step, 16); } };
+  const step = async () => { const p = rest.shift(); if (p){ await run(p); setTimeout(step, 16); } };
   setTimeout(step, 30);
 }
 function miiMcPicker(cat, host, m){
@@ -2174,7 +2193,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Home", settingsTitle:"Settings", settingsTag:"Launcher configuration",
       labelDolphinPath:"Dolphin path", labelIsoPath:"MKW ISO path", labelModDir:"Mod directory",
       labelResolution:"Resolution", labelLanguage:"Language", labelFullscreen:"Fullscreen",
-      labelAutoUpdate:"Automatic updates", labelPerformance:"Performance mode (for weaker PCs)", saveSettingsLabel:"Save settings", browseLabel:"Browse",
+      labelAutoUpdate:"Automatic updates", labelPerformance:"Performance mode (for weaker PCs)", labelInternalRes:"Dolphin internal resolution", saveSettingsLabel:"Save settings", browseLabel:"Browse",
       troubleshootingLabel:"Troubleshooting", diagnosticsBtnLabel:"Show diagnostics", dolphinLogBtnLabel:"Show Dolphin's log",
       setupTitle:"Setup", setupIntro:"Set your paths once. Nitro will remember them.",
       labelSetupDolphin:"Dolphin installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Continue",
@@ -2234,7 +2253,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Start", settingsTitle:"Einstellungen", settingsTag:"Launcher-Konfiguration",
       labelDolphinPath:"Dolphin-Pfad", labelIsoPath:"MKW-ISO-Pfad", labelModDir:"Mod-Verzeichnis",
       labelResolution:"Auflösung", labelLanguage:"Sprache", labelFullscreen:"Vollbild",
-      labelAutoUpdate:"Automatische Updates", labelPerformance:"Leistungsmodus (für schwächere PCs)", saveSettingsLabel:"Einstellungen speichern", browseLabel:"Durchsuchen",
+      labelAutoUpdate:"Automatische Updates", labelPerformance:"Leistungsmodus (für schwächere PCs)", labelInternalRes:"Interne Auflösung (Dolphin)", saveSettingsLabel:"Einstellungen speichern", browseLabel:"Durchsuchen",
       troubleshootingLabel:"Problembehandlung", diagnosticsBtnLabel:"Diagnose anzeigen", dolphinLogBtnLabel:"Dolphin-Log anzeigen",
       setupTitle:"Einrichtung", setupIntro:"Lege deine Pfade einmal fest. Nitro merkt sie sich.",
       labelSetupDolphin:"Dolphin-Installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Weiter",
@@ -2294,7 +2313,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Accueil", settingsTitle:"Paramètres", settingsTag:"Configuration du launcher",
       labelDolphinPath:"Chemin Dolphin", labelIsoPath:"Chemin ISO MKW", labelModDir:"Répertoire des mods",
       labelResolution:"Résolution", labelLanguage:"Langue", labelFullscreen:"Plein écran",
-      labelAutoUpdate:"Mises à jour automatiques", labelPerformance:"Mode performance (PC peu puissants)", saveSettingsLabel:"Enregistrer", browseLabel:"Parcourir",
+      labelAutoUpdate:"Mises à jour automatiques", labelPerformance:"Mode performance (PC peu puissants)", labelInternalRes:"Résolution interne (Dolphin)", saveSettingsLabel:"Enregistrer", browseLabel:"Parcourir",
       troubleshootingLabel:"Dépannage", diagnosticsBtnLabel:"Afficher le diagnostic", dolphinLogBtnLabel:"Afficher le journal Dolphin",
       setupTitle:"Configuration", setupIntro:"Définissez vos chemins une fois. Nitro s'en souviendra.",
       labelSetupDolphin:"Installation Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continuer",
@@ -2354,7 +2373,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Inicio", settingsTitle:"Ajustes", settingsTag:"Configuración del launcher",
       labelDolphinPath:"Ruta de Dolphin", labelIsoPath:"Ruta de la ISO", labelModDir:"Directorio de mods",
       labelResolution:"Resolución", labelLanguage:"Idioma", labelFullscreen:"Pantalla completa",
-      labelAutoUpdate:"Actualizaciones automáticas", labelPerformance:"Modo rendimiento (PC modestos)", saveSettingsLabel:"Guardar ajustes", browseLabel:"Examinar",
+      labelAutoUpdate:"Actualizaciones automáticas", labelPerformance:"Modo rendimiento (PC modestos)", labelInternalRes:"Resolución interna (Dolphin)", saveSettingsLabel:"Guardar ajustes", browseLabel:"Examinar",
       troubleshootingLabel:"Solución de problemas", diagnosticsBtnLabel:"Mostrar diagnóstico", dolphinLogBtnLabel:"Mostrar registro de Dolphin",
       setupTitle:"Configuración", setupIntro:"Configura tus rutas una vez. Nitro las recordará.",
       labelSetupDolphin:"Instalación de Dolphin", labelSetupIso:"ISO de Mario Kart Wii", setupContinueLabel:"Continuar",
@@ -2414,7 +2433,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Home", settingsTitle:"Impostazioni", settingsTag:"Configurazione del launcher",
       labelDolphinPath:"Percorso Dolphin", labelIsoPath:"Percorso ISO MKW", labelModDir:"Cartella mod",
       labelResolution:"Risoluzione", labelLanguage:"Lingua", labelFullscreen:"Schermo intero",
-      labelAutoUpdate:"Aggiornamenti automatici", labelPerformance:"Modalità prestazioni (PC meno potenti)", saveSettingsLabel:"Salva impostazioni", browseLabel:"Sfoglia",
+      labelAutoUpdate:"Aggiornamenti automatici", labelPerformance:"Modalità prestazioni (PC meno potenti)", labelInternalRes:"Risoluzione interna (Dolphin)", saveSettingsLabel:"Salva impostazioni", browseLabel:"Sfoglia",
       troubleshootingLabel:"Risoluzione problemi", diagnosticsBtnLabel:"Mostra diagnostica", dolphinLogBtnLabel:"Mostra log di Dolphin",
       setupTitle:"Configurazione", setupIntro:"Imposta i tuoi percorsi una volta. Nitro li ricorderà.",
       labelSetupDolphin:"Installazione Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continua",
@@ -2474,7 +2493,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Início", settingsTitle:"Configurações", settingsTag:"Configuração do launcher",
       labelDolphinPath:"Caminho do Dolphin", labelIsoPath:"Caminho da ISO", labelModDir:"Diretório de mods",
       labelResolution:"Resolução", labelLanguage:"Idioma", labelFullscreen:"Tela cheia",
-      labelAutoUpdate:"Atualizações automáticas", labelPerformance:"Modo desempenho (PCs fracos)", saveSettingsLabel:"Salvar configurações", browseLabel:"Procurar",
+      labelAutoUpdate:"Atualizações automáticas", labelPerformance:"Modo desempenho (PCs fracos)", labelInternalRes:"Resolução interna (Dolphin)", saveSettingsLabel:"Salvar configurações", browseLabel:"Procurar",
       troubleshootingLabel:"Solução de problemas", diagnosticsBtnLabel:"Mostrar diagnóstico", dolphinLogBtnLabel:"Mostrar log do Dolphin",
       setupTitle:"Configuração", setupIntro:"Defina seus caminhos uma vez. O Nitro vai lembrá-los.",
       labelSetupDolphin:"Instalação do Dolphin", labelSetupIso:"ISO do Mario Kart Wii", setupContinueLabel:"Continuar",
@@ -2534,7 +2553,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Start", settingsTitle:"Instellingen", settingsTag:"Launcher-configuratie",
       labelDolphinPath:"Dolphin-pad", labelIsoPath:"MKW ISO-pad", labelModDir:"Mod-map",
       labelResolution:"Resolutie", labelLanguage:"Taal", labelFullscreen:"Volledig scherm",
-      labelAutoUpdate:"Automatische updates", labelPerformance:"Prestatiemodus (zwakkere pc's)", saveSettingsLabel:"Instellingen opslaan", browseLabel:"Bladeren",
+      labelAutoUpdate:"Automatische updates", labelPerformance:"Prestatiemodus (zwakkere pc's)", labelInternalRes:"Interne resolutie (Dolphin)", saveSettingsLabel:"Instellingen opslaan", browseLabel:"Bladeren",
       troubleshootingLabel:"Probleemoplossing", diagnosticsBtnLabel:"Diagnose tonen", dolphinLogBtnLabel:"Dolphin-log tonen",
       setupTitle:"Installatie", setupIntro:"Stel je paden één keer in. Nitro onthoudt ze.",
       labelSetupDolphin:"Dolphin-installatie", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Doorgaan",
@@ -2594,7 +2613,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Start", settingsTitle:"Ustawienia", settingsTag:"Konfiguracja launchera",
       labelDolphinPath:"Ścieżka Dolphin", labelIsoPath:"Ścieżka ISO MKW", labelModDir:"Katalog modów",
       labelResolution:"Rozdzielczość", labelLanguage:"Język", labelFullscreen:"Pełny ekran",
-      labelAutoUpdate:"Automatyczne aktualizacje", labelPerformance:"Tryb wydajności (słabsze komputery)", saveSettingsLabel:"Zapisz ustawienia", browseLabel:"Przeglądaj",
+      labelAutoUpdate:"Automatyczne aktualizacje", labelPerformance:"Tryb wydajności (słabsze komputery)", labelInternalRes:"Rozdzielczość wewnętrzna (Dolphin)", saveSettingsLabel:"Zapisz ustawienia", browseLabel:"Przeglądaj",
       troubleshootingLabel:"Rozwiązywanie problemów", diagnosticsBtnLabel:"Pokaż diagnostykę", dolphinLogBtnLabel:"Pokaż log Dolphin",
       setupTitle:"Konfiguracja", setupIntro:"Ustaw ścieżki raz. Nitro je zapamięta.",
       labelSetupDolphin:"Instalacja Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Dalej",
@@ -2654,7 +2673,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Ana Sayfa", settingsTitle:"Ayarlar", settingsTag:"Launcher yapılandırması",
       labelDolphinPath:"Dolphin yolu", labelIsoPath:"MKW ISO yolu", labelModDir:"Mod dizini",
       labelResolution:"Çözünürlük", labelLanguage:"Dil", labelFullscreen:"Tam ekran",
-      labelAutoUpdate:"Otomatik güncellemeler", labelPerformance:"Performans modu (zayıf bilgisayarlar)", saveSettingsLabel:"Ayarları kaydet", browseLabel:"Gözat",
+      labelAutoUpdate:"Otomatik güncellemeler", labelPerformance:"Performans modu (zayıf bilgisayarlar)", labelInternalRes:"Dahili çözünürlük (Dolphin)", saveSettingsLabel:"Ayarları kaydet", browseLabel:"Gözat",
       troubleshootingLabel:"Sorun giderme", diagnosticsBtnLabel:"Tanılamayı göster", dolphinLogBtnLabel:"Dolphin günlüğünü göster",
       setupTitle:"Kurulum", setupIntro:"Yollarını bir kez ayarla. Nitro onları hatırlayacak.",
       labelSetupDolphin:"Dolphin kurulumu", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Devam",
@@ -2714,7 +2733,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Главная", settingsTitle:"Настройки", settingsTag:"Настройка лаунчера",
       labelDolphinPath:"Путь к Dolphin", labelIsoPath:"Путь к ISO", labelModDir:"Папка модов",
       labelResolution:"Разрешение", labelLanguage:"Язык", labelFullscreen:"Полноэкранный режим",
-      labelAutoUpdate:"Автоматические обновления", labelPerformance:"Режим производительности (слабые ПК)", saveSettingsLabel:"Сохранить настройки", browseLabel:"Обзор",
+      labelAutoUpdate:"Автоматические обновления", labelPerformance:"Режим производительности (слабые ПК)", labelInternalRes:"Внутреннее разрешение (Dolphin)", saveSettingsLabel:"Сохранить настройки", browseLabel:"Обзор",
       troubleshootingLabel:"Устранение неполадок", diagnosticsBtnLabel:"Показать диагностику", dolphinLogBtnLabel:"Показать лог Dolphin",
       setupTitle:"Настройка", setupIntro:"Задайте пути один раз. Nitro их запомнит.",
       labelSetupDolphin:"Установка Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Продолжить",
@@ -2774,7 +2793,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← ホーム", settingsTitle:"設定", settingsTag:"ランチャー設定",
       labelDolphinPath:"Dolphinのパス", labelIsoPath:"MKW ISOのパス", labelModDir:"Modフォルダ",
       labelResolution:"解像度", labelLanguage:"言語", labelFullscreen:"フルスクリーン",
-      labelAutoUpdate:"自動更新", labelPerformance:"パフォーマンスモード（低スペックPC向け）", saveSettingsLabel:"設定を保存", browseLabel:"参照",
+      labelAutoUpdate:"自動更新", labelPerformance:"パフォーマンスモード（低スペックPC向け）", labelInternalRes:"内部解像度（Dolphin）", saveSettingsLabel:"設定を保存", browseLabel:"参照",
       troubleshootingLabel:"トラブルシューティング", diagnosticsBtnLabel:"診断を表示", dolphinLogBtnLabel:"Dolphinのログを表示",
       setupTitle:"セットアップ", setupIntro:"パスを一度設定すれば、Nitroが記憶します。",
       labelSetupDolphin:"Dolphinのインストール先", labelSetupIso:"マリオカートWii ISO", setupContinueLabel:"続ける",
@@ -2834,7 +2853,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← 홈", settingsTitle:"설정", settingsTag:"런처 구성",
       labelDolphinPath:"Dolphin 경로", labelIsoPath:"MKW ISO 경로", labelModDir:"모드 디렉터리",
       labelResolution:"해상도", labelLanguage:"언어", labelFullscreen:"전체 화면",
-      labelAutoUpdate:"자동 업데이트", labelPerformance:"성능 모드 (저사양 PC용)", saveSettingsLabel:"설정 저장", browseLabel:"찾아보기",
+      labelAutoUpdate:"자동 업데이트", labelPerformance:"성능 모드 (저사양 PC용)", labelInternalRes:"내부 해상도 (Dolphin)", saveSettingsLabel:"설정 저장", browseLabel:"찾아보기",
       troubleshootingLabel:"문제 해결", diagnosticsBtnLabel:"진단 표시", dolphinLogBtnLabel:"Dolphin 로그 표시",
       setupTitle:"설정", setupIntro:"경로를 한 번 설정하면 Nitro가 기억합니다.",
       labelSetupDolphin:"Dolphin 설치 경로", labelSetupIso:"마리오 카트 Wii ISO", setupContinueLabel:"계속",
@@ -2894,7 +2913,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← 主页", settingsTitle:"设置", settingsTag:"启动器配置",
       labelDolphinPath:"Dolphin 路径", labelIsoPath:"MKW ISO 路径", labelModDir:"模组目录",
       labelResolution:"分辨率", labelLanguage:"语言", labelFullscreen:"全屏",
-      labelAutoUpdate:"自动更新", labelPerformance:"性能模式（适用于配置较低的电脑）", saveSettingsLabel:"保存设置", browseLabel:"浏览",
+      labelAutoUpdate:"自动更新", labelPerformance:"性能模式（适用于配置较低的电脑）", labelInternalRes:"内部分辨率（Dolphin）", saveSettingsLabel:"保存设置", browseLabel:"浏览",
       troubleshootingLabel:"故障排除", diagnosticsBtnLabel:"显示诊断信息", dolphinLogBtnLabel:"显示 Dolphin 日志",
       setupTitle:"设置向导", setupIntro:"设置一次路径，Nitro 会记住它们。",
       labelSetupDolphin:"Dolphin 安装位置", labelSetupIso:"马里奥赛车 Wii ISO", setupContinueLabel:"继续",
@@ -2954,7 +2973,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← الرئيسية", settingsTitle:"الإعدادات", settingsTag:"تهيئة المشغّل",
       labelDolphinPath:"مسار Dolphin", labelIsoPath:"مسار ISO", labelModDir:"مجلد التعديلات",
       labelResolution:"الدقة", labelLanguage:"اللغة", labelFullscreen:"ملء الشاشة",
-      labelAutoUpdate:"التحديثات التلقائية", labelPerformance:"وضع الأداء (للأجهزة الأضعف)", saveSettingsLabel:"حفظ الإعدادات", browseLabel:"استعراض",
+      labelAutoUpdate:"التحديثات التلقائية", labelPerformance:"وضع الأداء (للأجهزة الأضعف)", labelInternalRes:"الدقة الداخلية (Dolphin)", saveSettingsLabel:"حفظ الإعدادات", browseLabel:"استعراض",
       troubleshootingLabel:"استكشاف الأخطاء", diagnosticsBtnLabel:"عرض التشخيص", dolphinLogBtnLabel:"عرض سجل Dolphin",
       setupTitle:"الإعداد", setupIntro:"حدد مساراتك مرة واحدة. سيتذكرها Nitro.",
       labelSetupDolphin:"تثبيت Dolphin", labelSetupIso:"ISO الخاص بماريو كارت Wii", setupContinueLabel:"متابعة",
@@ -3014,7 +3033,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Hem", settingsTitle:"Inställningar", settingsTag:"Launcher-konfiguration",
       labelDolphinPath:"Dolphin-sökväg", labelIsoPath:"MKW ISO-sökväg", labelModDir:"Mod-mapp",
       labelResolution:"Upplösning", labelLanguage:"Språk", labelFullscreen:"Helskärm",
-      labelAutoUpdate:"Automatiska uppdateringar", labelPerformance:"Prestandaläge (svagare datorer)", saveSettingsLabel:"Spara inställningar", browseLabel:"Bläddra",
+      labelAutoUpdate:"Automatiska uppdateringar", labelPerformance:"Prestandaläge (svagare datorer)", labelInternalRes:"Intern upplösning (Dolphin)", saveSettingsLabel:"Spara inställningar", browseLabel:"Bläddra",
       troubleshootingLabel:"Felsökning", diagnosticsBtnLabel:"Visa diagnostik", dolphinLogBtnLabel:"Visa Dolphin-logg",
       setupTitle:"Konfiguration", setupIntro:"Ange dina sökvägar en gång. Nitro kommer ihåg dem.",
       labelSetupDolphin:"Dolphin-installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Fortsätt",
@@ -3074,7 +3093,7 @@ function toast(msg, isError, sticky) {
       settingsBackBtn:"← Koti", settingsTitle:"Asetukset", settingsTag:"Käynnistimen asetukset",
       labelDolphinPath:"Dolphin-polku", labelIsoPath:"MKW ISO -polku", labelModDir:"Modikansio",
       labelResolution:"Resoluutio", labelLanguage:"Kieli", labelFullscreen:"Koko näyttö",
-      labelAutoUpdate:"Automaattiset päivitykset", labelPerformance:"Suorituskykytila (heikommille tietokoneille)", saveSettingsLabel:"Tallenna asetukset", browseLabel:"Selaa",
+      labelAutoUpdate:"Automaattiset päivitykset", labelPerformance:"Suorituskykytila (heikommille tietokoneille)", labelInternalRes:"Sisäinen resoluutio (Dolphin)", saveSettingsLabel:"Tallenna asetukset", browseLabel:"Selaa",
       troubleshootingLabel:"Vianmääritys", diagnosticsBtnLabel:"Näytä diagnostiikka", dolphinLogBtnLabel:"Näytä Dolphin-loki",
       setupTitle:"Asennus", setupIntro:"Aseta polkusi kerran. Nitro muistaa ne.",
       labelSetupDolphin:"Dolphin-asennus", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Jatka",
@@ -3178,6 +3197,7 @@ function toast(msg, isError, sticky) {
     document.getElementById('settingsFullscreen').checked = !!state.fullscreen;
     document.getElementById('settingsAutoUpdate').checked = !!state.auto_update;
     document.getElementById('settingsPerformance').checked = !!state.performance_mode;
+    document.getElementById('settingsInternalRes').value = String(state.internal_resolution || 'auto');
 
     document.getElementById('setupDolphinPath').value = state.dolphin_path || '';
     document.getElementById('setupIsoPath').value = state.iso_path || '';
@@ -3336,6 +3356,7 @@ function toast(msg, isError, sticky) {
       fullscreen: document.getElementById('settingsFullscreen').checked,
       auto_update: document.getElementById('settingsAutoUpdate').checked,
       performance_mode: document.getElementById('settingsPerformance').checked,
+      internal_resolution: document.getElementById('settingsInternalRes').value,
     };
     await window.pywebview.api.save_settings(payload);
     await refreshState();
