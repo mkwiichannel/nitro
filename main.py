@@ -2019,14 +2019,23 @@ class Api:
                     ":moved\r\n"
                     "copy /y \"%NEWEXE%\" \"%OLDEXE%\" >nul\r\n"
                     "del /f /q \"%BACKUP%\" >nul 2>nul\r\n"
+                    "timeout /t 3 /nobreak >nul\r\n"
                     "start \"\" \"%OLDEXE%\"\r\n"
                     ":cleanup\r\n"
                     "del /f /q \"%NEWEXE%\" >nul 2>nul\r\n"
                     "rmdir /s /q \"%EXTRACTDIR%\" >nul 2>nul\r\n"
                     "endlocal\r\n"
                 )
+            # The helper (and the relaunched exe) must NOT inherit this
+            # process's PyInstaller variables, or the new exe tries to reuse
+            # this run's temp folder, which is deleted on exit -> random errors.
+            clean_env = {k: v for k, v in os.environ.items()
+                         if not (k.startswith("_PYI") or k.startswith("_MEI") or k == "PYTHONHOME"
+                                 or k == "PYTHONPATH" or k == "TCL_LIBRARY" or k == "TK_LIBRARY")}
+            clean_env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
             subprocess.Popen(
                 ["cmd", "/c", bat_path, exe_path, new_exe, old_backup, tmp_extract],
+                env=clean_env,
                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
                 close_fds=True,
             )
