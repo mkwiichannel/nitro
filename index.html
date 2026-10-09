@@ -653,6 +653,7 @@
 </main><footer> </footer>
 <script src="mii_renderer/fflModule.cjs"></script>
 <script src="mii_renderer/mc_icons/mc_icons.js" onerror="void 0"></script>
+<script src="mii_renderer/mc_icons/mc_vec.js" onerror="void 0"></script>
 <script>
   function go(id){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1699,8 +1700,54 @@ function mcSheet(key){
   return mcImgs[key];
 }
 const mcRGB = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+/* colour of a pure channel-coded class (eyes / mouths) -- same mixing as the raster path below */
+function mcChanColor(cat, r, g, b, tint){
+  const w = Math.max(0, 1 - r - g - b);
+  if (cat === "eyes"){
+    return [Math.min(255, b * tint[0] + g * 70 + w * 245),
+            Math.min(255, b * tint[1] + g * 80 + r * 230 + w * 245),
+            Math.min(255, b * tint[2] + g * 100 + r * 255 + w * 245)];
+  }
+  const lip = [214, 84, 66], tf = b * 170, ol = w * 250;
+  return [Math.min(255, g * lip[0] + r * lip[0] * .8 + tf * .92 + ol),
+          Math.min(255, g * lip[1] + r * lip[1] * .8 + tf * .96 + ol),
+          Math.min(255, g * lip[2] + r * lip[2] * .8 + tf + ol)];
+}
+/* Vector icons: the 64px art traced into smooth outlines, drawn at the exact screen
+   resolution so edges stay razor sharp at any scale (data in mc_vec.js) */
+function mcPaintVec(cat, key, idx, cv){
+  const layers = window.MC_VEC[key][idx];
+  if (!layers) return false;
+  let tint = null;
+  if (MC_TINT[cat]){
+    const [id, set] = MC_TINT[cat], l = MII_SWATCHES[set];
+    tint = mcRGB(l[Math.max(0, Math.min(l.length - 1, Number(miiVal(id)) || 0))]);
+  }
+  const c = cv.getContext("2d");
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, cv.width, cv.height);
+  const k = cv.width / 64;
+  c.setTransform(k, 0, 0, k, 0, 0);
+  for (const L of layers){
+    let col = L[1], rgba;
+    if (L[0] === 0){
+      const m = mcChanColor(cat, col[0] / 255, col[1] / 255, col[2] / 255, tint);
+      rgba = "rgb(" + (m[0] | 0) + "," + (m[1] | 0) + "," + (m[2] | 0) + ")";
+    } else {
+      rgba = "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + col[3] + ")";
+    }
+    c.fillStyle = rgba;
+    c.fill(L._p || (L._p = new Path2D(L[2])), "evenodd");
+  }
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  return true;
+}
 function mcPaint(cat, value, cv){
-  const key = MC_SHEET_OF[cat], im = mcSheet(key);
+  const key = MC_SHEET_OF[cat];
+  if (window.MC_VEC && window.MC_VEC[key]){
+    if (mcPaintVec(cat, key, cat === "beard" ? value + 4 : value, cv)) return true;
+  }
+  const im = mcSheet(key);
   if (!im.complete || !im.naturalWidth) return false;
   const cell = MC.cell, cols = MC.cols[key];
   const idx = cat === "beard" ? value + 4 : value;
@@ -1785,7 +1832,7 @@ function miiMcPaint(force){
   setTimeout(step, 30);
 }
 function miiMcPicker(cat, host, m){
-  const sz = 74, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const sz = 74, dpr = Math.min(window.MC_VEC ? 3 : 2, window.devicePixelRatio || 1);
   const wrap = document.createElement("div");
   wrap.className = "mii-picker";
   const items = [];
