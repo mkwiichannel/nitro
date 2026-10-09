@@ -1394,17 +1394,27 @@ async function renderCurrentMiiOnce() {
     const full = miiFullBody;
     let drawn = false;
     await currentMii.render(full, {
-      size: full ? 896 : 640,
+      size: full ? 1152 : 960,
+      maskRes: 1024,
       fflResBuffer: resource,
       onCanvas: gl => {
         const S = gl.width;
         const [fx, fy, fw, fh] = full ? [0.25, 0.03, 0.5, 0.96] : [0.08, 0.08, 0.84, 0.84];
         const sx = Math.round(S * fx), sy = Math.round(S * fy);
         const sw = Math.round(S * fw), sh = Math.round(S * fh);
-        if (cv.width !== sw || cv.height !== sh) { cv.width = sw; cv.height = sh; }
+        /* render large, then scale down smoothly to the real on-screen size:
+           thin lines (teeth, outlines) stay clean instead of aliased */
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const bw = Math.max(64, (preview.clientWidth - 20) * dpr);
+        const bh = Math.max(64, (preview.clientHeight - 20) * dpr);
+        const k = Math.min(1, bw / sw, bh / sh);
+        const tw = Math.max(1, Math.round(sw * k)), th = Math.max(1, Math.round(sh * k));
+        if (cv.width !== tw || cv.height !== th) { cv.width = tw; cv.height = th; }
         const ctx = cv.getContext("2d");
-        ctx.clearRect(0, 0, sw, sh);
-        ctx.drawImage(gl, sx, sy, sw, sh, 0, 0, sw, sh);
+        ctx.clearRect(0, 0, tw, th);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(gl, sx, sy, sw, sh, 0, 0, tw, th);
         drawn = true;
       }
     });
@@ -1714,9 +1724,10 @@ function mcPaint(cat, value, cv){
         d[p + 2] = Math.min(255, b * tint[2] + g * 100 + r * 255 + w * 245);
       } else if (cat === "mouth"){ /* G upper lip, R lower lip, B teeth, black outline drawn light */
         const w = Math.max(0, 1 - r - g - b);
-        d[p] = Math.min(255, g * lip[0] + r * lip[0] * .8 + b * 255 + w * 245);
-        d[p + 1] = Math.min(255, g * lip[1] + r * lip[1] * .8 + b * 255 + w * 245);
-        d[p + 2] = Math.min(255, g * lip[2] + r * lip[2] * .8 + b * 255 + w * 245);
+        const tf = b * 170, ol = w * 250; /* teeth a soft grey-blue so the bright outline and the gaps between teeth show */
+        d[p] = Math.min(255, g * lip[0] + r * lip[0] * .8 + tf * .92 + ol);
+        d[p + 1] = Math.min(255, g * lip[1] + r * lip[1] * .8 + tf * .96 + ol);
+        d[p + 2] = Math.min(255, g * lip[2] + r * lip[2] * .8 + tf + ol);
       } else { /* hair, faces, glasses, beards...: dark art -> light, white fills -> clear, real colours kept */
         const l = (r + g + b) / 3, sat = Math.max(r, g, b) - Math.min(r, g, b);
         if (sat <= 0.25){ d[p] = d[p + 1] = d[p + 2] = 242; d[p + 3] = al * (1 - l); }
