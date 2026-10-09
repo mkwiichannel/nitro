@@ -91,6 +91,7 @@ DEFAULT_CONFIG = {
     "language": "en",
     "fullscreen": False,
     "auto_update": True,
+    "performance_mode": False,
     "active_mod": "Nitro Pack",
     "content_version": "0.0.1",
     "installed_from_url": "",
@@ -470,7 +471,7 @@ class Api:
     def save_settings(self, payload):
         cfg = load_config()
         for key in ("dolphin_path", "iso_path", "mod_directory", "resolution",
-                    "language", "fullscreen", "auto_update", "ffl_resource_path",
+                    "language", "fullscreen", "auto_update", "performance_mode", "ffl_resource_path",
                     "content_drive_url", "version_drive_url"):
             if key in payload:
                 cfg[key] = payload[key]
@@ -1239,6 +1240,18 @@ class Api:
                 launch_args.append(f"--config=Dolphin.Display.FullscreenDisplayRes={resolution}")
         else:
             launch_args.append("--config=Dolphin.Display.Fullscreen=False")
+        if cfg.get("performance_mode"):
+            # Light Dolphin settings for weaker PCs. Passed on the command line
+            # for this launch only, so nothing in the player's own Dolphin
+            # configuration is changed. (Hi-res textures stay on: the mod needs them.)
+            launch_args += [
+                "--config=Graphics.Settings.InternalResolution=1",
+                "--config=Graphics.Settings.MSAA=1",
+                "--config=Graphics.Enhancements.MaxAnisotropy=0",
+                "--config=Graphics.Settings.EnablePixelLighting=False",
+                "--config=Graphics.Settings.BackendMultithreading=True",
+                "--config=Dolphin.Core.CPUThread=True",
+            ]
         self._enable_dolphin_file_logging(user_dir)
         manual_command = " ".join(f'"{a}"' if " " in a else a for a in launch_args)
         try:
