@@ -92,7 +92,6 @@ DEFAULT_CONFIG = {
     "fullscreen": False,
     "auto_update": True,
     "performance_mode": False,
-    "internal_resolution": "auto",
     "active_mod": "Nitro Pack",
     "content_version": "0.0.1",
     "installed_from_url": "",
@@ -472,7 +471,7 @@ class Api:
     def save_settings(self, payload):
         cfg = load_config()
         for key in ("dolphin_path", "iso_path", "mod_directory", "resolution",
-                    "language", "fullscreen", "auto_update", "performance_mode", "internal_resolution", "ffl_resource_path",
+                    "language", "fullscreen", "auto_update", "performance_mode", "ffl_resource_path",
                     "content_drive_url", "version_drive_url"):
             if key in payload:
                 cfg[key] = payload[key]
@@ -1253,11 +1252,15 @@ class Api:
                 "--config=Graphics.Settings.BackendMultithreading=True",
                 "--config=Dolphin.Core.CPUThread=True",
             ]
-        # Player's own pick for Dolphin's internal resolution (overrides the
-        # performance preset's 1x).
-        res_choice = str(cfg.get("internal_resolution", "auto"))
-        if res_choice in ("1", "2", "3", "4"):
-            launch_args.append(f"--config=Graphics.Settings.InternalResolution={res_choice}")
+        # The chosen resolution also sets how sharp Dolphin renders: Dolphin's
+        # internal scale is a multiple of the Wii's 528-line picture, so pick
+        # the smallest multiple that reaches the chosen height. Performance
+        # mode keeps the light native setting instead.
+        if not cfg.get("performance_mode"):
+            rm = re.match(r"^\s*(\d{3,5})\s*[xX]\s*(\d{3,5})\s*$", str(cfg.get("resolution", "")))
+            if rm:
+                scale = max(1, min(6, -(-int(rm.group(2)) // 528)))
+                launch_args.append(f"--config=Graphics.Settings.InternalResolution={scale}")
         self._enable_dolphin_file_logging(user_dir)
         manual_command = " ".join(f'"{a}"' if " " in a else a for a in launch_args)
         try:
