@@ -574,11 +574,11 @@ class Api:
         src = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "My Stuff")
         try:
             os.makedirs(src, exist_ok=True)  # so the player can see where to put files
-        except OSError:
-            return
+        except OSError as e:
+            return "My Stuff: can't open your folder (%s)" % e
         pack = os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")
         if not os.path.isdir(pack):
-            return
+            return "My Stuff: pack folder not found at %s" % pack
         # Use the pack's existing folder whatever its spelling ("My Stuff",
         # "MyStuff", "mystuff"); only create "My Stuff" when none exists.
         dst = os.path.join(pack, "My Stuff")
@@ -591,7 +591,9 @@ class Api:
             pass
         os.makedirs(dst, exist_ok=True)
         if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
-            return
+            return ""
+        copied = skipped = failed = 0
+        last_err = ""
         for root, _dirs, files in os.walk(src):
             rel = os.path.relpath(root, src)
             out_dir = dst if rel == "." else os.path.join(dst, rel)
@@ -602,11 +604,17 @@ class Api:
                     if os.path.isfile(b):
                         sb = os.stat(b)
                         if sb.st_size == sa.st_size and sb.st_mtime_ns >= sa.st_mtime_ns:
+                            skipped += 1
                             continue
                     os.makedirs(out_dir, exist_ok=True)
                     shutil.copy2(a, b)
-                except OSError:
-                    continue
+                    copied += 1
+                except OSError as e:
+                    failed += 1
+                    last_err = str(e)
+        if failed:
+            return "My Stuff: %d copied, %d failed (%s)" % (copied, failed, last_err)
+        return "My Stuff: %d copied to %s" % (copied, dst) if copied else ""
 
     def _apply_my_stuff_option(self, cfg, user_dir):
         """Sets the pack's Riivolution "My Stuff" option (Disabled / Enabled /
@@ -1218,11 +1226,12 @@ class Api:
         self._kill_dolphin(dolphin_path)
 
         # Player's own custom files (skins, music...) -> the pack's "My Stuff" folder.
+        my_stuff_note = ""
         try:
-            self._sync_my_stuff(cfg, self._dolphin_user_dir(dolphin_path))
+            my_stuff_note = self._sync_my_stuff(cfg, self._dolphin_user_dir(dolphin_path)) or ""
             self._apply_my_stuff_option(cfg, self._dolphin_user_dir(dolphin_path))
-        except Exception:
-            pass  # never block Play over custom files
+        except Exception as e:
+            my_stuff_note = "My Stuff: %s" % e  # never block Play over custom files
 
         # Flush Nitro-created/edited Miis into the same Dolphin user folder
         # passed to Dolphin via -u, before the game starts reading its NAND.
@@ -1374,6 +1383,8 @@ class Api:
         # short message for the toast; full detail stays available via
         # get_launch_diagnostics() for whenever it's actually needed
         display_message = "Launching..." + (note if note.strip().startswith("⚠") else "")
+        if my_stuff_note:
+            display_message += "  |  " + my_stuff_note
         return {"ok": True, "message": display_message, "manual_command": manual_command, "detail": diagnostic_detail}
 
     # ---------- remote seasonal theme (colors / logo / banner / Mii / UI, no rebuild) ----------
