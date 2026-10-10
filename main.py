@@ -591,7 +591,7 @@ class Api:
             pass
         os.makedirs(dst, exist_ok=True)
         if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
-            return ""
+            return "My Stuff: your folder is already the pack's folder"
         copied = skipped = failed = 0
         last_err = ""
         for root, _dirs, files in os.walk(src):
@@ -614,7 +614,11 @@ class Api:
                     last_err = str(e)
         if failed:
             return "My Stuff: %d copied, %d failed (%s)" % (copied, failed, last_err)
-        return "My Stuff: %d copied to %s" % (copied, dst) if copied else ""
+        if copied:
+            return "My Stuff: %d copied to %s" % (copied, dst)
+        if skipped:
+            return "My Stuff: %d files already up to date in %s" % (skipped, dst)
+        return "My Stuff: your folder is empty (%s)" % src
 
     def _apply_my_stuff_option(self, cfg, user_dir):
         """Sets the pack's Riivolution "My Stuff" option (Disabled / Enabled /
