@@ -87,6 +87,7 @@ DEFAULT_CONFIG = {
     "iso_path": "",
     "mod_directory": os.path.join(app_data_dir(), "mods"),
     "mystuff_directory": os.path.join(app_data_dir(), "My Stuff"),
+    "mystuff_mode": "on",
     "resolution": "1920x1584",
     "language": "en",
     "fullscreen": False,
@@ -461,7 +462,7 @@ class Api:
 
     def save_settings(self, payload):
         cfg = load_config()
-        for key in ("dolphin_path", "iso_path", "mod_directory", "mystuff_directory", "resolution",
+        for key in ("dolphin_path", "iso_path", "mod_directory", "mystuff_directory", "mystuff_mode", "resolution",
                     "language", "fullscreen", "auto_update", "performance_mode", "ffl_resource_path",
                     "content_drive_url", "version_drive_url"):
             if key in payload:
@@ -606,6 +607,35 @@ class Api:
                     shutil.copy2(a, b)
                 except OSError:
                     continue
+
+    def _apply_my_stuff_option(self, cfg, user_dir):
+        """Sets the pack's Riivolution "My Stuff" option (Disabled / Enabled /
+        Music Only) from the Settings choice, in Dolphin's Riivolution config
+        files. Other options in those files are left as they are."""
+        import xml.etree.ElementTree as ET
+        choice = {"off": "1", "on": "2", "music": "3"}.get(str(cfg.get("mystuff_mode") or "on"), "2")
+        cfg_dir = os.path.join(user_dir, "Load", "Riivolution", "config")
+        if not os.path.isdir(os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")):
+            return
+        os.makedirs(cfg_dir, exist_ok=True)
+        for gid in ("RMCP", "RMCE", "RMCJ", "RMCK"):
+            path = os.path.join(cfg_dir, gid + ".xml")
+            try:
+                if os.path.isfile(path):
+                    tree = ET.parse(path)
+                    root = tree.getroot()
+                else:
+                    root = ET.Element("riivolution", {"version": "2"})
+                    tree = ET.ElementTree(root)
+                opt = next((o for o in root.findall("option") if o.get("id") == "MKNitroMyStuff"), None)
+                if opt is None:
+                    opt = ET.SubElement(root, "option", {"id": "MKNitroMyStuff"})
+                if opt.get("default") == choice:
+                    continue
+                opt.set("default", choice)
+                tree.write(path, encoding="utf-8", xml_declaration=False)
+            except (OSError, ET.ParseError):
+                continue
 
     def get_dolphin_log_tail(self, lines=80):
         """Read back the end of Dolphin's own log file after a launch
@@ -1190,6 +1220,7 @@ class Api:
         # Player's own custom files (skins, music...) -> the pack's "My Stuff" folder.
         try:
             self._sync_my_stuff(cfg, self._dolphin_user_dir(dolphin_path))
+            self._apply_my_stuff_option(cfg, self._dolphin_user_dir(dolphin_path))
         except Exception:
             pass  # never block Play over custom files
 
