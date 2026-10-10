@@ -3501,11 +3501,6 @@ function toast(msg, isError, sticky) {
   }
 
   window.addEventListener('pywebviewready', async ()=>{
-    try{
-      const nav = performance.getEntriesByType('navigation')[0] || {};
-      const fcp = (performance.getEntriesByName('first-contentful-paint')[0] || {}).startTime;
-      window.pywebview.api.log_ui('page timing: domReady ' + Math.round(nav.domContentLoadedEventEnd||0) + 'ms, load ' + Math.round(nav.loadEventEnd||0) + 'ms, first paint ' + Math.round(fcp||0) + 'ms, bridge ready at ' + Math.round(performance.now()) + 'ms');
-    }catch(e){}
     const state = await refreshState();
 
     // Pulls the manifest.json theme block (colors/logo/banner/icon)
@@ -3532,27 +3527,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const img = document.querySelector(".hero-banner img");
   if(img) img.decoding = "async";
 });
-// Records clicks/keys the page was slow to react to (freeze_report.log).
-(function(){
-  const send = m => { try{ window.pywebview.api.log_ui(m); }catch(e){} };
-  try{
-    new PerformanceObserver(list => {
-      for(const e of list.getEntries()){
-        if(e.duration >= 250 && (e.name === 'pointerdown' || e.name === 'click' || e.name === 'keydown' || e.name === 'pointerup')){
-          const t = e.target;
-          const id = t ? (t.id ? "#" + t.id : (t.className && typeof t.className === "string" ? "." + t.className.split(" ")[0] : "")) : "";
-          const scr = document.querySelector(".screen.active");
-          send(e.name + " on " + (t ? t.tagName : "?") + id + " took " + Math.round(e.duration) + "ms (screen " + (scr ? scr.id : "?") + ")");
-        }
-      }
-    }).observe({type:"event", durationThreshold:250, buffered:true});
-  }catch(e){}
-  try{
-    new PerformanceObserver(list => {
-      for(const e of list.getEntries()) if(e.duration >= 500) send("page busy for " + Math.round(e.duration) + "ms");
-    }).observe({entryTypes:["longtask"]});
-  }catch(e){}
-})();
 </script>
 </body>
 </html>

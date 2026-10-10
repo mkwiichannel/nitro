@@ -34,7 +34,6 @@ import urllib.parse
 import urllib.request
 import uuid
 import webbrowser
-import freeze_watch
 import modpack_sync
 import xml.etree.ElementTree as ET
 import zipfile
@@ -447,21 +446,12 @@ class Api:
         self._window = None  # set after window creation, needed for dialogs
         # Native (Qt) UI mode: no webview window exists, so anything that
         # used to reach into self._window goes through these two optional
-        # callables instead (both must be thread-safe; native_ui.py
-        # implements them with Qt signals). None in the web-UI modes.
+        # callables instead (both must be thread-safe).
         self._on_launcher_update_error = None  # callable(message: str)
         self._on_request_quit = None           # callable()
         self._pending_sync = None
 
     # ---------- state ----------
-    def log_ui(self, text):
-        """Slow-interaction reports sent by the page (see freeze_watch)."""
-        try:
-            freeze_watch.log("ui | " + str(text)[:300])
-        except Exception:
-            pass
-        return True
-
     def get_state(self):
         cfg = load_config()
         cfg["version"] = APP_VERSION
@@ -2783,12 +2773,8 @@ def _page_load_watchdog(window, loaded, wait_after_shown=15):
         return
     if loaded.wait(timeout=wait_after_shown) or loaded.is_set():
         return
-    freeze_watch.log("PAGE DID NOT LOAD within %ds of the window appearing - process snapshot:\n%s"
-                     % (wait_after_shown, freeze_watch._process_snapshot()))
     if os.environ.get("NITRO_RESTARTED"):
-        freeze_watch.log("already restarted once; leaving it")
         return
-    freeze_watch.log("restarting the launcher once")
     _restart_launcher()
 
 
@@ -3001,15 +2987,8 @@ def _cleanup_orphaned_extraction_folders():
         pass
 
 
-def _run_native(api):
-    """Default path: the Qt UI. No browser engine is started."""
-    import native_ui
-    return native_ui.run(api, sys.modules[__name__])
-
-
 def _run_web(api, mii_only=False):
-    """Web UI path: used for the Mii editor (--mii, needs WebGL) and as a
-    dev fallback when PySide6 isn't installed."""
+    """Opens the launcher window (or the Mii editor with --mii)."""
     _import_webview()
     t_process_created = _process_creation_time()
     t_main_start = time.time()
@@ -3043,12 +3022,8 @@ def _run_web(api, mii_only=False):
     else:
         threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
-    freeze_watch.init(app_data_dir())
-    freeze_watch.log("process start (main running)")
-    window.events.shown += lambda: freeze_watch.Watch(window).start()
-    window.events.shown += lambda: freeze_watch.log("window shown event")
     _page_loaded = threading.Event()
-    window.events.loaded += lambda: (freeze_watch.log("page loaded event"), _page_loaded.set())
+    window.events.loaded += lambda: _page_loaded.set()
     threading.Thread(target=_page_load_watchdog, args=(window, _page_loaded), daemon=True).start()
     threading.Thread(target=_memory_guard, daemon=True).start()
     threading.Thread(target=_hang_guard, args=("Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",), daemon=True).start()
@@ -3101,23 +3076,7 @@ def main():
         threading.Thread(target=_deferred_startup_chores, daemon=True).start()
     api = Api()
 
-    # Your original web UI is the default. The Qt version (native_ui.py)
-    # is experimental and only used with --native.
-    use_web = True
-    if "--native" in sys.argv[1:] and not mii_only:
-        try:
-            import PySide6  # noqa: F401
-            use_web = False
-        except ImportError:
-            pass
-
-    if use_web:
-        _run_web(api, mii_only=mii_only)
-    else:
-        # The background updater keeps theme/colors/banner current; the
-        # native UI notices the config change on its own.
-        threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
-        _run_native(api)
+    _run_web(api, mii_only=mii_only)
 
     # The window just closed -- this process is about to exit, which
     # is the one safe moment to patch a pending icon_url change into
