@@ -38,7 +38,7 @@ DEFAULT_BRANCH = "main"
 
 # The Riivolution XML redirects the game's save into this folder, so the
 # files here are the PLAYER's progress, not mod content.
-PROTECTED_PREFIXES = ("riivolution/save/",)
+PROTECTED_PREFIXES = ("riivolution/save/", "mariokartnitro_test/my stuff/")
 
 _BAD_CHARS = set('<>:"|?*\\')
 UA = {"User-Agent": "MarioKartNitro-Launcher"}
@@ -49,7 +49,7 @@ class SyncError(Exception):
 
 
 def _protected(rel):
-    return rel.startswith(PROTECTED_PREFIXES)
+    return rel.lower().startswith(PROTECTED_PREFIXES)
 
 
 def _lower_thread_priority():

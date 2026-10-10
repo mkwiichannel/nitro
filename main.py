@@ -87,6 +87,7 @@ DEFAULT_CONFIG = {
     "dolphin_path": "",
     "iso_path": "",
     "mod_directory": os.path.join(app_data_dir(), "mods"),
+    "mystuff_directory": os.path.join(app_data_dir(), "My Stuff"),
     "resolution": "1920x1584",
     "language": "en",
     "fullscreen": False,
@@ -470,7 +471,7 @@ class Api:
 
     def save_settings(self, payload):
         cfg = load_config()
-        for key in ("dolphin_path", "iso_path", "mod_directory", "resolution",
+        for key in ("dolphin_path", "iso_path", "mod_directory", "mystuff_directory", "resolution",
                     "language", "fullscreen", "auto_update", "performance_mode", "ffl_resource_path",
                     "content_drive_url", "version_drive_url"):
             if key in payload:
@@ -570,6 +571,42 @@ class Api:
                 parser.write(f)
         except OSError:
             pass  # non-critical — launch still proceeds without forced logging
+
+    def _sync_my_stuff(self, cfg, user_dir):
+        """Copies the player's "My Stuff" folder (Settings) into the modpack's
+        own "My Stuff" folder inside Dolphin's Load/Riivolution, so the
+        Riivolution "My Stuff" option can use it. Runs on Play.
+
+        Only runs when the pack's MarioKartNitro_Test folder exists. Files are
+        only ever added or refreshed, never deleted, in either folder, and
+        files that haven't changed (same size and time) are skipped."""
+        src = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "My Stuff")
+        try:
+            os.makedirs(src, exist_ok=True)  # so the player can see where to put files
+        except OSError:
+            return
+        pack = os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")
+        if not os.path.isdir(pack):
+            return
+        dst = os.path.join(pack, "My Stuff")
+        os.makedirs(dst, exist_ok=True)
+        if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
+            return
+        for root, _dirs, files in os.walk(src):
+            rel = os.path.relpath(root, src)
+            out_dir = dst if rel == "." else os.path.join(dst, rel)
+            for name in files:
+                a, b = os.path.join(root, name), os.path.join(out_dir, name)
+                try:
+                    sa = os.stat(a)
+                    if os.path.isfile(b):
+                        sb = os.stat(b)
+                        if sb.st_size == sa.st_size and sb.st_mtime_ns >= sa.st_mtime_ns:
+                            continue
+                    os.makedirs(out_dir, exist_ok=True)
+                    shutil.copy2(a, b)
+                except OSError:
+                    continue
 
     def get_dolphin_log_tail(self, lines=80):
         """Read back the end of Dolphin's own log file after a launch
@@ -1118,6 +1155,12 @@ class Api:
             return {"ok": False, "error": "MKW ISO path isn't set (or the file doesn't exist). Set it in Settings first."}
 
         self._kill_dolphin(dolphin_path)
+
+        # Player's own custom files (skins, music...) -> the pack's "My Stuff" folder.
+        try:
+            self._sync_my_stuff(cfg, self._dolphin_user_dir(dolphin_path))
+        except Exception:
+            pass  # never block Play over custom files
 
         # Flush Nitro-created/edited Miis into the same Dolphin user folder
         # passed to Dolphin via -u, before the game starts reading its NAND.
