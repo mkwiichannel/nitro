@@ -579,7 +579,7 @@
 <div class="row"><input type="text" id="settingsModDir" readonly /><button class="browse" id="browseModDirBtn"><span class="browseLabel">Browse</span></button></div>
 </div>
 <div class="field"><label id="labelMyStuff">My Stuff folder</label>
-<div class="row"><input type="text" id="settingsMyStuff" readonly /><button class="browse" id="browseMyStuffBtn"><span class="browseLabel">Browse</span></button></div>
+<div class="row"><input type="text" id="settingsMyStuff" readonly /><button class="browse" id="browseMyStuffBtn"><span id="addFilesLabel">Add files</span></button></div>
 </div>
 <div class="field"><label id="labelResolution">Resolution</label> <select id="settingsResolution" style="max-width: 220px;">
 <option value="640x528">640x528</option>
@@ -2254,7 +2254,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Settings", cardSettingsDesc:"Configure paths, resolution, language and updates.",
       cardCreditsTitle:"Credits", cardCreditsDesc:"License, community links, and what Nitro is built on.",
       settingsBackBtn:"← Home", settingsTitle:"Settings", settingsTag:"Launcher configuration",
-      labelDolphinPath:"Dolphin path", labelIsoPath:"MKW ISO path", labelModDir:"Mod directory", labelMyStuff:"My Stuff folder",
+      labelDolphinPath:"Dolphin path", labelIsoPath:"MKW ISO path", labelModDir:"Mod directory", labelMyStuff:"My Stuff folder", addFilesLabel:"Add files", addedFiles:"Files added:",
       labelResolution:"Resolution", labelLanguage:"Language", labelFullscreen:"Fullscreen",
       labelAutoUpdate:"Automatic updates", labelPerformance:"Performance mode", saveSettingsLabel:"Save settings", browseLabel:"Browse",
       troubleshootingLabel:"Troubleshooting", diagnosticsBtnLabel:"Show diagnostics", dolphinLogBtnLabel:"Show Dolphin's log",
@@ -2314,7 +2314,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Einstellungen", cardSettingsDesc:"Pfade, Auflösung, Sprache und Updates konfigurieren.",
       cardCreditsTitle:"Credits", cardCreditsDesc:"Lizenz, Community-Links und worauf Nitro basiert.",
       settingsBackBtn:"← Start", settingsTitle:"Einstellungen", settingsTag:"Launcher-Konfiguration",
-      labelDolphinPath:"Dolphin-Pfad", labelIsoPath:"MKW-ISO-Pfad", labelModDir:"Mod-Verzeichnis", labelMyStuff:"My-Stuff-Ordner",
+      labelDolphinPath:"Dolphin-Pfad", labelIsoPath:"MKW-ISO-Pfad", labelModDir:"Mod-Verzeichnis", labelMyStuff:"My-Stuff-Ordner", addFilesLabel:"Dateien hinzufügen", addedFiles:"Dateien hinzugefügt:",
       labelResolution:"Auflösung", labelLanguage:"Sprache", labelFullscreen:"Vollbild",
       labelAutoUpdate:"Automatische Updates", labelPerformance:"Leistungsmodus", saveSettingsLabel:"Einstellungen speichern", browseLabel:"Durchsuchen",
       troubleshootingLabel:"Problembehandlung", diagnosticsBtnLabel:"Diagnose anzeigen", dolphinLogBtnLabel:"Dolphin-Log anzeigen",
@@ -2374,7 +2374,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Paramètres", cardSettingsDesc:"Configurez les chemins, la résolution, la langue et les mises à jour.",
       cardCreditsTitle:"Crédits", cardCreditsDesc:"Licence, liens communautaires et base de Nitro.",
       settingsBackBtn:"← Accueil", settingsTitle:"Paramètres", settingsTag:"Configuration du launcher",
-      labelDolphinPath:"Chemin Dolphin", labelIsoPath:"Chemin ISO MKW", labelModDir:"Répertoire des mods", labelMyStuff:"Dossier My Stuff",
+      labelDolphinPath:"Chemin Dolphin", labelIsoPath:"Chemin ISO MKW", labelModDir:"Répertoire des mods", labelMyStuff:"Dossier My Stuff", addFilesLabel:"Ajouter des fichiers", addedFiles:"Fichiers ajoutés :",
       labelResolution:"Résolution", labelLanguage:"Langue", labelFullscreen:"Plein écran",
       labelAutoUpdate:"Mises à jour automatiques", labelPerformance:"Mode performance", saveSettingsLabel:"Enregistrer", browseLabel:"Parcourir",
       troubleshootingLabel:"Dépannage", diagnosticsBtnLabel:"Afficher le diagnostic", dolphinLogBtnLabel:"Afficher le journal Dolphin",
@@ -2434,7 +2434,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Ajustes", cardSettingsDesc:"Configura rutas, resolución, idioma y actualizaciones.",
       cardCreditsTitle:"Créditos", cardCreditsDesc:"Licencia, enlaces de la comunidad y en qué se basa Nitro.",
       settingsBackBtn:"← Inicio", settingsTitle:"Ajustes", settingsTag:"Configuración del launcher",
-      labelDolphinPath:"Ruta de Dolphin", labelIsoPath:"Ruta de la ISO", labelModDir:"Directorio de mods", labelMyStuff:"Carpeta My Stuff",
+      labelDolphinPath:"Ruta de Dolphin", labelIsoPath:"Ruta de la ISO", labelModDir:"Directorio de mods", labelMyStuff:"Carpeta My Stuff", addFilesLabel:"Añadir archivos", addedFiles:"Archivos añadidos:",
       labelResolution:"Resolución", labelLanguage:"Idioma", labelFullscreen:"Pantalla completa",
       labelAutoUpdate:"Actualizaciones automáticas", labelPerformance:"Modo rendimiento", saveSettingsLabel:"Guardar ajustes", browseLabel:"Examinar",
       troubleshootingLabel:"Solución de problemas", diagnosticsBtnLabel:"Mostrar diagnóstico", dolphinLogBtnLabel:"Mostrar registro de Dolphin",
@@ -2494,7 +2494,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Impostazioni", cardSettingsDesc:"Configura percorsi, risoluzione, lingua e aggiornamenti.",
       cardCreditsTitle:"Crediti", cardCreditsDesc:"Licenza, link della community e su cosa si basa Nitro.",
       settingsBackBtn:"← Home", settingsTitle:"Impostazioni", settingsTag:"Configurazione del launcher",
-      labelDolphinPath:"Percorso Dolphin", labelIsoPath:"Percorso ISO MKW", labelModDir:"Cartella mod", labelMyStuff:"Cartella My Stuff",
+      labelDolphinPath:"Percorso Dolphin", labelIsoPath:"Percorso ISO MKW", labelModDir:"Cartella mod", labelMyStuff:"Cartella My Stuff", addFilesLabel:"Aggiungi file", addedFiles:"File aggiunti:",
       labelResolution:"Risoluzione", labelLanguage:"Lingua", labelFullscreen:"Schermo intero",
       labelAutoUpdate:"Aggiornamenti automatici", labelPerformance:"Modalità prestazioni", saveSettingsLabel:"Salva impostazioni", browseLabel:"Sfoglia",
       troubleshootingLabel:"Risoluzione problemi", diagnosticsBtnLabel:"Mostra diagnostica", dolphinLogBtnLabel:"Mostra log di Dolphin",
@@ -2554,7 +2554,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Configurações", cardSettingsDesc:"Configure caminhos, resolução, idioma e atualizações.",
       cardCreditsTitle:"Créditos", cardCreditsDesc:"Licença, links da comunidade e a base do Nitro.",
       settingsBackBtn:"← Início", settingsTitle:"Configurações", settingsTag:"Configuração do launcher",
-      labelDolphinPath:"Caminho do Dolphin", labelIsoPath:"Caminho da ISO", labelModDir:"Diretório de mods", labelMyStuff:"Pasta My Stuff",
+      labelDolphinPath:"Caminho do Dolphin", labelIsoPath:"Caminho da ISO", labelModDir:"Diretório de mods", labelMyStuff:"Pasta My Stuff", addFilesLabel:"Adicionar ficheiros", addedFiles:"Ficheiros adicionados:",
       labelResolution:"Resolução", labelLanguage:"Idioma", labelFullscreen:"Tela cheia",
       labelAutoUpdate:"Atualizações automáticas", labelPerformance:"Modo desempenho", saveSettingsLabel:"Salvar configurações", browseLabel:"Procurar",
       troubleshootingLabel:"Solução de problemas", diagnosticsBtnLabel:"Mostrar diagnóstico", dolphinLogBtnLabel:"Mostrar log do Dolphin",
@@ -2614,7 +2614,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Instellingen", cardSettingsDesc:"Paden, resolutie, taal en updates configureren.",
       cardCreditsTitle:"Credits", cardCreditsDesc:"Licentie, community-links en waar Nitro op gebouwd is.",
       settingsBackBtn:"← Start", settingsTitle:"Instellingen", settingsTag:"Launcher-configuratie",
-      labelDolphinPath:"Dolphin-pad", labelIsoPath:"MKW ISO-pad", labelModDir:"Mod-map", labelMyStuff:"My Stuff-map",
+      labelDolphinPath:"Dolphin-pad", labelIsoPath:"MKW ISO-pad", labelModDir:"Mod-map", labelMyStuff:"My Stuff-map", addFilesLabel:"Bestanden toevoegen", addedFiles:"Bestanden toegevoegd:",
       labelResolution:"Resolutie", labelLanguage:"Taal", labelFullscreen:"Volledig scherm",
       labelAutoUpdate:"Automatische updates", labelPerformance:"Prestatiemodus", saveSettingsLabel:"Instellingen opslaan", browseLabel:"Bladeren",
       troubleshootingLabel:"Probleemoplossing", diagnosticsBtnLabel:"Diagnose tonen", dolphinLogBtnLabel:"Dolphin-log tonen",
@@ -2674,7 +2674,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Ustawienia", cardSettingsDesc:"Skonfiguruj ścieżki, rozdzielczość, język i aktualizacje.",
       cardCreditsTitle:"Twórcy", cardCreditsDesc:"Licencja, linki społeczności i na czym oparte jest Nitro.",
       settingsBackBtn:"← Start", settingsTitle:"Ustawienia", settingsTag:"Konfiguracja launchera",
-      labelDolphinPath:"Ścieżka Dolphin", labelIsoPath:"Ścieżka ISO MKW", labelModDir:"Katalog modów", labelMyStuff:"Folder My Stuff",
+      labelDolphinPath:"Ścieżka Dolphin", labelIsoPath:"Ścieżka ISO MKW", labelModDir:"Katalog modów", labelMyStuff:"Folder My Stuff", addFilesLabel:"Dodaj pliki", addedFiles:"Dodano pliki:",
       labelResolution:"Rozdzielczość", labelLanguage:"Język", labelFullscreen:"Pełny ekran",
       labelAutoUpdate:"Automatyczne aktualizacje", labelPerformance:"Tryb wydajności", saveSettingsLabel:"Zapisz ustawienia", browseLabel:"Przeglądaj",
       troubleshootingLabel:"Rozwiązywanie problemów", diagnosticsBtnLabel:"Pokaż diagnostykę", dolphinLogBtnLabel:"Pokaż log Dolphin",
@@ -2734,7 +2734,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Ayarlar", cardSettingsDesc:"Yolları, çözünürlüğü, dili ve güncellemeleri yapılandır.",
       cardCreditsTitle:"Emek Verenler", cardCreditsDesc:"Lisans, topluluk bağlantıları ve Nitro'nun dayandığı temel.",
       settingsBackBtn:"← Ana Sayfa", settingsTitle:"Ayarlar", settingsTag:"Launcher yapılandırması",
-      labelDolphinPath:"Dolphin yolu", labelIsoPath:"MKW ISO yolu", labelModDir:"Mod dizini", labelMyStuff:"My Stuff klasörü",
+      labelDolphinPath:"Dolphin yolu", labelIsoPath:"MKW ISO yolu", labelModDir:"Mod dizini", labelMyStuff:"My Stuff klasörü", addFilesLabel:"Dosya ekle", addedFiles:"Eklenen dosya:",
       labelResolution:"Çözünürlük", labelLanguage:"Dil", labelFullscreen:"Tam ekran",
       labelAutoUpdate:"Otomatik güncellemeler", labelPerformance:"Performans modu", saveSettingsLabel:"Ayarları kaydet", browseLabel:"Gözat",
       troubleshootingLabel:"Sorun giderme", diagnosticsBtnLabel:"Tanılamayı göster", dolphinLogBtnLabel:"Dolphin günlüğünü göster",
@@ -2794,7 +2794,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Настройки", cardSettingsDesc:"Настройте пути, разрешение, язык и обновления.",
       cardCreditsTitle:"Авторы", cardCreditsDesc:"Лицензия, ссылки сообщества и на чём основан Nitro.",
       settingsBackBtn:"← Главная", settingsTitle:"Настройки", settingsTag:"Настройка лаунчера",
-      labelDolphinPath:"Путь к Dolphin", labelIsoPath:"Путь к ISO", labelModDir:"Папка модов", labelMyStuff:"Папка My Stuff",
+      labelDolphinPath:"Путь к Dolphin", labelIsoPath:"Путь к ISO", labelModDir:"Папка модов", labelMyStuff:"Папка My Stuff", addFilesLabel:"Добавить файлы", addedFiles:"Добавлено файлов:",
       labelResolution:"Разрешение", labelLanguage:"Язык", labelFullscreen:"Полноэкранный режим",
       labelAutoUpdate:"Автоматические обновления", labelPerformance:"Режим производительности", saveSettingsLabel:"Сохранить настройки", browseLabel:"Обзор",
       troubleshootingLabel:"Устранение неполадок", diagnosticsBtnLabel:"Показать диагностику", dolphinLogBtnLabel:"Показать лог Dolphin",
@@ -2854,7 +2854,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"設定", cardSettingsDesc:"パス、解像度、言語、更新を設定します。",
       cardCreditsTitle:"クレジット", cardCreditsDesc:"ライセンス、コミュニティリンク、Nitroの構成要素。",
       settingsBackBtn:"← ホーム", settingsTitle:"設定", settingsTag:"ランチャー設定",
-      labelDolphinPath:"Dolphinのパス", labelIsoPath:"MKW ISOのパス", labelModDir:"Modフォルダ", labelMyStuff:"My Stuffフォルダ",
+      labelDolphinPath:"Dolphinのパス", labelIsoPath:"MKW ISOのパス", labelModDir:"Modフォルダ", labelMyStuff:"My Stuffフォルダ", addFilesLabel:"ファイルを追加", addedFiles:"追加したファイル:",
       labelResolution:"解像度", labelLanguage:"言語", labelFullscreen:"フルスクリーン",
       labelAutoUpdate:"自動更新", labelPerformance:"パフォーマンスモード", saveSettingsLabel:"設定を保存", browseLabel:"参照",
       troubleshootingLabel:"トラブルシューティング", diagnosticsBtnLabel:"診断を表示", dolphinLogBtnLabel:"Dolphinのログを表示",
@@ -2914,7 +2914,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"설정", cardSettingsDesc:"경로, 해상도, 언어 및 업데이트를 구성합니다.",
       cardCreditsTitle:"크레딧", cardCreditsDesc:"라이선스, 커뮤니티 링크 및 Nitro의 기반.",
       settingsBackBtn:"← 홈", settingsTitle:"설정", settingsTag:"런처 구성",
-      labelDolphinPath:"Dolphin 경로", labelIsoPath:"MKW ISO 경로", labelModDir:"모드 디렉터리", labelMyStuff:"My Stuff 폴더",
+      labelDolphinPath:"Dolphin 경로", labelIsoPath:"MKW ISO 경로", labelModDir:"모드 디렉터리", labelMyStuff:"My Stuff 폴더", addFilesLabel:"파일 추가", addedFiles:"추가된 파일:",
       labelResolution:"해상도", labelLanguage:"언어", labelFullscreen:"전체 화면",
       labelAutoUpdate:"자동 업데이트", labelPerformance:"성능 모드", saveSettingsLabel:"설정 저장", browseLabel:"찾아보기",
       troubleshootingLabel:"문제 해결", diagnosticsBtnLabel:"진단 표시", dolphinLogBtnLabel:"Dolphin 로그 표시",
@@ -2974,7 +2974,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"设置", cardSettingsDesc:"配置路径、分辨率、语言和更新。",
       cardCreditsTitle:"鸣谢", cardCreditsDesc:"许可证、社区链接以及 Nitro 的构建基础。",
       settingsBackBtn:"← 主页", settingsTitle:"设置", settingsTag:"启动器配置",
-      labelDolphinPath:"Dolphin 路径", labelIsoPath:"MKW ISO 路径", labelModDir:"模组目录", labelMyStuff:"My Stuff 文件夹",
+      labelDolphinPath:"Dolphin 路径", labelIsoPath:"MKW ISO 路径", labelModDir:"模组目录", labelMyStuff:"My Stuff 文件夹", addFilesLabel:"添加文件", addedFiles:"已添加文件：",
       labelResolution:"分辨率", labelLanguage:"语言", labelFullscreen:"全屏",
       labelAutoUpdate:"自动更新", labelPerformance:"性能模式", saveSettingsLabel:"保存设置", browseLabel:"浏览",
       troubleshootingLabel:"故障排除", diagnosticsBtnLabel:"显示诊断信息", dolphinLogBtnLabel:"显示 Dolphin 日志",
@@ -3034,7 +3034,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"الإعدادات", cardSettingsDesc:"تهيئة المسارات والدقة واللغة والتحديثات.",
       cardCreditsTitle:"الشكر والتقدير", cardCreditsDesc:"الترخيص، روابط المجتمع، وأساس Nitro.",
       settingsBackBtn:"← الرئيسية", settingsTitle:"الإعدادات", settingsTag:"تهيئة المشغّل",
-      labelDolphinPath:"مسار Dolphin", labelIsoPath:"مسار ISO", labelModDir:"مجلد التعديلات", labelMyStuff:"مجلد My Stuff",
+      labelDolphinPath:"مسار Dolphin", labelIsoPath:"مسار ISO", labelModDir:"مجلد التعديلات", labelMyStuff:"مجلد My Stuff", addFilesLabel:"إضافة ملفات", addedFiles:"الملفات المضافة:",
       labelResolution:"الدقة", labelLanguage:"اللغة", labelFullscreen:"ملء الشاشة",
       labelAutoUpdate:"التحديثات التلقائية", labelPerformance:"وضع الأداء", saveSettingsLabel:"حفظ الإعدادات", browseLabel:"استعراض",
       troubleshootingLabel:"استكشاف الأخطاء", diagnosticsBtnLabel:"عرض التشخيص", dolphinLogBtnLabel:"عرض سجل Dolphin",
@@ -3094,7 +3094,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Inställningar", cardSettingsDesc:"Konfigurera sökvägar, upplösning, språk och uppdateringar.",
       cardCreditsTitle:"Credits", cardCreditsDesc:"Licens, community-länkar och vad Nitro bygger på.",
       settingsBackBtn:"← Hem", settingsTitle:"Inställningar", settingsTag:"Launcher-konfiguration",
-      labelDolphinPath:"Dolphin-sökväg", labelIsoPath:"MKW ISO-sökväg", labelModDir:"Mod-mapp", labelMyStuff:"My Stuff-mapp",
+      labelDolphinPath:"Dolphin-sökväg", labelIsoPath:"MKW ISO-sökväg", labelModDir:"Mod-mapp", labelMyStuff:"My Stuff-mapp", addFilesLabel:"Lägg till filer", addedFiles:"Filer tillagda:",
       labelResolution:"Upplösning", labelLanguage:"Språk", labelFullscreen:"Helskärm",
       labelAutoUpdate:"Automatiska uppdateringar", labelPerformance:"Prestandaläge", saveSettingsLabel:"Spara inställningar", browseLabel:"Bläddra",
       troubleshootingLabel:"Felsökning", diagnosticsBtnLabel:"Visa diagnostik", dolphinLogBtnLabel:"Visa Dolphin-logg",
@@ -3154,7 +3154,7 @@ function toast(msg, isError, sticky) {
       cardSettingsTitle:"Asetukset", cardSettingsDesc:"Määritä polut, resoluutio, kieli ja päivitykset.",
       cardCreditsTitle:"Tekijät", cardCreditsDesc:"Lisenssi, yhteisölinkit ja mihin Nitro perustuu.",
       settingsBackBtn:"← Koti", settingsTitle:"Asetukset", settingsTag:"Käynnistimen asetukset",
-      labelDolphinPath:"Dolphin-polku", labelIsoPath:"MKW ISO -polku", labelModDir:"Modikansio", labelMyStuff:"My Stuff -kansio",
+      labelDolphinPath:"Dolphin-polku", labelIsoPath:"MKW ISO -polku", labelModDir:"Modikansio", labelMyStuff:"My Stuff -kansio", addFilesLabel:"Lisää tiedostoja", addedFiles:"Tiedostoja lisätty:",
       labelResolution:"Resoluutio", labelLanguage:"Kieli", labelFullscreen:"Koko näyttö",
       labelAutoUpdate:"Automaattiset päivitykset", labelPerformance:"Suorituskykytila", saveSettingsLabel:"Tallenna asetukset", browseLabel:"Selaa",
       troubleshootingLabel:"Vianmääritys", diagnosticsBtnLabel:"Näytä diagnostiikka", dolphinLogBtnLabel:"Näytä Dolphin-loki",
@@ -3413,7 +3413,13 @@ function toast(msg, isError, sticky) {
   wireBrowse('browseDolphinBtn', 'settingsDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
   wireBrowse('browseIsoBtn', 'settingsIsoPath', 'file', ['Wii disc image (*.iso;*.wbfs;*.rvz)', 'All files (*.*)']);
   wireBrowse('browseModDirBtn', 'settingsModDir', 'folder');
-  wireBrowse('browseMyStuffBtn', 'settingsMyStuff', 'folder');
+  document.getElementById('browseMyStuffBtn').addEventListener('click', async ()=>{
+    const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
+    try{
+      const r = await window.pywebview.api.add_my_stuff_files();
+      if(r && r.added) toast((t.addedFiles || 'Files added:') + ' ' + r.added);
+    }catch(e){}
+  });
   wireBrowse('setupBrowseDolphinBtn', 'setupDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
   wireBrowse('setupBrowseIsoBtn', 'setupIsoPath', 'file', ['Wii disc image (*.iso;*.wbfs;*.rvz)', 'All files (*.*)']);
 

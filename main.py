@@ -905,6 +905,28 @@ class Api:
             return {"error": str(e)}
         return None
 
+    def add_my_stuff_files(self):
+        """Lets the player pick files and copies them into their "My Stuff"
+        folder (Settings). They reach Dolphin's pack folder on Play."""
+        if self._window is None:
+            return {"ok": False, "added": 0}
+        cfg = load_config()
+        dst = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "My Stuff")
+        try:
+            os.makedirs(dst, exist_ok=True)
+            picked = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True)
+        except Exception as e:
+            return {"ok": False, "added": 0, "error": str(e)}
+        added = 0
+        for src in (picked or []):
+            try:
+                if os.path.isfile(src):
+                    shutil.copy2(src, os.path.join(dst, os.path.basename(src)))
+                    added += 1
+            except OSError:
+                continue
+        return {"ok": True, "added": added, "folder": dst}
+
     # ---------- mods ----------
     def import_mod(self):
         if self._window is None:
