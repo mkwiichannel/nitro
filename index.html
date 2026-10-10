@@ -3404,7 +3404,7 @@ function toast(msg, isError, sticky) {
   // ---------- settings: browse buttons ----------
   function wireBrowse(btnId, inputId, kind, fileTypes){
     document.getElementById(btnId).addEventListener('click', async ()=>{
-      const result = await window.pywebview.api.browse_path(kind, fileTypes || null);
+      const result = await window.pywebview.api.browse_path(kind, fileTypes || null, document.getElementById(inputId).value || '');
       if(result && typeof result === 'string'){
         document.getElementById(inputId).value = result;
       }

@@ -878,16 +878,26 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     # ---------- file dialogs ----------
-    def browse_path(self, kind, file_types=None):
+    def browse_path(self, kind, file_types=None, start=None):
         if self._window is None:
             return None
+        # Open the dialog at the path that is already set, when it exists.
+        start_dir = ""
+        try:
+            sp = str(start or "").strip()
+            if sp:
+                cand = sp if os.path.isdir(sp) else os.path.dirname(sp)
+                if os.path.isdir(cand):
+                    start_dir = cand
+        except Exception:
+            start_dir = ""
         try:
             if kind == "folder":
-                result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
+                result = self._window.create_file_dialog(webview.FOLDER_DIALOG, directory=start_dir)
             else:
                 types = tuple(file_types) if file_types else ()
                 result = self._window.create_file_dialog(
-                    webview.OPEN_DIALOG, allow_multiple=False, file_types=types
+                    webview.OPEN_DIALOG, directory=start_dir, allow_multiple=False, file_types=types
                 )
             if result:
                 return result[0]
