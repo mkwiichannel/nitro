@@ -172,7 +172,7 @@ def seed_builtin_mod() -> None:
           # empty content_root — nothing to seed from disk anymore.
 
 
-def _parse_riivolution_options(xml_path):
+def _parse_riivolution_options(xml_path, my_stuff_mode="on"):
     """Read a Riivolution XML and pick a choice for every <option>,
     matching the user's own proven-working manual configuration
     exactly (confirmed via screenshot of Dolphin's own 'Start with
@@ -195,7 +195,12 @@ def _parse_riivolution_options(xml_path):
             choices = option.findall("choice")
             if not choices:
                 continue
-            if len(choices) == 1:
+            if option.get("id") == "MKNitroMyStuff" or option_name.strip().lower() == "my stuff":
+                # The player's "My Stuff in Dolphin" setting decides this one.
+                word = {"off": "disabled", "music": "music", "on": "enabled"}.get(str(my_stuff_mode), "enabled")
+                chosen_index = next((i + 1 for i, c in enumerate(choices)
+                                     if c.get("name", "").strip().lower().startswith(word)), 1)
+            elif len(choices) == 1:
                 chosen_index = 1  # only choice — unambiguous, enable it
             else:
                 # prefer whichever choice matches the user's own
@@ -214,14 +219,14 @@ def _parse_riivolution_options(xml_path):
     return options_out
 
 
-def write_riivolution_preset(iso_path, xml_path, riivolution_root, display_name, out_path):
+def write_riivolution_preset(iso_path, xml_path, riivolution_root, display_name, out_path, my_stuff_mode="on"):
     """Write a Dolphin 'dolphin-game-mod-descriptor' preset JSON —
     the same format Dolphin itself writes via "Start with Riivolution
     Patches > Save as Preset", and the format frontends like
     EmulationStation-DE / Steam ROM Manager launch directly via
     `dolphin.exe -e <preset.json>` to auto-boot a patched game with no
     GUI interaction needed."""
-    options = _parse_riivolution_options(xml_path)
+    options = _parse_riivolution_options(xml_path, my_stuff_mode)
     preset = {
         "base-file": iso_path,
         "display-name": display_name,
@@ -1337,6 +1342,7 @@ class Api:
                         riivolution_root=riivolution_root,
                         display_name=f"Mario Kart Wii — {active_name}",
                         out_path=preset_path,
+                        my_stuff_mode=cfg.get("mystuff_mode") or "on",
                     )
                     launch_target = preset_path
                 except (OSError, ET.ParseError) as e:
