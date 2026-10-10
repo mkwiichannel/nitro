@@ -3417,7 +3417,8 @@ function toast(msg, isError, sticky) {
     const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
     try{
       const r = await window.pywebview.api.add_my_stuff_files();
-      if(r && r.added) toast((t.addedFiles || 'Files added:') + ' ' + r.added);
+      if(r && r.error) toast(String(r.error), true);
+      else if(r && r.added) toast((t.addedFiles || 'Files added:') + ' ' + r.added + '  →  ' + (r.folder || ''));
     }catch(e){}
   });
   wireBrowse('setupBrowseDolphinBtn', 'setupDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
