@@ -588,7 +588,16 @@ class Api:
         pack = os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")
         if not os.path.isdir(pack):
             return
+        # Use the pack's existing folder whatever its spelling ("My Stuff",
+        # "MyStuff", "mystuff"); only create "My Stuff" when none exists.
         dst = os.path.join(pack, "My Stuff")
+        try:
+            for entry in os.listdir(pack):
+                if entry.replace(" ", "").lower() == "mystuff" and os.path.isdir(os.path.join(pack, entry)):
+                    dst = os.path.join(pack, entry)
+                    break
+        except OSError:
+            pass
         os.makedirs(dst, exist_ok=True)
         if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
             return

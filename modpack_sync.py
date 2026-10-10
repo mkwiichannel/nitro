@@ -49,7 +49,8 @@ class SyncError(Exception):
 
 
 def _protected(rel):
-    return rel.lower().startswith(PROTECTED_PREFIXES)
+    low = rel.lower()
+    return low.startswith(PROTECTED_PREFIXES) or low.startswith("mariokartnitro_test/mystuff/")
 
 
 def _lower_thread_priority():
