@@ -3424,7 +3424,7 @@ function toast(msg, isError, sticky) {
     try{
       const r = await window.pywebview.api.add_my_stuff_files();
       if(r && r.error) toast(String(r.error), true);
-      else if(r && r.added) toast((t.addedFiles || 'Files added:') + ' ' + r.added + '  →  ' + (r.folder || ''));
+      else if(r && r.added) toast((t.addedFiles || 'Files added:') + ' ' + r.added);
     }catch(e){}
   });
   wireBrowse('setupBrowseDolphinBtn', 'setupDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);

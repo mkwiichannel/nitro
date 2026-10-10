@@ -626,7 +626,7 @@ class Api:
         files. Other options in those files are left as they are."""
         import xml.etree.ElementTree as ET
         choice = {"off": "1", "on": "2", "music": "3"}.get(str(cfg.get("mystuff_mode") or "on"), "2")
-        cfg_dir = os.path.join(user_dir, "Load", "Riivolution", "config")
+        cfg_dir = os.path.join(user_dir, "Load", "Riivolution", "riivolution", "config")
         if not os.path.isdir(os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")):
             return
         os.makedirs(cfg_dir, exist_ok=True)
@@ -1230,12 +1230,11 @@ class Api:
         self._kill_dolphin(dolphin_path)
 
         # Player's own custom files (skins, music...) -> the pack's "My Stuff" folder.
-        my_stuff_note = ""
         try:
-            my_stuff_note = self._sync_my_stuff(cfg, self._dolphin_user_dir(dolphin_path)) or ""
+            self._sync_my_stuff(cfg, self._dolphin_user_dir(dolphin_path))
             self._apply_my_stuff_option(cfg, self._dolphin_user_dir(dolphin_path))
-        except Exception as e:
-            my_stuff_note = "My Stuff: %s" % e  # never block Play over custom files
+        except Exception:
+            pass  # never block Play over custom files
 
         # Flush Nitro-created/edited Miis into the same Dolphin user folder
         # passed to Dolphin via -u, before the game starts reading its NAND.
@@ -1387,8 +1386,6 @@ class Api:
         # short message for the toast; full detail stays available via
         # get_launch_diagnostics() for whenever it's actually needed
         display_message = "Launching..." + (note if note.strip().startswith("⚠") else "")
-        if my_stuff_note:
-            display_message += "  |  " + my_stuff_note
         return {"ok": True, "message": display_message, "manual_command": manual_command, "detail": diagnostic_detail}
 
     # ---------- remote seasonal theme (colors / logo / banner / Mii / UI, no rebuild) ----------
