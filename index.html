@@ -403,33 +403,55 @@
   .btn-primary:hover{ box-shadow:0 8px 30px rgba(255,140,0,0.65) !important; }
   .card:hover, .stat:hover{ box-shadow:0 0 24px rgba(160,60,255,0.2); }
 
-  /* ---------- Launcher self-update popup ---------- */
+  /* My Stuff mode: segmented control */
+  .seg{ display:inline-flex; padding:4px; gap:4px; background:rgba(0,0,0,0.28); border:1px solid var(--border); border-radius:12px; }
+  .seg button{ all:unset; cursor:pointer; padding:9px 16px; border-radius:9px; font-size:13px; font-weight:600; color:var(--text-dim); transition:all .15s ease; white-space:nowrap; }
+  .seg button:hover{ color:var(--text); background:rgba(255,255,255,0.05); }
+  .seg button.active{ background:linear-gradient(100deg, #ff6b00, #ffa513); color:#1a0800; box-shadow:0 4px 14px rgba(255,120,0,0.35); }
+
+  /* Launcher self-update popup */
   .launcher-update-overlay{
     position:fixed; inset:0; z-index:90;
-    background:rgba(5,2,10,0.72);
+    background:rgba(5,2,10,0.78); backdrop-filter:blur(4px);
     display:flex; align-items:center; justify-content:center;
   }
   .launcher-update-overlay.hidden{ display:none; }
   .launcher-update-box{
-    background:var(--panel);
+    background:linear-gradient(180deg, #241340, var(--panel));
     border:1px solid var(--border-strong);
-    border-radius:var(--radius);
-    box-shadow:0 20px 60px rgba(0,0,0,0.5);
-    padding:28px 32px;
-    max-width:380px;
-    text-align:center;
+    border-radius:18px;
+    box-shadow:0 24px 70px rgba(0,0,0,0.6), 0 0 60px rgba(255,120,0,0.12);
+    padding:30px 34px 26px; width:min(420px, 90vw);
+    text-align:center; animation:luIn .22s ease;
   }
-  .launcher-update-box p{
-    margin:0 0 18px; color:var(--text); font-size:15px; line-height:1.5;
-  }
-  .launcher-update-box .btn{ min-width:140px; }
+  @keyframes luIn{ from{ opacity:0; transform:translateY(10px) scale(.97); } to{ opacity:1; transform:none; } }
+  .lu-icon{ width:64px; height:64px; margin:0 auto 14px; border-radius:18px; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.35); box-shadow:0 0 28px rgba(255,140,0,0.3); }
+  .lu-icon img{ width:40px; height:40px; object-fit:contain; }
+  .launcher-update-box h3{ margin:0 0 6px; font-family:var(--display); font-size:22px; letter-spacing:.4px; }
+  .launcher-update-box p{ margin:0 0 20px; color:var(--text-dim); font-size:14px; line-height:1.55; }
+  .lu-bar{ height:6px; border-radius:6px; background:rgba(255,255,255,0.08); overflow:hidden; margin:0 0 20px; }
+  .lu-bar.hidden{ display:none; }
+  .lu-bar i{ display:block; height:100%; width:40%; border-radius:6px; background:linear-gradient(90deg, #ff6b00, #ffb347); animation:luBar 1.1s ease-in-out infinite; }
+  @keyframes luBar{ 0%{ transform:translateX(-110%); } 100%{ transform:translateX(280%); } }
+  .lu-actions{ display:flex; gap:10px; justify-content:center; }
+  .lu-actions .btn{ min-width:120px; justify-content:center; }
+  .lu-actions .btn.later{ background:rgba(255,255,255,0.06); color:var(--text-dim); }
+  .lu-actions .btn.later:hover{ background:rgba(255,255,255,0.1); color:var(--text); }
+  .lu-actions .btn[disabled]{ opacity:.55; pointer-events:none; }
 </style>
 </head>
 <body>
 <div class="launcher-update-overlay hidden" id="launcherUpdateModal">
   <div class="launcher-update-box">
+    <div class="lu-icon"><img src="logo.png" alt="" /></div>
+    <h3 id="launcherUpdateTitle">Update available</h3>
     <p id="launcherUpdateMsg">A new launcher version is available.</p>
-    <button class="btn btn-primary" id="launcherUpdateBtn">Update!</button>
+    <div class="lu-bar hidden" id="launcherUpdateBar"><i></i></div>
+    <div class="lu-actions">
+      <button class="btn later" id="launcherUpdateLater">Later</button>
+      <button class="btn btn-primary" id="launcherUpdateBtn">Update!</button>
+    </div>
   </div>
 </div>
 <div class="titlebar">
@@ -613,11 +635,10 @@
 <option value="sv">Svenska</option>
 <option value="fi">Suomi</option>
 </select></div>
-<div class="field"><label id="labelMyStuffMode">My Stuff in Dolphin</label><select id="settingsMyStuffMode" style="max-width: 220px;">
-<option value="on" id="optMyStuffOn">Enabled</option>
-<option value="music" id="optMyStuffMusic">Music only</option>
-<option value="off" id="optMyStuffOff">Disabled</option>
-</select></div>
+<div class="field"><label id="labelMyStuffMode">My Stuff in Dolphin</label>
+<div class="seg" id="settingsMyStuffMode" role="group" data-value="on">
+<button type="button" data-v="on" id="optMyStuffOn">Enabled</button><button type="button" data-v="music" id="optMyStuffMusic">Music only</button><button type="button" data-v="off" id="optMyStuffOff">Disabled</button>
+</div></div>
 <div class="field-inline"><input type="checkbox" id="settingsFullscreen" /> <span id="labelFullscreen">Fullscreen</span></div>
 <div class="field-inline"><input type="checkbox" id="settingsAutoUpdate" checked="checked" /> <span id="labelAutoUpdate">Automatic updates</span></div>
 <div class="field-inline" title="Runs Dolphin with light graphics settings (native resolution, no anti-aliasing or anisotropic filtering, multithreaded video) for smoother play on weaker laptops."><input type="checkbox" id="settingsPerformance" /> <span id="labelPerformance">Performance mode</span></div>
@@ -2308,7 +2329,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Mouth style", miiLblLipColorField:"Color", miiLblLipSize:"Size", miiLblLipVert:"Vertical",
       miiLblGlasses:"Glasses", miiLblGlassesColor:"Glasses color", miiLblMustache:"Mustache", miiLblBeard:"Beard", miiLblBeardColor:"Beard – Color",
       miiLblCreator:"Creator name",
-      launcherUpdateMsg:"A new launcher version is available.", launcherUpdateBtn:"Update!",
+      launcherUpdateMsg:"A new launcher version is available.", launcherUpdateTitle:"Update available", launcherUpdateLater:"Later", launcherUpdateBtn:"Update!",
       launcherUpdateInstalling:"Downloading and installing — this window will restart automatically.",
       launcherUpdateFailed:"Update failed. You can keep using this version for now." },
     de: { navHome:"Start", navCredits:"Credits", navSettings:"Einstellungen",
@@ -2368,7 +2389,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Mund", miiLblLipColorField:"Farbe", miiLblLipSize:"Größe", miiLblLipVert:"Vertikal",
       miiLblGlasses:"Brille", miiLblGlassesColor:"Brillenfarbe", miiLblMustache:"Schnurrbart", miiLblBeard:"Bart", miiLblBeardColor:"Bart – Farbe",
       miiLblCreator:"Ersteller-Name",
-      launcherUpdateMsg:"Eine neue Launcher-Version ist verfügbar.", launcherUpdateBtn:"Aktualisieren!",
+      launcherUpdateMsg:"Eine neue Launcher-Version ist verfügbar.", launcherUpdateTitle:"Update verfügbar", launcherUpdateLater:"Später", launcherUpdateBtn:"Aktualisieren!",
       launcherUpdateInstalling:"Wird heruntergeladen und installiert — dieses Fenster startet automatisch neu.",
       launcherUpdateFailed:"Update fehlgeschlagen. Du kannst diese Version vorerst weiter benutzen." },
     fr: { navHome:"Accueil", navCredits:"Crédits", navSettings:"Paramètres",
@@ -2428,7 +2449,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Bouche", miiLblLipColorField:"Couleur", miiLblLipSize:"Taille", miiLblLipVert:"Vertical",
       miiLblGlasses:"Lunettes", miiLblGlassesColor:"Couleur des lunettes", miiLblMustache:"Moustache", miiLblBeard:"Barbe", miiLblBeardColor:"Barbe – Couleur",
       miiLblCreator:"Nom du créateur",
-      launcherUpdateMsg:"Une nouvelle version du launcher est disponible.", launcherUpdateBtn:"Mettre à jour !",
+      launcherUpdateMsg:"Une nouvelle version du launcher est disponible.", launcherUpdateTitle:"Mise à jour disponible", launcherUpdateLater:"Plus tard", launcherUpdateBtn:"Mettre à jour !",
       launcherUpdateInstalling:"Téléchargement et installation en cours — cette fenêtre redémarrera automatiquement.",
       launcherUpdateFailed:"Mise à jour échouée. Vous pouvez continuer à utiliser cette version pour l'instant." },
     es: { navHome:"Inicio", navCredits:"Créditos", navSettings:"Ajustes",
@@ -2488,7 +2509,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Boca", miiLblLipColorField:"Color", miiLblLipSize:"Tamaño", miiLblLipVert:"Vertical",
       miiLblGlasses:"Gafas", miiLblGlassesColor:"Color de gafas", miiLblMustache:"Bigote", miiLblBeard:"Barba", miiLblBeardColor:"Barba – Color",
       miiLblCreator:"Nombre del creador",
-      launcherUpdateMsg:"Hay una nueva versión del launcher disponible.", launcherUpdateBtn:"¡Actualizar!",
+      launcherUpdateMsg:"Hay una nueva versión del launcher disponible.", launcherUpdateTitle:"Actualización disponible", launcherUpdateLater:"Más tarde", launcherUpdateBtn:"¡Actualizar!",
       launcherUpdateInstalling:"Descargando e instalando — esta ventana se reiniciará automáticamente.",
       launcherUpdateFailed:"Error al actualizar. Por ahora puedes seguir usando esta versión." },
     it: { navHome:"Home", navCredits:"Crediti", navSettings:"Impostazioni",
@@ -2548,7 +2569,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Bocca", miiLblLipColorField:"Colore", miiLblLipSize:"Dimensione", miiLblLipVert:"Verticale",
       miiLblGlasses:"Occhiali", miiLblGlassesColor:"Colore occhiali", miiLblMustache:"Baffi", miiLblBeard:"Barba", miiLblBeardColor:"Barba – Colore",
       miiLblCreator:"Nome del creatore",
-      launcherUpdateMsg:"È disponibile una nuova versione del launcher.", launcherUpdateBtn:"Aggiorna!",
+      launcherUpdateMsg:"È disponibile una nuova versione del launcher.", launcherUpdateTitle:"Aggiornamento disponibile", launcherUpdateLater:"Più tardi", launcherUpdateBtn:"Aggiorna!",
       launcherUpdateInstalling:"Download e installazione in corso — questa finestra si riavvierà automaticamente.",
       launcherUpdateFailed:"Aggiornamento non riuscito. Per ora puoi continuare a usare questa versione." },
     pt: { navHome:"Início", navCredits:"Créditos", navSettings:"Config.",
@@ -2608,7 +2629,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Boca", miiLblLipColorField:"Cor", miiLblLipSize:"Tamanho", miiLblLipVert:"Vertical",
       miiLblGlasses:"Óculos", miiLblGlassesColor:"Cor dos óculos", miiLblMustache:"Bigode", miiLblBeard:"Barba", miiLblBeardColor:"Barba – Cor",
       miiLblCreator:"Nome do criador",
-      launcherUpdateMsg:"Uma nova versão do launcher está disponível.", launcherUpdateBtn:"Atualizar!",
+      launcherUpdateMsg:"Uma nova versão do launcher está disponível.", launcherUpdateTitle:"Atualização disponível", launcherUpdateLater:"Mais tarde", launcherUpdateBtn:"Atualizar!",
       launcherUpdateInstalling:"Baixando e instalando — esta janela será reiniciada automaticamente.",
       launcherUpdateFailed:"Falha na atualização. Você pode continuar usando esta versão por agora." },
     nl: { navHome:"Start", navCredits:"Credits", navSettings:"Instellingen",
@@ -2668,7 +2689,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Mond", miiLblLipColorField:"Kleur", miiLblLipSize:"Grootte", miiLblLipVert:"Verticaal",
       miiLblGlasses:"Bril", miiLblGlassesColor:"Brilkleur", miiLblMustache:"Snor", miiLblBeard:"Baard", miiLblBeardColor:"Baard – Kleur",
       miiLblCreator:"Naam maker",
-      launcherUpdateMsg:"Er is een nieuwe launcherversie beschikbaar.", launcherUpdateBtn:"Updaten!",
+      launcherUpdateMsg:"Er is een nieuwe launcherversie beschikbaar.", launcherUpdateTitle:"Update beschikbaar", launcherUpdateLater:"Later", launcherUpdateBtn:"Updaten!",
       launcherUpdateInstalling:"Downloaden en installeren — dit venster herstart automatisch.",
       launcherUpdateFailed:"Update mislukt. Je kunt deze versie voorlopig blijven gebruiken." },
     pl: { navHome:"Start", navCredits:"Twórcy", navSettings:"Ustawienia",
@@ -2728,7 +2749,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Usta", miiLblLipColorField:"Kolor", miiLblLipSize:"Rozmiar", miiLblLipVert:"Pionowo",
       miiLblGlasses:"Okulary", miiLblGlassesColor:"Kolor okularów", miiLblMustache:"Wąsy", miiLblBeard:"Broda", miiLblBeardColor:"Broda – Kolor",
       miiLblCreator:"Nazwa twórcy",
-      launcherUpdateMsg:"Dostępna jest nowa wersja launchera.", launcherUpdateBtn:"Zaktualizuj!",
+      launcherUpdateMsg:"Dostępna jest nowa wersja launchera.", launcherUpdateTitle:"Dostępna aktualizacja", launcherUpdateLater:"Później", launcherUpdateBtn:"Zaktualizuj!",
       launcherUpdateInstalling:"Pobieranie i instalowanie — to okno uruchomi się ponownie automatycznie.",
       launcherUpdateFailed:"Aktualizacja nie powiodła się. Możesz na razie korzystać z tej wersji." },
     tr: { navHome:"Ana Sayfa", navCredits:"Emek Verenler", navSettings:"Ayarlar",
@@ -2788,7 +2809,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Ağız stili", miiLblLipColorField:"Renk", miiLblLipSize:"Boyut", miiLblLipVert:"Dikey",
       miiLblGlasses:"Gözlük", miiLblGlassesColor:"Gözlük rengi", miiLblMustache:"Bıyık", miiLblBeard:"Sakal", miiLblBeardColor:"Sakal – Renk",
       miiLblCreator:"Oluşturan adı",
-      launcherUpdateMsg:"Yeni bir launcher sürümü mevcut.", launcherUpdateBtn:"Güncelle!",
+      launcherUpdateMsg:"Yeni bir launcher sürümü mevcut.", launcherUpdateTitle:"Güncelleme mevcut", launcherUpdateLater:"Sonra", launcherUpdateBtn:"Güncelle!",
       launcherUpdateInstalling:"İndiriliyor ve kuruluyor — bu pencere otomatik olarak yeniden başlayacak.",
       launcherUpdateFailed:"Güncelleme başarısız oldu. Şimdilik bu sürümü kullanmaya devam edebilirsiniz." },
     ru: { navHome:"Главная", navCredits:"Авторы", navSettings:"Настройки",
@@ -2848,7 +2869,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Рот", miiLblLipColorField:"Цвет", miiLblLipSize:"Размер", miiLblLipVert:"Вертикаль",
       miiLblGlasses:"Очки", miiLblGlassesColor:"Цвет очков", miiLblMustache:"Усы", miiLblBeard:"Борода", miiLblBeardColor:"Борода – Цвет",
       miiLblCreator:"Имя создателя",
-      launcherUpdateMsg:"Доступна новая версия лаунчера.", launcherUpdateBtn:"Обновить!",
+      launcherUpdateMsg:"Доступна новая версия лаунчера.", launcherUpdateTitle:"Доступно обновление", launcherUpdateLater:"Позже", launcherUpdateBtn:"Обновить!",
       launcherUpdateInstalling:"Загрузка и установка — это окно перезапустится автоматически.",
       launcherUpdateFailed:"Обновление не удалось. Пока можно продолжать использовать эту версию." },
     ja: { navHome:"ホーム", navCredits:"クレジット", navSettings:"設定",
@@ -2908,7 +2929,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"口", miiLblLipColorField:"色", miiLblLipSize:"大きさ", miiLblLipVert:"縦位置",
       miiLblGlasses:"メガネ", miiLblGlassesColor:"メガネの色", miiLblMustache:"口ひげ", miiLblBeard:"ひげ", miiLblBeardColor:"ひげ – 色",
       miiLblCreator:"作成者名",
-      launcherUpdateMsg:"新しいランチャーのバージョンが利用可能です。", launcherUpdateBtn:"更新する！",
+      launcherUpdateMsg:"新しいランチャーのバージョンが利用可能です。", launcherUpdateTitle:"アップデートがあります", launcherUpdateLater:"あとで", launcherUpdateBtn:"更新する！",
       launcherUpdateInstalling:"ダウンロードしてインストール中です — このウィンドウは自動的に再起動します。",
       launcherUpdateFailed:"更新に失敗しました。今はこのバージョンを使い続けられます。" },
     ko: { navHome:"홈", navCredits:"크레딧", navSettings:"설정",
@@ -2968,7 +2989,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"입 스타일", miiLblLipColorField:"색상", miiLblLipSize:"크기", miiLblLipVert:"수직",
       miiLblGlasses:"안경", miiLblGlassesColor:"안경 색상", miiLblMustache:"콧수염", miiLblBeard:"턱수염", miiLblBeardColor:"턱수염 – 색상",
       miiLblCreator:"작성자 이름",
-      launcherUpdateMsg:"새 런처 버전을 사용할 수 있습니다.", launcherUpdateBtn:"업데이트!",
+      launcherUpdateMsg:"새 런처 버전을 사용할 수 있습니다.", launcherUpdateTitle:"업데이트 가능", launcherUpdateLater:"나중에", launcherUpdateBtn:"업데이트!",
       launcherUpdateInstalling:"다운로드 및 설치 중입니다 — 이 창은 자동으로 재시작됩니다.",
       launcherUpdateFailed:"업데이트에 실패했습니다. 지금은 이 버전을 계속 사용할 수 있습니다." },
     zh: { navHome:"主页", navCredits:"鸣谢", navSettings:"设置",
@@ -3028,7 +3049,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"嘴型", miiLblLipColorField:"颜色", miiLblLipSize:"大小", miiLblLipVert:"垂直位置",
       miiLblGlasses:"眼镜", miiLblGlassesColor:"眼镜颜色", miiLblMustache:"胡子", miiLblBeard:"胡须", miiLblBeardColor:"胡须 – 颜色",
       miiLblCreator:"创建者名称",
-      launcherUpdateMsg:"有新的启动器版本可用。", launcherUpdateBtn:"更新！",
+      launcherUpdateMsg:"有新的启动器版本可用。", launcherUpdateTitle:"有可用更新", launcherUpdateLater:"稍后", launcherUpdateBtn:"更新！",
       launcherUpdateInstalling:"正在下载并安装——此窗口将自动重启。",
       launcherUpdateFailed:"更新失败。你可以暂时继续使用此版本。" },
     ar: { navHome:"الرئيسية", navCredits:"الشكر والتقدير", navSettings:"الإعدادات",
@@ -3088,7 +3109,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"الفم", miiLblLipColorField:"اللون", miiLblLipSize:"الحجم", miiLblLipVert:"عمودي",
       miiLblGlasses:"النظارات", miiLblGlassesColor:"لون النظارات", miiLblMustache:"الشنب", miiLblBeard:"اللحية", miiLblBeardColor:"اللحية – اللون",
       miiLblCreator:"اسم المنشئ",
-      launcherUpdateMsg:"يتوفر إصدار جديد من المشغّل.", launcherUpdateBtn:"تحديث!",
+      launcherUpdateMsg:"يتوفر إصدار جديد من المشغّل.", launcherUpdateTitle:"تحديث متاح", launcherUpdateLater:"لاحقًا", launcherUpdateBtn:"تحديث!",
       launcherUpdateInstalling:"جاري التنزيل والتثبيت — ستُعاد تشغيل هذه النافذة تلقائيًا.",
       launcherUpdateFailed:"فشل التحديث. يمكنك الاستمرار في استخدام هذا الإصدار الآن." },
     sv: { navHome:"Hem", navCredits:"Credits", navSettings:"Inställningar",
@@ -3148,7 +3169,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Mun", miiLblLipColorField:"Färg", miiLblLipSize:"Storlek", miiLblLipVert:"Vertikal",
       miiLblGlasses:"Glasögon", miiLblGlassesColor:"Glasögonfärg", miiLblMustache:"Mustasch", miiLblBeard:"Skägg", miiLblBeardColor:"Skägg – Färg",
       miiLblCreator:"Skaparens namn",
-      launcherUpdateMsg:"En ny launcher-version är tillgänglig.", launcherUpdateBtn:"Uppdatera!",
+      launcherUpdateMsg:"En ny launcher-version är tillgänglig.", launcherUpdateTitle:"Uppdatering tillgänglig", launcherUpdateLater:"Senare", launcherUpdateBtn:"Uppdatera!",
       launcherUpdateInstalling:"Laddar ner och installerar — det här fönstret startar om automatiskt.",
       launcherUpdateFailed:"Uppdateringen misslyckades. Du kan fortsätta använda den här versionen för nu." },
     fi: { navHome:"Koti", navCredits:"Tekijät", navSettings:"Asetukset",
@@ -3208,7 +3229,7 @@ function toast(msg, isError, sticky) {
       miiLblMouthStyle:"Suu", miiLblLipColorField:"Väri", miiLblLipSize:"Koko", miiLblLipVert:"Pysty",
       miiLblGlasses:"Silmälasit", miiLblGlassesColor:"Silmälasien väri", miiLblMustache:"Viikset", miiLblBeard:"Parta", miiLblBeardColor:"Parta – Väri",
       miiLblCreator:"Luojan nimi",
-      launcherUpdateMsg:"Uusi launcher-versio on saatavilla.", launcherUpdateBtn:"Päivitä!",
+      launcherUpdateMsg:"Uusi launcher-versio on saatavilla.", launcherUpdateTitle:"Päivitys saatavilla", launcherUpdateLater:"Myöhemmin", launcherUpdateBtn:"Päivitä!",
       launcherUpdateInstalling:"Ladataan ja asennetaan — tämä ikkuna käynnistyy automaattisesti uudelleen.",
       launcherUpdateFailed:"Päivitys epäonnistui. Voit jatkaa tämän version käyttöä toistaiseksi." },
   };
@@ -3258,12 +3279,21 @@ function toast(msg, isError, sticky) {
     } catch (e) {}
   }
 
+  function setMyStuffMode(v){
+    const seg = document.getElementById('settingsMyStuffMode');
+    seg.dataset.value = v;
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  }
+  document.getElementById('settingsMyStuffMode').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(b) setMyStuffMode(b.dataset.v);
+  });
+
   function renderSettings(state){
     document.getElementById('settingsDolphinPath').value = state.dolphin_path || '';
     document.getElementById('settingsIsoPath').value = state.iso_path || '';
     document.getElementById('settingsModDir').value = state.mod_directory || '';
     document.getElementById('settingsMyStuff').value = state.mystuff_directory || '';
-    document.getElementById('settingsMyStuffMode').value = state.mystuff_mode || 'on';
+    setMyStuffMode(state.mystuff_mode || 'on');
     (function(){
       const sel = document.getElementById('settingsResolution'), v = state.resolution || '1920x1584';
       if (![...sel.options].some(o => o.value === v)) { /* older value like 1920x1080 -> nearest Dolphin size */
@@ -3437,7 +3467,7 @@ function toast(msg, isError, sticky) {
       iso_path: document.getElementById('settingsIsoPath').value,
       mod_directory: document.getElementById('settingsModDir').value,
       mystuff_directory: document.getElementById('settingsMyStuff').value,
-      mystuff_mode: document.getElementById('settingsMyStuffMode').value,
+      mystuff_mode: document.getElementById('settingsMyStuffMode').dataset.value || 'on',
       resolution: document.getElementById('settingsResolution').value,
       language: document.getElementById('settingsLanguage').value,
       fullscreen: document.getElementById('settingsFullscreen').checked,
@@ -3466,27 +3496,36 @@ function toast(msg, isError, sticky) {
     const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
     const modal = document.getElementById('launcherUpdateModal');
     const btn = document.getElementById('launcherUpdateBtn');
+    const later = document.getElementById('launcherUpdateLater');
     const msg = document.getElementById('launcherUpdateMsg');
+    const bar = document.getElementById('launcherUpdateBar');
+    const title = document.getElementById('launcherUpdateTitle');
     if(!modal || !btn || !msg) return;
+    title.textContent = t.launcherUpdateTitle || 'Update available';
     msg.textContent = t.launcherUpdateMsg;
     btn.textContent = t.launcherUpdateBtn;
-    btn.disabled = false;
+    later.textContent = t.launcherUpdateLater || 'Later';
+    btn.disabled = false; later.disabled = false;
+    bar.classList.add('hidden');
     modal.classList.remove('hidden');
+    later.onclick = () => modal.classList.add('hidden');
     btn.onclick = async () => {
-      btn.disabled = true;
+      btn.disabled = true; later.disabled = true;
+      bar.classList.remove('hidden');
       msg.textContent = t.launcherUpdateInstalling;
+      const fail = text => {
+        bar.classList.add('hidden');
+        msg.textContent = text;
+        btn.disabled = false; later.disabled = false;
+        btn.textContent = t.launcherUpdateBtn;
+      };
       try {
         const res = await window.pywebview.api.start_launcher_update(downloadUrl);
-        if(!res?.ok){
-          msg.textContent = (res && res.error) || t.launcherUpdateFailed;
-          btn.disabled = false;
-          btn.textContent = t.launcherUpdateBtn;
-        }
+        if(!res?.ok) fail((res && res.error) || t.launcherUpdateFailed);
         // On success the backend closes this window itself once the
         // swap is staged -- nothing left to do here but wait.
       } catch (e) {
-        msg.textContent = t.launcherUpdateFailed;
-        btn.disabled = false;
+        fail(t.launcherUpdateFailed);
       }
     };
   }

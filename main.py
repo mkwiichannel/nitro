@@ -2040,7 +2040,10 @@ class Api:
                     self._window.evaluate_js(
                         "(function(){ var m=document.getElementById('launcherUpdateMsg'); "
                         "var b=document.getElementById('launcherUpdateBtn'); "
-                        f"if(m) m.textContent = {safe}; if(b) b.disabled=false; }})();"
+                        "var l=document.getElementById('launcherUpdateLater'); "
+                        "var r=document.getElementById('launcherUpdateBar'); "
+                        f"if(m) m.textContent = {safe}; if(b) b.disabled=false; if(l) l.disabled=false; "
+                        "if(r) r.classList.add('hidden'); })();"
                     )
                 except Exception:
                     pass
