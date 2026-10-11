@@ -86,7 +86,7 @@ DEFAULT_CONFIG = {
     "dolphin_path": "",
     "iso_path": "",
     "mod_directory": os.path.join(app_data_dir(), "mods"),
-    "mystuff_directory": os.path.join(app_data_dir(), "My Stuff"),
+    "mystuff_directory": os.path.join(app_data_dir(), "MyStuff"),
     "mystuff_mode": "on",
     "resolution": "1920x1584",
     "language": "en",
@@ -576,7 +576,7 @@ class Api:
         Only runs when the pack's MarioKartNitro_Test folder exists. Files are
         only ever added or refreshed, never deleted, in either folder, and
         files that haven't changed (same size and time) are skipped."""
-        src = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "My Stuff")
+        src = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "MyStuff")
         try:
             os.makedirs(src, exist_ok=True)  # so the player can see where to put files
         except OSError as e:
@@ -958,7 +958,7 @@ class Api:
         if self._window is None:
             return {"ok": False, "added": 0}
         cfg = load_config()
-        dst = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "My Stuff")
+        dst = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "MyStuff")
         try:
             os.makedirs(dst, exist_ok=True)
             picked = self._window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True)
@@ -3119,6 +3119,23 @@ def _run_web(api, mii_only=False):
     _start_webview_with_webview2_check()
 
 
+def _migrate_my_stuff_folder():
+    """The player's folder used to be called "My Stuff"; it is now "MyStuff".
+    Renames the old default folder (keeping its files) and repoints the setting."""
+    try:
+        base = app_data_dir()
+        old, new = os.path.join(base, "My Stuff"), os.path.join(base, "MyStuff")
+        if os.path.isdir(old) and not os.path.exists(new):
+            os.rename(old, new)
+        cfg = load_config()
+        cur = str(cfg.get("mystuff_directory") or "")
+        if cur and os.path.normcase(os.path.abspath(cur)) == os.path.normcase(os.path.abspath(old)):
+            cfg["mystuff_directory"] = new
+            save_config(cfg)
+    except OSError:
+        pass
+
+
 def _cleanup_update_leftovers():
     """After a launcher update, remove everything the swap left behind: the
     old exe backup, the helper script and the downloaded/extracted files."""
@@ -3146,6 +3163,7 @@ def main():
         return
 
     seed_builtin_mod()
+    _migrate_my_stuff_folder()
     if not mii_only:
         # Only the instance that owns the lock may clean up old extraction
         # folders: a second copy doing it earlier used to delete files the
