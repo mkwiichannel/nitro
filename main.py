@@ -404,6 +404,7 @@ def _set_progress(**kwargs):
 
 
 _LAUNCHER_REPO_DEFAULT = "mkwiichannel/nitro"
+_LAUNCHER_RELEASE_PREFIX = "https://github.com/mkwiichannel/nitro/releases/"
 _launcher_release_cache = {"t": 0.0, "etag": "", "data": None}
 
 
@@ -465,13 +466,34 @@ class Api:
         cfg["discord_url"] = DISCORD_URL
         return cfg
 
+    _TEXT_SETTINGS = ("iso_path", "mod_directory", "mystuff_directory", "mystuff_mode", "resolution",
+                      "language", "ffl_resource_path", "content_drive_url", "version_drive_url")
+    _FLAG_SETTINGS = ("fullscreen", "auto_update", "performance_mode")
+    _GAME_SUFFIXES = (".iso", ".wbfs", ".rvz", ".ciso", ".gcz", ".wia", ".gcm", ".wad")
+
+    @staticmethod
+    def _looks_like_dolphin(path):
+        name = os.path.basename(str(path or "")).lower()
+        return "dolphin" in name and (name.endswith(".exe") or "." not in name or name.endswith(".appimage"))
+
     def save_settings(self, payload):
+        if not isinstance(payload, dict):
+            return {"ok": False, "error": "Invalid settings."}
         cfg = load_config()
-        for key in ("dolphin_path", "iso_path", "mod_directory", "mystuff_directory", "mystuff_mode", "resolution",
-                    "language", "fullscreen", "auto_update", "performance_mode", "ffl_resource_path",
-                    "content_drive_url", "version_drive_url"):
+        for key in self._TEXT_SETTINGS:
+            if key in payload and isinstance(payload[key], str):
+                value = payload[key].strip()
+                if key == "iso_path" and value and not value.lower().endswith(self._GAME_SUFFIXES):
+                    return {"ok": False, "error": "That isn't a Wii game image."}
+                cfg[key] = value
+        for key in self._FLAG_SETTINGS:
             if key in payload:
-                cfg[key] = payload[key]
+                cfg[key] = bool(payload[key])
+        if "dolphin_path" in payload and isinstance(payload["dolphin_path"], str):
+            value = payload["dolphin_path"].strip()
+            if value and not self._looks_like_dolphin(value):
+                return {"ok": False, "error": "Pick the Dolphin program (Dolphin.exe)."}
+            cfg["dolphin_path"] = value
         save_config(cfg)
         return {"ok": True}
 
@@ -1227,7 +1249,7 @@ class Api:
         dolphin_path = cfg.get("dolphin_path", "")
         iso_path = cfg.get("iso_path", "")
 
-        if not dolphin_path or not os.path.isfile(dolphin_path):
+        if not dolphin_path or not os.path.isfile(dolphin_path) or not self._looks_like_dolphin(dolphin_path):
             return {"ok": False, "error": "Dolphin path isn't set (or the file doesn't exist). Set it in Settings first."}
         if not iso_path or not os.path.isfile(iso_path):
             return {"ok": False, "error": "MKW ISO path isn't set (or the file doesn't exist). Set it in Settings first."}
@@ -1671,7 +1693,6 @@ class Api:
             return {"update_available": False, "error": f"Couldn't check for updates: {e}"}
 
         cfg = load_config()
-        self._apply_remote_theme(manifest, cfg)
 
         # launcher_nitro (the whole-exe self-update) is checked
         # FIRST and independently of the modpack sync below -- it
@@ -1683,6 +1704,8 @@ class Api:
         # new .exe build vs a new mod content zip) and shouldn't be
         # able to block each other.
         launcher_url = str(manifest.get("launcher_nitro", "")).strip()
+        if not launcher_url.startswith(_LAUNCHER_RELEASE_PREFIX):
+            launcher_url = ""
         # The newest GitHub release of the launcher repo decides; the manifest
         # link is only a fallback when GitHub's release list can't be read.
         rel = _latest_launcher_release(launcher_url, force=not light)
@@ -1708,8 +1731,8 @@ class Api:
         # Load/Riivolution folder (see modpack_sync.py). manifest.json can
         # still redirect it without a rebuild via "modpack_repo" /
         # "modpack_branch"; otherwise the official Nitropack repo is used.
-        repo = str(manifest.get("modpack_repo") or modpack_sync.DEFAULT_REPO).strip()
-        branch = str(manifest.get("modpack_branch") or modpack_sync.DEFAULT_BRANCH).strip()
+        repo = modpack_sync.DEFAULT_REPO
+        branch = modpack_sync.DEFAULT_BRANCH
         launcher_info = {
             "launcher_update_available": launcher_update_available,
             "launcher_download_url": launcher_url,
@@ -1993,7 +2016,7 @@ class Api:
         if not download_url:
             return {"ok": False, "error": "No launcher download URL given."}
         if (download_url != getattr(self, "_launcher_pending_url", None)
-                or urllib.parse.urlparse(download_url).scheme != "https"):
+                or not download_url.startswith(_LAUNCHER_RELEASE_PREFIX)):
             return {"ok": False, "error": "That isn't the update the launcher found. Check for updates again."}
         if os.name != "nt" or not getattr(sys, "frozen", False):
             return {"ok": False, "error": "Launcher self-update only works in an installed Windows .exe, not a dev run."}
@@ -2967,9 +2990,7 @@ def _initial_ui_path(cfg):
     pushed index.html change still gets picked up moments later, just
     live-swapped into the open window instead of decided before it
     opens."""
-    bundled = resource_path("index.html")
-    cached_path = cfg.get("ui_html_path", "")
-    return cached_path if cached_path and os.path.isfile(cached_path) else bundled
+    return resource_path("index.html")
 
 
 def _write_initial_state_js(index_file, cfg):
@@ -3108,8 +3129,6 @@ def _run_web(api, mii_only=False):
             except Exception:
                 pass
         window.events.loaded += _open_mii
-    else:
-        threading.Thread(target=_background_remote_update_loop, args=(api,), daemon=True).start()
     t_before_webview_start = time.time()
     _page_loaded = threading.Event()
     window.events.loaded += lambda: _page_loaded.set()
@@ -3178,7 +3197,6 @@ def main():
         # Neither is needed to show the window; SHChangeNotify in
         # particular can stall for a while when Explorer is busy.
         def _deferred_startup_chores():
-            _ensure_rcedit()
             _notify_shell_icon_changed()
         threading.Thread(target=_deferred_startup_chores, daemon=True).start()
     api = Api()
@@ -3188,8 +3206,7 @@ def main():
     # The window just closed -- this process is about to exit, which
     # is the one safe moment to patch a pending icon_url change into
     # the .exe file on disk (see _maybe_apply_pending_icon()).
-    if not mii_only:
-        _maybe_apply_pending_icon()
+    pass
 
 
 if __name__ == "__main__":

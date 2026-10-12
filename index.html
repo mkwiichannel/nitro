@@ -3305,7 +3305,8 @@ function toast(msg, isError, sticky) {
       auto_update: document.getElementById('settingsAutoUpdate').checked,
       performance_mode: document.getElementById('settingsPerformance').checked,
     };
-    await window.pywebview.api.save_settings(payload);
+    const saved = await window.pywebview.api.save_settings(payload);
+    if (saved && saved.ok === false) { toast(String(saved.error || 'Settings could not be saved.'), true); return; }
     await refreshState();
     const st = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
     toast(st.toastSettingsSaved);
@@ -3316,7 +3317,8 @@ function toast(msg, isError, sticky) {
       dolphin_path: document.getElementById('setupDolphinPath').value,
       iso_path: document.getElementById('setupIsoPath').value,
     };
-    await window.pywebview.api.save_settings(payload);
+    const saved = await window.pywebview.api.save_settings(payload);
+    if (saved && saved.ok === false) { toast(String(saved.error || 'Settings could not be saved.'), true); return; }
     await refreshState();
     go('home');
   });
