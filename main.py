@@ -445,17 +445,15 @@ class Api:
         own "My Stuff" folder inside Dolphin's Load/Riivolution, so the
         Riivolution "My Stuff" option can use it. Runs on Play.
 
-        Only runs when the pack's MarioKartNitro_Test folder exists. Files are
-        only ever added or refreshed, never deleted, in either folder, and
-        files that haven't changed (same size and time) are skipped."""
+        Creates the pack's "My Stuff" folder and its "Music" folder when they are
+        missing. Files are only ever added or refreshed, never deleted, in either
+        folder, and files that haven't changed (same size and time) are skipped."""
         src = str(cfg.get("mystuff_directory") or "").strip() or os.path.join(app_data_dir(), "MyStuff")
         try:
             os.makedirs(src, exist_ok=True)  # so the player can see where to put files
         except OSError as e:
             return "My Stuff: can't open your folder (%s)" % e
         pack = os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")
-        if not os.path.isdir(pack):
-            return "My Stuff: pack folder not found at %s" % pack
         # Use the pack's existing folder whatever its spelling ("My Stuff",
         # "MyStuff", "mystuff"); only create "My Stuff" when none exists.
         dst = os.path.join(pack, "My Stuff")
@@ -466,7 +464,14 @@ class Api:
                     break
         except OSError:
             pass
-        os.makedirs(dst, exist_ok=True)
+        try:
+            # The Riivolution profile points at "My Stuff" and "My Stuff/Music"
+            # and does not create them itself, so make sure both exist.
+            os.makedirs(dst, exist_ok=True)
+            if not any(e.lower() == "music" and os.path.isdir(os.path.join(dst, e)) for e in os.listdir(dst)):
+                os.makedirs(os.path.join(dst, "Music"), exist_ok=True)
+        except OSError as e:
+            return "My Stuff: can't create the pack's folder (%s)" % e
         if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
             return "My Stuff: your folder is already the pack's folder"
         copied = skipped = failed = 0
