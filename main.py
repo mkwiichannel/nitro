@@ -103,6 +103,51 @@ DEFAULT_CONFIG = {
 }
 
 
+_HW_CACHE = {}
+
+
+def detect_hardware():
+    """Graphics card, CPU threads and RAM of this PC, read once and cached.
+    Used only to choose sensible Dolphin settings for Performance mode.
+    Any failure just returns "unknown" and the safe low settings are used."""
+    if _HW_CACHE:
+        return _HW_CACHE
+    info = {"gpus": [], "cpu_threads": os.cpu_count() or 2, "ram_gb": 0.0, "gpu_class": "unknown"}
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            class _MemStatus(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("sullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            ms = _MemStatus()
+            ms.dwLength = ctypes.sizeof(_MemStatus)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms)):
+                info["ram_gb"] = round(ms.ullTotalPhys / (1024 ** 3), 1)
+        except Exception:
+            pass
+        try:
+            out = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 "(Get-CimInstance Win32_VideoController).Name"],
+                capture_output=True, text=True, timeout=10,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            ).stdout
+            info["gpus"] = [ln.strip() for ln in out.splitlines() if ln.strip()]
+        except Exception:
+            pass
+    names = " ".join(info["gpus"]).lower()
+    if re.search(r"geforce|rtx|gtx|quadro|radeon rx|radeon pro|arc a\d|arc b\d", names):
+        info["gpu_class"] = "discrete"
+    elif names:
+        info["gpu_class"] = "integrated"
+    _HW_CACHE.update(info)
+    return _HW_CACHE
+
+
 def load_config() -> dict:
     if os.path.exists(CONFIG_PATH):
         try:
@@ -333,6 +378,7 @@ class Api:
     def __init__(self):
         self._window = None  # set after window creation, needed for dialogs
         self._pending_sync = None
+        threading.Thread(target=detect_hardware, daemon=True).start()
         self._launcher_pending_url = None
         self._launcher_pending_fp = ""
         self._launcher_pending_digest = ""
@@ -1099,21 +1145,23 @@ class Api:
             "--config=Achievements.Achievements.Enabled=False",
             "--config=Graphics.Settings.HiresTextures=True",
         ]
+        hw_discrete = False
         if cfg.get("performance_mode"):
             # Fastest Dolphin settings for this launch only. They are passed on
             # the command line, so the player's own Dolphin configuration is never
             # changed. Hi-res textures stay on (the mod needs them).
+            hw = detect_hardware()
+            hw_discrete = hw["gpu_class"] == "discrete"
             launch_args += [
-                "--config=Graphics.Settings.InternalResolution=1",
                 "--config=Graphics.Settings.MSAA=1",
                 "--config=Graphics.Settings.SSAA=False",
                 "--config=Graphics.Settings.EnablePixelLighting=False",
                 "--config=Graphics.Settings.FastDepthCalc=True",
                 "--config=Graphics.Settings.BackendMultithreading=True",
                 "--config=Graphics.Settings.CPUCull=True",
-                "--config=Graphics.Settings.DisableFog=False",
                 "--config=Graphics.Settings.ShaderCompilationMode=2",
                 "--config=Graphics.Settings.WaitForShadersBeforeStarting=False",
+                "--config=Graphics.Settings.EnableGPUTextureDecoding=" + ("True" if hw_discrete else "False"),
                 "--config=Graphics.Enhancements.MaxAnisotropy=0",
                 "--config=Graphics.Enhancements.PostProcessingShader=",
                 "--config=Graphics.Enhancements.ArbitraryMipmapDetection=False",
@@ -1127,6 +1175,7 @@ class Api:
                 "--config=Graphics.Hacks.SkipDuplicateXFBs=True",
                 "--config=Graphics.Hacks.FastTextureSampling=True",
                 "--config=Dolphin.Core.CPUThread=True",
+                "--config=Dolphin.Core.CPUCore=1",
                 "--config=Dolphin.Core.Fastmem=True",
                 "--config=Dolphin.Core.DSPHLE=True",
                 "--config=Dolphin.Core.SyncOnSkipIdle=True",
@@ -1134,12 +1183,20 @@ class Api:
                 "--config=Dolphin.Core.SyncGPU=False",
                 "--config=Dolphin.Core.FPRF=False",
                 "--config=Dolphin.Core.AccurateNaNs=False",
+                "--config=Dolphin.Core.AccurateCPUCache=False",
                 "--config=Dolphin.Core.OverclockEnable=False",
+                "--config=Dolphin.Core.EmulationSpeed=1.0",
+                "--config=Dolphin.Core.FastDiscSpeed=True",
+                "--config=Dolphin.Interface.OnScreenDisplayMessages=False",
                 "--config=Dolphin.DSP.EnableJIT=True",
+                "--config=SYSCONF.IPL.E60=True",
             ]
         # Resolution = Dolphin's internal resolution (a multiple of the Wii's
-        # 640x528 picture). Performance mode keeps the light native setting.
-        if not cfg.get("performance_mode"):
+        # 640x528 picture). Performance mode drops to native 1x unless a
+        # dedicated graphics card was found.
+        if cfg.get("performance_mode") and not hw_discrete:
+            launch_args.append("--config=Graphics.Settings.InternalResolution=1")
+        else:
             rm = re.match(r"^\s*(\d{3,5})\s*[xX]\s*(\d{3,5})\s*$", str(cfg.get("resolution", "")))
             if rm:
                 w, h = int(rm.group(1)), int(rm.group(2))
