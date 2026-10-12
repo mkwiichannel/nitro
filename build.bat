@@ -23,7 +23,6 @@ python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --add-data "fonts;fonts" ^
   --add-data "starter.mii;." ^
   --add-data "RFL_Res.dat;." ^
-  --add-data "rcedit.exe;." ^
   main.py
 if errorlevel 1 goto failed
 copy /Y "MarioKartNitro.manifest" "dist\MarioKartNitro.exe.manifest" >nul

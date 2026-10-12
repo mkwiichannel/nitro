@@ -20,16 +20,6 @@ not covered by the GPL-3.0 terms above. Don't re-extract and redistribute
 this file outside of Mario Kart Nitro itself without checking that
 license yourself.
 
-## rcedit
-
-<https://github.com/electron/rcedit>
-
-MIT License. Copyright (c) Electron contributors, GitHub Inc.
-
-Used at runtime (bundled directly in the built .exe) to patch a newly
-pushed icon into the .exe's own Windows resources without needing a
-full rebuild.
-
 ## Fonts (bundled in `fonts/`)
 
 Rajdhani, Inter and JetBrains Mono, via the Fontsource packages, licensed under the
