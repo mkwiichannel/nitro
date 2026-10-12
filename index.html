@@ -4,13 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mario Kart Nitro — Launcher</title>
-<!-- Written fresh by main.py right before this page loads (see
-     _write_initial_state_js()) -- lets the Dolphin/ISO path fields
-     etc paint immediately on first parse, instead of waiting for the
-     pywebview JS<->Python bridge to finish initializing and
-     round-trip a get_state() call. 404s harmlessly (leaves
-     window.__INITIAL_STATE__ undefined) if it isn't there yet, e.g.
-     running main.py from source. -->
 <script src="initial_state.js"></script>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="stylesheet" href="fonts/fonts.css">
@@ -85,13 +78,11 @@
   .status-dot{ display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
   .status-dot i{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); display:inline-block; }
 
-  /* ---------- Layout ---------- */
   main{ flex:1; padding:40px 26px 60px; max-width:1180px; margin:0 auto; width:100%; }
   .screen{ display:none; animation:rise .35s ease; }
   .screen.active{ display:block; }
   @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none; } }
 
-  /* ---------- Home ---------- */
   .hero{
     position:relative; overflow:hidden;
     border:1px solid var(--border); border-radius:22px;
@@ -157,7 +148,6 @@
   }
   .path-bar b{ color:var(--text-dim); font-weight:500; }
 
-  /* ---------- Stat / feature grids ---------- */
   .grid-4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:14px; }
   .grid-4.cards{ margin-bottom:28px; }
   @media(max-width:900px){ .grid-4{ grid-template-columns:repeat(2,1fr);} }
@@ -184,7 +174,6 @@
   .card h3{ margin:0 0 6px; font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:0.3px; width:100%; }
   .card p{ margin:0; font-size:12.5px; color:var(--text-dim); line-height:1.5; width:100%; }
 
-  /* ---------- Section header (sub pages) ---------- */
   .sub-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:30px; flex-wrap:wrap; }
   .sub-head h2{ font-family:var(--display); font-weight:700; font-size:30px; margin:0; letter-spacing:0.3px; }
   .sub-head .tag{ color:var(--text-faint); font-size:13px; }
@@ -195,7 +184,6 @@
   }
   .back:hover{ background:rgba(255,140,0,0.14); }
 
-  /* ---------- Forms ---------- */
   .panel{ border:1px solid var(--border); border-radius:var(--radius); background:var(--panel); padding:30px; }
   .field{ margin-bottom:22px; max-width:560px; }
   .field label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-dim); margin-bottom:9px; }
@@ -214,7 +202,6 @@
   }
   .browse:hover{ background:rgba(255,140,0,0.1); }
 
-  /* ---------- Mods toolbar ---------- */
   .toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
   .empty-panel{
     border:1px dashed var(--border-strong); border-radius:var(--radius); padding:60px 20px; text-align:center;
@@ -231,7 +218,6 @@
   .toast.show{ opacity:1; transform:none; }
   .toast.error{ border-color:rgba(255,110,110,0.4); color:#ffb3b3; }
 
-  /* ---------- Credits ---------- */
   .credit-block{ margin-bottom:26px; max-width:640px; }
   .credit-block h4{ font-family:var(--display); font-weight:700; font-size:15.5px; color:var(--cyan); margin:0 0 8px; letter-spacing:0.3px; }
   .credit-block p{ margin:0; font-size:13.5px; color:var(--text-dim); line-height:1.6; }
@@ -250,7 +236,6 @@
   .credits-footnote a:hover{ color:var(--text-faint); }
 
 
-  /* ---------- REAL MII SYSTEM ---------- */
   .mii-shell{display:grid;grid-template-columns:300px minmax(420px,1fr);gap:18px}
   .mii-list,.mii-editor,.mii-preview{background:rgba(10,13,22,.82);border:1px solid var(--border);border-radius:14px}
   .mii-list{padding:14px;max-height:610px;overflow:auto}
@@ -283,7 +268,6 @@
   .mii-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .mii-status{font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-top:10px;min-height:14px}
 
-  /* ---------- Mii visual pickers (pictures baked by tools/gen_mii_thumbs.py) ---------- */
   .mii-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
   .mii-opt{padding:0;border:1px solid var(--border);border-radius:9px;background-color:#171b29;background-repeat:no-repeat;cursor:pointer;flex:0 0 auto;transition:border-color .12s, box-shadow .12s}
   .mii-opt.mc{background:rgba(255,255,255,.035);box-shadow:none;border:1.5px solid rgba(255,255,255,.14);border-radius:13px;overflow:hidden}
@@ -308,7 +292,6 @@
   .mii-pips{flex:1;height:8px;border-radius:4px;background:#0b0e16;border:1px solid var(--border);position:relative;overflow:hidden}
   .mii-pips i{position:absolute;top:0;bottom:0;width:10px;margin-left:-5px;border-radius:4px;background:#ff8c00}
 
-  /* ---------- Mii editor: extra polish ---------- */
   .mii-preview{background:radial-gradient(ellipse 70% 55% at 50% 38%,rgba(255,130,20,.20),transparent 62%),radial-gradient(ellipse 90% 40% at 50% 100%,rgba(130,60,220,.22),transparent 70%),#080b12;box-shadow:inset 0 0 60px rgba(0,0,0,.55),0 10px 40px rgba(0,0,0,.45)}
   .mii-preview::after{content:"";position:absolute;left:50%;bottom:19%;width:50%;height:26px;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(0,0,0,.65),transparent 70%);border-radius:50%;pointer-events:none}
   .mii-preview canvas#miiCanvas{z-index:1;animation:miiPop .22s ease-out}
@@ -336,7 +319,6 @@
   #mii .mii-main{ height:100%; min-height:0; }
   #mii .mii-preview{ min-height:0; height:100%; }
   #mii .mii-editor{ max-height:none; height:100%; min-height:0; }
-  /* ---------- Fit every page into the window (no page scrolling) ---------- */
   html,body{ height:100%; overflow:hidden; }
   body{ min-height:0; height:100vh; }
   main{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; padding:14px 26px 8px; }
@@ -345,7 +327,6 @@
   .sub-head{ margin-bottom:14px; flex:0 0 auto; }
   .sub-head h2{ font-size:26px; }
   .screen > .panel{ flex:0 1 auto; min-height:0; overflow:auto; padding:22px 26px; scrollbar-width:thin; scrollbar-color:rgba(255,140,0,.4) transparent; }
-  /* Home: the banner takes whatever height is left */
   #home .hero{ flex:1 1 0; min-height:0; display:flex; flex-direction:column; padding:20px 28px 16px; margin-bottom:12px; }
   #home .hero-banner{ flex:1 1 0; min-height:70px; margin-bottom:0; }
   #home .hero-banner img{ width:100%; height:100%; object-fit:cover; }
@@ -362,7 +343,6 @@
   #home .card h3{ font-size:15px; margin-bottom:3px; }
   @media(max-height:760px){ #home .card p{ display:none; } #home .stat{ padding:8px 14px; } }
 
-  /* Home: the whole banner is the hero, buttons sit in front of it on a fade */
   #home .hero{ position:relative; padding:0; background:#07040d; }
     #home .hero-banner{ position:absolute; inset:0; margin:0; border:0; border-radius:0; box-shadow:none; flex:none; min-height:0; }
   #home .hero-banner img{ width:100%; height:100%; object-fit:contain; display:block; }
@@ -370,7 +350,6 @@
   #home .hero-overlay{ position:absolute; left:0; right:0; bottom:0; z-index:2; padding:0 28px 22px; display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
   #home .hero-overlay .path-bar:empty{ display:none; }
   #home .hero-actions .btn{ box-shadow:0 8px 24px rgba(0,0,0,.45); }
-  /* Settings: two columns so everything is visible at once */
   #home .grid-4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
   @media(max-width:1000px){
     #mii .mii-shell{ grid-template-columns:190px minmax(0,1fr); gap:12px; }
@@ -389,7 +368,6 @@
   #settings .panel > div[style*="border-top"]{ grid-column:1 / -1; margin-top:12px !important; padding-top:14px !important; }
   #settings .panel > .field-inline{ grid-column:1; }
 
-  /* ---------- Halloween shaders ---------- */
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
@@ -403,13 +381,11 @@
   .btn-primary:hover{ box-shadow:0 8px 30px rgba(255,140,0,0.65) !important; }
   .card:hover, .stat:hover{ box-shadow:0 0 24px rgba(160,60,255,0.2); }
 
-  /* My Stuff mode: segmented control */
   .seg{ display:inline-flex; padding:4px; gap:4px; background:rgba(0,0,0,0.28); border:1px solid var(--border); border-radius:12px; }
   .seg button{ all:unset; cursor:pointer; padding:9px 16px; border-radius:9px; font-size:13px; font-weight:600; color:var(--text-dim); transition:all .15s ease; white-space:nowrap; }
   .seg button:hover{ color:var(--text); background:rgba(255,255,255,0.05); }
   .seg button.active{ background:linear-gradient(100deg, #ff6b00, #ffa513); color:#1a0800; box-shadow:0 4px 14px rgba(255,120,0,0.35); }
 
-  /* Launcher self-update popup */
   .launcher-update-overlay{
     position:fixed; inset:0; z-index:90;
     background:rgba(5,2,10,0.78); backdrop-filter:blur(4px);
@@ -507,7 +483,6 @@
 </div>
 </section>
 
-<!-- REAL MII SYSTEM -->
 <section class="screen" id="mii">
 <div class="sub-head"><button class="back" onclick="go('home')" id="miiBackBtn">← Home</button>
 <h2 id="miiTitle">Mii</h2><div class="tag" id="miiTag">Nitro Mii library · syncs on Play</div></div>
@@ -584,7 +559,6 @@
 </div>
 </section>
 
-<!-- SETTINGS -->
 <section class="screen" id="settings">
 <div class="sub-head"><button class="back" onclick="go('home')" id="settingsBackBtn">← Home</button>
 <h2 id="settingsTitle">Settings</h2>
@@ -645,7 +619,6 @@
 <button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button>
 </div>
 </section>
-<!-- CREDITS -->
 <section class="screen" id="credits">
 <div class="sub-head"><button class="back" onclick="go('home')" id="creditsBackBtn">← Home</button>
 <h2 id="creditsTitle">Credits</h2>
@@ -671,7 +644,6 @@
 <button class="btn btn-primary" id="openDiscordBtn"> <svg width="16" height="16" viewbox="0 0 127.14 96.36" fill="currentColor" style="flex-shrink: 0;"> <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"></path> </svg> <span id="openDiscordLabel">Open Discord</span> </button>
 </div>
 </section>
-<!-- SETUP / WELCOME -->
 <section class="screen" id="setup">
 <div class="sub-head"><button class="back" onclick="go('home')">← Home</button>
 <h2 id="setupTitle">Setup</h2>
@@ -704,7 +676,6 @@
   });
 
 
-// ---------- REAL MII SYSTEM ----------
 let miiRecords = [];
 let selectedMii = -1;
 let currentMii = null;
@@ -730,59 +701,20 @@ const MII_ENUMS = {
   beard: ["None","Thin","Wide","Widest"]
 };
 
-/* =========================================================
-   MII COLOR / FEATURE SPACE CONVERSION
-
-   MiiJS's public get()/set() API is NOT in raw Wii index space for
-   several fields. Internally every Mii (whatever console it came
-   from) is unified into one modern/Switch-era canonical numbering,
-   and encode() always runs a backPort() pass that maps that
-   canonical numbering DOWN into the legacy Wii indices actually
-   stored in RFL_DB.dat (decode runs the reverse, forwardPort()).
-
-   For hairColor/eyebrowColor/faceColor the canonical and legacy
-   Wii indices happen to line up 1:1 over the small range this
-   editor exposes, so no conversion is needed for SAVING those.
-   But eyeColor/mouthColor/glassesColor/faceFeature are NOT 1:1 --
-   setting "eyeColor" to a plain 0-5 dropdown index and saving was
-   silently writing a completely different, wrong color, because
-   the library was reinterpreting that 0-5 as a canonical index and
-   remapping it. These tables were reverse-engineered by sweeping
-   the real library and reading the raw bytes it actually wrote,
-   not guessed -- each entry is the smallest canonical value that
-   makes encode() produce the exact Wii index on the left.
-
-   DISPLAY (loading an existing Mii) needs the opposite direction:
-   take the canonical value currently decoded and run it back
-   through the SAME lookup tables the library itself uses
-   (backTables.switch.*) to see what Wii index it currently means --
-   that's also why some already-created Miis showed colors as
-   blank/wrong before: the dropdown was shown the raw canonical
-   number untranslated, which is very often out of its 0-5/0-7
-   range entirely. */
-/* Same numbers MiiJS's own Wii->canonical port uses, so an edited Mii renders
-   exactly like the Wii original (the old 'smallest value' picks looked grey). */
 const MII_EYE_COLOR_WII_TO_CANON = {0:8,1:9,2:10,3:11,4:12,5:13};
 const MII_MOUTH_COLOR_WII_TO_CANON = {0:19,1:20,2:21};
 const MII_GLASS_COLOR_WII_TO_CANON = {0:8,1:14,2:15,3:16,4:17,5:18};
-/* hair / eyebrow / beard: Wii colour 0 is canonical 8 (canonical 0 renders grey) */
 function miiHairColorToCanon(v) { v = Number(v); return v === 0 ? 8 : v; }
-/* wii faceFeature index -> [canonical faceFeature, canonical makeup] */
 const MII_FACE_FEATURE_WII_TO_CANON = {
   0:[0,0], 1:[0,1], 2:[0,3], 3:[0,9], 4:[5,0], 5:[2,0],
   6:[1,0], 7:[6,0], 8:[8,0], 9:[0,10], 10:[9,0], 11:[11,0]
 };
 
-/* canonical -> wii lookup tables, copied from the real library's own
-   backTables.switch.* (these are what encode()/decode() use internally) */
 const MII_EYES_COLORS_TABLE = [0,2,2,2,1,3,2,3,0,1,2,3,4,5,2,2,4,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,4,4,4,4,4,4,4,1,0,4,4,4,4,4,4,4,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,3,3,3,3,3,3,3,3,2,2,3,3,3,3,2,2,2,2,2,1,1,1,1,1,1];
 const MII_MOUTHS_COLORS_TABLE = [4,4,4,4,4,4,4,3,4,4,4,4,4,4,4,1,4,4,4,0,1,2,3,4,4,2,3,3,4,4,4,4,1,4,4,2,3,3,4,4,4,4,4,4,4,3,3,3,4,4,4,3,3,3,3,3,4,4,4,4,4,3,3,3,3,4,4,4,4,3,3,3,3,3,3,4,4,3,3,3,3,3,3,4,3,3,3,3,3,4,0,3,3,3,3,4,3,3,3,3];
 const MII_GLASSES_COLORS_TABLE = [0,1,1,1,5,1,1,4,0,5,1,1,3,5,1,2,3,4,5,4,2,2,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,5,5,5,5,5,5,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5];
 const MII_HAIRS_COLORS_TABLE = [0,1,2,3,4,5,6,7,0,4,3,5,4,4,6,2,0,6,4,3,2,2,7,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,0,0,4,4,4,4,4,4,0,0,0,4,4,4,4,4,4,5,5,5,4,4,4,4,4,4,4,5,7,5,7,7,7,7,7,6,7,7,7,7,7,3,7,7,7,7,7,0,4,4,4,4];
 const MII_FACE_COLORS_TABLE = [0,1,2,3,4,5,0,1,5,5];
-/* wii faceFeature index -> canonical [feature, makeup] (see above);
-   also used in reverse (canonical -> wii) by replaying the library's
-   own feature/makeup resolution rules -- see miiFeatureCanonicalToWii() */
 const MII_FEATURES_3DS_TABLE = ['0','6',5,6,'6',4,7,7,8,10,'6',11];
 const MII_MAKEUPS_3DS_TABLE = [0,1,1,2,1,1,2,2,2,3,9,9];
 
@@ -841,9 +773,7 @@ function fillSelect(id, arr) {
     "feature",
     "hair",
     "eyes",
-    "hair", /* eyebrow color reuses the hair-color palette, like the
-                real Mii Maker -- this <select> had never been
-                populated at all before, so it always showed empty */
+    "hair",
     "nose",
     "lip",
     "glass",
@@ -890,7 +820,6 @@ function setMiiStatus(message, error = false) {
   const e = document.getElementById("miiStatus");
   if (!e) return;
 
-  // Only real problems are shown; routine notes (loaded slot, saved...) stay hidden.
   e.textContent = error ? message : "";
   e.style.color = error ? "#ff8f8f" : "";
 }
@@ -916,15 +845,9 @@ function b64ToBytes(s) {
   return u;
 }
 
-/* =========================================================
-   MIIJS
-   ========================================================= */
 
 async function ensureMiiJS() {
   if (!MIIJS) {
-    /* Bundled locally in mii_renderer/ -- the plain npm package does NOT
-       ship fflModule.cjs/.wasm (only the GitHub release's browserBuild.zip
-       does), so a CDN import of the npm package can never render. */
     MIIJS = await import(
       "./mii_renderer/miijs.browser.esm.js"
     );
@@ -933,9 +856,6 @@ async function ensureMiiJS() {
   return MIIJS;
 }
 
-/* =========================================================
-   FFL RESOURCE
-   ========================================================= */
 
 function b64ToUint8(b64) {
   if (!b64) {
@@ -1020,9 +940,6 @@ async function ensureFFLResource() {
   return fflResourceBytes;
 }
 
-/* =========================================================
-   MII LIST
-   ========================================================= */
 
 async function refreshMiis() {
   if (!window.pywebview || !window.pywebview.api) {
@@ -1127,9 +1044,6 @@ async function refreshMiis() {
   }
 }
 
-/* =========================================================
-   SELECT MII
-   ========================================================= */
 
 async function selectMii(i) {
   if (!miiRecords[i]) return;
@@ -1173,19 +1087,8 @@ async function selectMii(i) {
   }
 }
 
-/* =========================================================
-   LOAD FORM
-   ========================================================= */
 
 function loadMiiForm(m) {
-  /* Friendly short names from MiiJS's own `mappings` table -- NOT the
-     hand-guessed nested paths this editor used before (face.shape,
-     face.skinColor, hair.flip, eyes.vertical, eyes.spacing,
-     eyebrows.vertical, eyebrows.spacing, nose.vertical, mouth.vertical,
-     facialHair.mustacheType, facialHair.beardType, meta.gender -- none
-     of those paths exist in the real library, so every one of those
-     fields was silently reading as its fallback default and silently
-     discarding any edit instead of ever reaching the encoded Mii). */
   const g = path => m.get(path);
 
   miiSet("miiName", g("name") || "");
@@ -1300,9 +1203,6 @@ function loadMiiForm(m) {
   syncMiiPickers();
 }
 
-/* =========================================================
-   APPLY FORM
-   ========================================================= */
 
 async function applyMiiForm() {
   if (!currentMii) return;
@@ -1316,8 +1216,6 @@ async function applyMiiForm() {
     );
   };
 
-  /* Friendly short names from MiiJS's own `mappings` table -- see the
-     comment on loadMiiForm() for why this changed. */
   set("name", miiVal("miiName"));
   set("creatorName", miiVal("miiCreator"));
   set("gender", miiVal("miiGender"));
@@ -1327,7 +1225,7 @@ async function applyMiiForm() {
   set("weight", miiVal("miiWeight"));
 
   set("faceType", miiVal("miiFaceShape"));
-  set("faceColor", miiVal("miiSkin")); /* identity in this range, verified */
+  set("faceColor", miiVal("miiSkin"));
 
   {
     const [canonFeature, canonMakeup] =
@@ -1337,7 +1235,7 @@ async function applyMiiForm() {
   }
 
   set("hairType", miiVal("miiHair"));
-  set("hairColor", miiHairColorToCanon(miiVal("miiHairColor"))); /* identity in this range, verified */
+  set("hairColor", miiHairColorToCanon(miiVal("miiHairColor")));
 
   const hairFlip =
     document.getElementById("miiHairFlip");
@@ -1357,7 +1255,7 @@ async function applyMiiForm() {
   set("eyeDistanceApart", miiVal("miiEyeSpace"));
 
   set("eyebrowType", miiVal("miiBrowType"));
-  set("eyebrowColor", miiHairColorToCanon(miiVal("miiBrowColor"))); /* identity in this range, verified */
+  set("eyebrowColor", miiHairColorToCanon(miiVal("miiBrowColor")));
   set("eyebrowRotation", miiVal("miiBrowRot"));
   set("eyebrowSize", miiVal("miiBrowSize"));
   set("eyebrowYPosition", miiVal("miiBrowVert"));
@@ -1383,19 +1281,14 @@ async function applyMiiForm() {
 
   set("mustacheType", miiVal("miiMustache"));
   set("beardType", miiVal("miiBeard"));
-  set("beardColor", miiHairColorToCanon(miiVal("miiBeardColor"))); /* identity 0-7, verified */
+  set("beardColor", miiHairColorToCanon(miiVal("miiBeardColor")));
 }
 
-/* =========================================================
-   REAL MII RENDERER
-   ========================================================= */
 
 let miiRenderBusy = false;
 let miiRenderAgain = false;
 
 async function renderCurrentMii() {
-  /* The renderer shares one GPU context, so renders run one at a time;
-     if more edits arrive meanwhile only the newest state is rendered. */
   if (miiRenderBusy) { miiRenderAgain = true; return; }
   miiRenderBusy = true;
   try {
@@ -1439,8 +1332,6 @@ async function renderCurrentMiiOnce() {
       cv.id = "miiCanvas";
       preview.appendChild(cv);
     }
-    /* the renderer hands over its GL canvas; the figure is copied straight
-       into the preview (no PNG encode/decode) and cropped to the figure */
     const full = miiFullBody;
     let drawn = false;
     await currentMii.render(full, {
@@ -1452,8 +1343,6 @@ async function renderCurrentMiiOnce() {
         const [fx, fy, fw, fh] = full ? [0.25, 0.03, 0.5, 0.96] : [0.08, 0.08, 0.84, 0.84];
         const sx = Math.round(S * fx), sy = Math.round(S * fy);
         const sw = Math.round(S * fw), sh = Math.round(S * fh);
-        /* render large, then scale down smoothly to the real on-screen size:
-           thin lines (teeth, outlines) stay clean instead of aliased */
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         const bw = Math.max(64, (preview.clientWidth - 20) * dpr);
         const bh = Math.max(64, (preview.clientHeight - 20) * dpr);
@@ -1499,9 +1388,6 @@ async function renderCurrentMiiOnce() {
   }
 }
 
-/* =========================================================
-   SAVE MII
-   ========================================================= */
 
 async function saveMii() {
   if (
@@ -1594,16 +1480,7 @@ async function saveMii() {
   }
 }
 
-/* =========================================================
-   NEW MII
-   ========================================================= */
 
-/* A minimally-valid, blank 74-byte Wii Mii record (MiiFormats.RCD).
-   MiiJS has no zero-argument "blank Mii" constructor -- `new Mii()` /
-   `Mii.create()` both require real decodable Mii data, so a verified
-   all-zero record (with the one field libjs enforces a minimum on,
-   eyebrowYPosition, nudged up to 3) is used as the starting point for
-   a new Mii instead. */
 const BLANK_MII_RCD_B64 =
   "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
@@ -1612,12 +1489,6 @@ async function newMii() {
     const { Mii } =
       await ensureMiiJS();
 
-    /* The starter Mii is bundled directly into the exe
-       (starter.mii) and served by Api.get_default_mii() -- no
-       GitHub fetch, no network needed. Falls back to the built-in
-       minimal blank Mii only if that bundled file is somehow missing
-       (e.g. a dev run without it next to main.py), so New Mii always
-       keeps working either way. */
     let usedStarterTemplate = false;
 
     try {
@@ -1694,12 +1565,6 @@ async function newMii() {
 }
 
 
-/* =========================================================
-   VISUAL PICKERS (like the Wii's Mii Channel: pick by picture)
-   The picture sheets are baked at build time, so showing them costs
-   no rendering. The hidden <select>/<input> elements stay the single
-   source of truth, so loading/saving/live-render work exactly as before.
-   ========================================================= */
 const MII_SHEETS = {"hair":{"file":"hair.png","cell":[128,128],"cols":8,"count":72,"tile":76},"face":{"file":"face.png","cell":[128,128],"cols":8,"count":8,"tile":76},"feature":{"file":"feature.png","cell":[128,128],"cols":8,"count":12,"tile":76},"eyes":{"file":"eyes.png","cell":[160,64],"cols":6,"count":48,"tile":100},"brows":{"file":"brows.png","cell":[160,61],"cols":6,"count":24,"tile":100},"nose":{"file":"nose.png","cell":[112,112],"cols":8,"count":12,"tile":68},"mouth":{"file":"mouth.png","cell":[160,80],"cols":6,"count":24,"tile":100},"glasses":{"file":"glasses.png","cell":[160,69],"cols":6,"count":9,"tile":100},"mustache":{"file":"mustache.png","cell":[128,82],"cols":8,"count":4,"tile":84},"beard":{"file":"beard.png","cell":[128,94],"cols":8,"count":4,"tile":84}};
 const MII_SWATCHES = {
   hair: ["#1e1a18", "#402010", "#5c180a", "#7c3a14", "#787880", "#4e3e10", "#885818", "#d0a04a"],
@@ -1728,11 +1593,10 @@ function miiPickAndRender(input, value){
   syncMiiPickers();
 }
 
-/* ---- Mii Channel icons (read from the user's own Mii Channel files; optional) ---- */
 const MC = window.MC_ICONS || null;
 const MC_SHEET_OF = { hair:"hair", eyes:"eye", brows:"brow", nose:"nose", mouth:"mouth", face:"face", feature:"facetex",
                       glasses:"glasses", mustache:"mustache", beard:"mustache" };
-const MC_TINT = { eyes:["miiEyeColor","eye"] }; /* only the eyes change colour; everything else stays as drawn in the Mii Channel */
+const MC_TINT = { eyes:["miiEyeColor","eye"] };
 const mcImgs = {};
 function mcSheet(key){
   if (!mcImgs[key]){
@@ -1742,7 +1606,6 @@ function mcSheet(key){
   return mcImgs[key];
 }
 const mcRGB = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
-/* colour of a pure channel-coded class (eyes / mouths) -- same mixing as the raster path below */
 function mcChanColor(cat, r, g, b, tint){
   const w = Math.max(0, 1 - r - g - b);
   if (cat === "eyes"){
@@ -1755,8 +1618,6 @@ function mcChanColor(cat, r, g, b, tint){
           Math.min(255, g * lip[1] + r * lip[1] * .8 + tf * .96 + ol),
           Math.min(255, g * lip[2] + r * lip[2] * .8 + tf + ol)];
 }
-/* Vector icons: the 64px art traced into smooth outlines, drawn at the exact screen
-   resolution so edges stay razor sharp at any scale (data in mc_vec.js) */
 function mcPaintVec(cat, key, idx, cv){
   const layers = window.MC_VEC[key][idx];
   if (!layers) return false;
@@ -1794,15 +1655,12 @@ function mcPaint(cat, value, cv){
   const cell = MC.cell, cols = MC.cols[key];
   const idx = cat === "beard" ? value + 4 : value;
   const S = cv.width;
-  /* work at a higher resolution than shown, then scale down: the game's 64px icons
-     get smooth curves instead of stair-stepped edges */
   const W = S * (window.MC_SS || 3);
   const T = mcPaint.tmp || (mcPaint.tmp = document.createElement("canvas"));
   if (T.width !== W) T.width = T.height = W;
   const t = T.getContext("2d", { willReadFrequently: true });
   t.clearRect(0, 0, W, W);
   t.imageSmoothingEnabled = true; t.imageSmoothingQuality = "high";
-  /* the game's icons are 64px: scale up first, then sharpen the edge so lines stay crisp */
   t.drawImage(im, (idx % cols) * cell, Math.floor(idx / cols) * cell, cell, cell, 0, 0, W, W);
   let tint = null;
   if (MC_TINT[cat]){
@@ -1814,20 +1672,20 @@ function mcPaint(cat, value, cv){
     const lip = [214, 84, 66];
     for (let p = 0; p < d.length; p += 4){
       const r = d[p] / 255, g = d[p + 1] / 255, b = d[p + 2] / 255, al = d[p + 3];
-      if (cat === "brows" || cat === "nose"){ /* white-on-alpha masks: light line art on the dark panel */
+      if (cat === "brows" || cat === "nose"){
         d[p] = d[p + 1] = d[p + 2] = 240;
-      } else if (cat === "eyes"){ /* B = iris colour, G = white of the eye (kept dim), black outline/pupil drawn light */
+      } else if (cat === "eyes"){
         const w = Math.max(0, 1 - r - g - b);
         d[p] = Math.min(255, b * tint[0] + g * 70 + w * 245);
         d[p + 1] = Math.min(255, b * tint[1] + g * 80 + r * 230 + w * 245);
         d[p + 2] = Math.min(255, b * tint[2] + g * 100 + r * 255 + w * 245);
-      } else if (cat === "mouth"){ /* G upper lip, R lower lip, B teeth, black outline drawn light */
+      } else if (cat === "mouth"){
         const w = Math.max(0, 1 - r - g - b);
-        const tf = b * 170, ol = w * 250; /* teeth a soft grey-blue so the bright outline and the gaps between teeth show */
+        const tf = b * 170, ol = w * 250;
         d[p] = Math.min(255, g * lip[0] + r * lip[0] * .8 + tf * .92 + ol);
         d[p + 1] = Math.min(255, g * lip[1] + r * lip[1] * .8 + tf * .96 + ol);
         d[p + 2] = Math.min(255, g * lip[2] + r * lip[2] * .8 + tf + ol);
-      } else { /* hair, faces, glasses, beards...: dark art -> light, white fills -> clear, real colours kept */
+      } else {
         const l = (r + g + b) / 3, sat = Math.max(r, g, b) - Math.min(r, g, b);
         if (sat <= 0.25){ d[p] = d[p + 1] = d[p + 2] = 242; d[p + 3] = al * (1 - l); }
       }
@@ -1851,7 +1709,6 @@ function miiMcPaint(force){
     if (!force && p.mcKey === tint) continue;
     p.mcKey = tint; p.done = false; todo.push(p);
   }
-  /* painted in short slices so the window never stalls, even on a slow PC */
   const run = async p => {
     const tok = p.mcTok = (p.mcTok || 0) + 1;
     let ok = true, i = 0;
@@ -1862,14 +1719,14 @@ function miiMcPaint(force){
         i++;
       }
       if (i < p.items.length) await new Promise(r => setTimeout(r, 0));
-      if (p.mcTok !== tok) return; /* a newer paint of this picker took over */
+      if (p.mcTok !== tok) return;
     }
     p.done = ok;
     if (!ok) p.mcKey = null;
   };
   const shown = p => p.items[0].offsetParent !== null;
-  todo.filter(shown).forEach(run);                 /* the open tab right now */
-  const rest = todo.filter(p => !shown(p));        /* the other tabs quietly, one per tick */
+  todo.filter(shown).forEach(run);
+  const rest = todo.filter(p => !shown(p));
   const step = async () => { const p = rest.shift(); if (p){ await run(p); setTimeout(step, 16); } };
   setTimeout(step, 30);
 }
@@ -1888,7 +1745,6 @@ function miiMcPicker(cat, host, m){
     b.onclick = () => miiPickAndRender(host.input, i);
     items.push(b);
   }
-  /* tiles in the Mii Channel's own menu order (the values stay the real ones) */
   const key = MC_SHEET_OF[cat];
   const ord = (MC.order[key] || []).filter(v => cat === "beard" ? false : v < m.count);
   const seq = cat === "beard" || !ord.length ? items.map((_, i) => i) : ord.slice(0, m.count);
@@ -1973,9 +1829,6 @@ miiGridPicker("beard", "miiBeard");
 miiSwatchPicker("miiBeardColor", MII_SWATCHES.hair, MII_ENUMS.hair);
 miiMcPaint(true);
 
-/* Live pictures: the baked sprites are only placeholders. Every style picture
-   is re-rendered on a copy of the Mii being edited (only the tab that is open,
-   one at a time, after the main preview), then cached. */
 const MII_LIVE = {
   hair:     [i => ({ hairType: i }), [28, 10, 228, 210], false],
   face:     [i => ({ faceType: i }), [50, 30, 210, 220], true],
@@ -1988,17 +1841,15 @@ const MII_LIVE = {
   mustache: [i => ({ mustacheType: i }), [80, 145, 175, 205], true],
   beard:    [i => ({ beardType: i }), [80, 145, 175, 215], true]
 };
-/* boxes above are in a 256px frame; the renderer works in 512 */
 let miiSnap = null, miiSnapKey = "", miiThumbRunning = false, miiLastActivity = 0;
 const miiSleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function miiThumbsInvalidate(exceptInputId){
   if (!currentMii) return;
-  if (MC && miiPickers.every(p => !p.cat || p.mc)) return; /* icons are pre-drawn: nothing to re-render */
+  if (MC && miiPickers.every(p => !p.cat || p.mc)) return;
   const { MiiFormats } = await ensureMiiJS();
   miiSnap = await currentMii.encode(MiiFormats.RCD);
   miiSnapKey = Array.from(miiSnap).join(",");
-  /* the grid whose own value was just picked does not depend on that value */
   for (const p of miiPickers)
     if (p.cat && p.input.id === exceptInputId) p.items.forEach(b => { if (b._cv) b._key = miiSnapKey; });
   miiLastActivity = performance.now();
@@ -2011,7 +1862,6 @@ function miiThumbsKick(){
     .finally(() => { miiThumbRunning = false; });
 }
 function miiTileOrder(p, onlyVisible){
-  /* tiles on screen first (top to bottom) so the open tab fills in at once */
   const sec = p.items[0].closest(".mii-section");
   const r = sec.getBoundingClientRect();
   const vis = [], rest = [];
@@ -2035,7 +1885,6 @@ async function miiThumbsRun(){
       if (i !== undefined){ job = [p, i]; break; }
     }
     if (!job){
-      /* then every other tab, so switching tabs is instant */
       for (const p of miiPickers){
         if (!p.cat || p.mc || act.includes(p)) continue;
         const i = p.items.findIndex(b => b._key !== key);
@@ -2049,7 +1898,6 @@ async function miiThumbsRun(){
     const [fields, box, bald] = MII_LIVE[p.cat];
     const tw = b.clientWidth || parseInt(b.style.width), th = b.clientHeight || parseInt(b.style.height);
     const cw = Math.round(tw * dpr), ch = Math.round(th * dpr);
-    /* render just big enough that the crop has the tile's pixel width */
     const SZ = Math.max(128, Math.min(512, Math.ceil(512 * cw / ((box[2] - box[0]) * 2) / 64) * 64));
     const K = SZ / 256;
     miiRenderBusy = true;
@@ -2083,7 +1931,6 @@ async function miiThumbsRun(){
   }
 }
 
-/* If live rendering is impossible, fall back to the baked sprites. */
 function miiThumbsFallback(){
   for (const p of miiPickers) if (p.cat && !p.mc) p.items.forEach(b => {
     if (b._cv) return;
@@ -2093,8 +1940,6 @@ function miiThumbsFallback(){
   });
 }
 
-/* Mii-Channel style steppers: every remaining slider becomes two buttons
-   (hold to repeat) with a small position marker. */
 const MII_STEP_ICONS = [
   [/Rot$/,   "\u21BA", "\u21BB", 1, "rotL", "rotR"],
   [/Vert$/,  "\u25B2", "\u25BC", -1, "up", "down"],
@@ -2160,14 +2005,10 @@ document.querySelectorAll(".mii-tab").forEach(btn => btn.addEventListener("click
   }, 40);
 }));
 
-/* whole-body preview (default) or face close-up */
-let miiFullBody = false; /* close-up only */
+let miiFullBody = false;
 const MII_ICON_BODY = '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="3"/><path d="M12 9c-3 0-5 1.2-5 3v3h2v7h2.2v-6h1.6v6H15v-7h2v-3c0-1.8-2-3-5-3z"/></svg>';
 const MII_ICON_HEAD = '<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="9" r="5"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
 
-/* =========================================================
-   LIVE RENDERING
-   ========================================================= */
 
 let renderTimer = 0;
 
@@ -2179,7 +2020,6 @@ document.addEventListener("input", event => {
   clearTimeout(renderTimer);
   miiLastActivity = performance.now();
 
-  /* picks and arrow buttons render at once; only typing/real sliders wait */
   renderTimer = setTimeout(async () => {
     if (!currentMii) return;
 
@@ -2196,9 +2036,6 @@ document.addEventListener("input", event => {
   }, event.isTrusted && event.target.type !== "text" ? 120 : (event.isTrusted ? 250 : 0));
 });
 
-/* =========================================================
-   BUTTONS
-   ========================================================= */
 
 const miiRefreshBtn =
   document.getElementById("miiRefreshBtn");
@@ -2232,7 +2069,6 @@ if (miiNewBtn) {
     newMii;
 }
 
-/* ---------- toast ---------- */
 
 let toastEl = null;
 
@@ -2270,7 +2106,6 @@ function toast(msg, isError, sticky) {
 }
 
 
-  // ---------- translations ----------
   const TRANSLATIONS = {
     en: { navHome:"Home", navCredits:"Credits", navSettings:"Settings",
       heroSettingsBtn:"Settings", heroCreditsBtn:"Credits", exitBtn:"Close",
@@ -3237,7 +3072,7 @@ function toast(msg, isError, sticky) {
   function applyTranslations(langCode){
     const t = TRANSLATIONS[langCode] || TRANSLATIONS.en;
     for(const [id, text] of Object.entries(t)){
-      if(id === 'notSet' || id === 'none') continue; // used dynamically, not a static element
+      if(id === 'notSet' || id === 'none') continue;
       const el = document.getElementById(id);
       if(el) el.textContent = text;
     }
@@ -3249,7 +3084,6 @@ function toast(msg, isError, sticky) {
     window._currentLang = langCode;
   }
 
-  // ---------- state rendering ----------
   let currentState = null;
 
   function shortPath(p){
@@ -3296,7 +3130,7 @@ function toast(msg, isError, sticky) {
     setMyStuffMode(state.mystuff_mode || 'on');
     (function(){
       const sel = document.getElementById('settingsResolution'), v = state.resolution || '1920x1584';
-      if (![...sel.options].some(o => o.value === v)) { /* older value like 1920x1080 -> nearest Dolphin size */
+      if (![...sel.options].some(o => o.value === v)) {
         const m = /(\d+)\s*x\s*(\d+)/i.exec(v); v = m ? (Math.min(12, Math.max(1, Math.ceil(+m[2] / 528))) * 640) + 'x' + (Math.min(12, Math.max(1, Math.ceil(+m[2] / 528))) * 528) : '1920x1584';
       }
       sel.value = v;
@@ -3310,7 +3144,6 @@ function toast(msg, isError, sticky) {
     document.getElementById('setupIsoPath').value = state.iso_path || '';
   }
 
-  // ---------- remote seasonal theme (colors/banner pushed via manifest.json, no rebuild) ----------
   function applyRemoteTheme(state){
     const colors = state.theme_colors;
     if(colors && typeof colors === 'object'){
@@ -3343,7 +3176,6 @@ function toast(msg, isError, sticky) {
     return currentState;
   }
 
-  // ---------- play (checks + fetches the mod automatically, then launches) ----------
   async function doPlay(){
     const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
     const btn = document.getElementById('heroPlayBtn');
@@ -3351,7 +3183,6 @@ function toast(msg, isError, sticky) {
     btn.disabled = true;
 
     label.textContent = t.checkingFiles;
-    // Reading every mod file byte-for-byte takes a moment: show progress.
     const verifyTimer = setInterval(async () => {
       try {
         const vp = await window.pywebview.api.get_download_progress();
@@ -3408,8 +3239,6 @@ function toast(msg, isError, sticky) {
         }
       }
     } else if(check && check.error){
-      // couldn't check (e.g. offline) — proceed with whatever's
-      // already installed rather than blocking Play entirely
       toast(`${t.toastCouldntCheck} (${check.error})`, true);
     }
 
@@ -3427,17 +3256,14 @@ function toast(msg, isError, sticky) {
   document.getElementById('heroPlayBtn').addEventListener('click', doPlay);
   document.getElementById('cardPlayBtn').addEventListener('click', doPlay);
 
-  // ---------- exit ----------
   document.getElementById('exitBtn').addEventListener('click', ()=>{
     window.pywebview.api.quit_app();
   });
 
-  // ---------- discord ----------
   document.getElementById('openDiscordBtn').addEventListener('click', ()=>{
     window.pywebview.api.open_discord();
   });
 
-  // ---------- settings: browse buttons ----------
   function wireBrowse(btnId, inputId, kind, fileTypes){
     document.getElementById(btnId).addEventListener('click', async ()=>{
       const result = await window.pywebview.api.browse_path(kind, fileTypes || null, document.getElementById(inputId).value || '');
@@ -3460,7 +3286,6 @@ function toast(msg, isError, sticky) {
   wireBrowse('setupBrowseDolphinBtn', 'setupDolphinPath', 'file', ['Dolphin executable (*.exe)', 'All files (*.*)']);
   wireBrowse('setupBrowseIsoBtn', 'setupIsoPath', 'file', ['Wii disc image (*.iso;*.wbfs;*.rvz)', 'All files (*.*)']);
 
-  // ---------- settings: save ----------
   document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
     const payload = {
       dolphin_path: document.getElementById('settingsDolphinPath').value,
@@ -3480,7 +3305,6 @@ function toast(msg, isError, sticky) {
     toast(st.toastSettingsSaved);
   });
 
-  // ---------- setup: continue ----------
   document.getElementById('setupContinueBtn').addEventListener('click', async ()=>{
     const payload = {
       dolphin_path: document.getElementById('setupDolphinPath').value,
@@ -3491,7 +3315,6 @@ function toast(msg, isError, sticky) {
     go('home');
   });
 
-  // ---------- launcher self-update popup ----------
   function showLauncherUpdatePopup(downloadUrl){
     const t = TRANSLATIONS[window._currentLang] || TRANSLATIONS.en;
     const modal = document.getElementById('launcherUpdateModal');
@@ -3522,27 +3345,12 @@ function toast(msg, isError, sticky) {
       try {
         const res = await window.pywebview.api.start_launcher_update(downloadUrl);
         if(!res?.ok) fail((res && res.error) || t.launcherUpdateFailed);
-        // On success the backend closes this window itself once the
-        // swap is staged -- nothing left to do here but wait.
       } catch (e) {
         fail(t.launcherUpdateFailed);
       }
     };
   }
 
-  // ---------- boot ----------
-  // Paint immediately from the state main.py already embedded in the
-  // page (window.__INITIAL_STATE__, see initial_state.js) WITHOUT
-  // waiting for the pywebview JS<->Python bridge to come up -- that
-  // bridge-ready handshake (the 'pywebviewready' event below) is
-  // itself a real source of delay separate from anything Python does
-  // per call, and was the actual cause of the Dolphin/ISO path
-  // fields not showing up instantly. This runs at plain HTML parse
-  // time, as soon as the script tags above it have executed, which
-  // is well before 'pywebviewready' can fire. Safe no-op if the
-  // companion file wasn't there (currentState just stays unset and
-  // the normal async path below still paints everything shortly
-  // after).
   if(window.__INITIAL_STATE__){
     try {
       currentState = window.__INITIAL_STATE__;
@@ -3550,20 +3358,12 @@ function toast(msg, isError, sticky) {
       applyRemoteTheme(currentState);
       renderHome(currentState);
       renderSettings(currentState);
-    } catch(e){ /* fall through to the normal async paint below */ }
+    } catch(e){  }
   }
 
   window.addEventListener('pywebviewready', async ()=>{
     const state = await refreshState();
 
-    // Pulls the manifest.json theme block (colors/logo/banner/icon)
-    // right away, instead of waiting for a Play press, and also
-    // checks whether a whole new launcher build (manifest.json's
-    // top-level "launcher_nitro" field) has been published -- if so,
-    // a small popup offers to update instead of silently doing it,
-    // since that one replaces the running .exe itself and needs the
-    // app to restart. Fire-and-forget: must never block the UI from
-    // opening.
     window.pywebview.api.check_for_update(true)
       .then((check) => {
         refreshState();
