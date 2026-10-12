@@ -107,7 +107,6 @@ def fetch_remote(repo, branch, state, timeout=20):
     files = {}
     for entry in data.get("tree", []):
         rel = entry.get("path", "")
-        he repo ARE the modpack); loose root files like LICENSE or
             if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
             files[rel] = [entry["sha"], int(entry.get("size", 0))]
     if not files:
