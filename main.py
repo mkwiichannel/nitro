@@ -1223,9 +1223,6 @@ class Api:
             subprocess.Popen(launch_args, creationflags=flags)
         except OSError as e:
             return {"ok": False, "error": f"Couldn't launch Dolphin: {e}"}
-        if cfg.get("performance_mode"):
-            # Free the CPU and RAM the launcher's web view uses while the game runs.
-            threading.Timer(3.0, self.quit_app).start()
 
         display_message = "Launching..." + (note if note.strip().startswith("⚠") else "")
         return {"ok": True, "message": display_message}
