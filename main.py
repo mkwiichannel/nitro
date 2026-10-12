@@ -1691,6 +1691,7 @@ class Api:
         else:
             launcher_fp = launcher_url
         self._launcher_pending_fp = launcher_fp
+        self._launcher_pending_url = launcher_url
         installed_launcher_url = cfg.get("installed_launcher_url", "")
         if launcher_fp and (not installed_launcher_url or
                             (launcher_fp.startswith("rel:") and not installed_launcher_url.startswith("rel:"))):
@@ -1787,10 +1788,11 @@ class Api:
         return immediately — the UI polls get_download_progress() to
         show a real progress bar (bytes downloaded, percentage)
         instead of a single opaque blocking call."""
+        if not str(download_url).startswith("repo:"):
+            return {"ok": False, "error": "Unsupported update source."}
         _set_progress(status="downloading", downloaded_bytes=0, total_bytes=None,
                        error=None, version=latest_version)
-        worker = (self._modpack_sync_worker if str(download_url).startswith("repo:")
-                  else self._apply_update_worker)
+        worker = self._modpack_sync_worker
         thread = threading.Thread(
             target=worker, args=(download_url, latest_version), daemon=True
         )
@@ -1990,6 +1992,9 @@ class Api:
         download_url = str(download_url or "").strip()
         if not download_url:
             return {"ok": False, "error": "No launcher download URL given."}
+        if (download_url != getattr(self, "_launcher_pending_url", None)
+                or urllib.parse.urlparse(download_url).scheme != "https"):
+            return {"ok": False, "error": "That isn't the update the launcher found. Check for updates again."}
         if os.name != "nt" or not getattr(sys, "frozen", False):
             return {"ok": False, "error": "Launcher self-update only works in an installed Windows .exe, not a dev run."}
 

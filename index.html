@@ -741,12 +741,18 @@ function miiFeatureCanonicalToWii(canonicalFeature, canonicalMakeup) {
   return Number.isFinite(numericLegacyFeature) ? numericLegacyFeature : 0;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
 function fillSelect(id, arr) {
   const e = document.getElementById(id);
   if (!e) return;
 
   e.innerHTML = arr
-    .map((x, i) => `<option value="${i}">${x}</option>`)
+    .map((x, i) => `<option value="${i}">${escapeHtml(x)}</option>`)
     .join("");
 }
 
@@ -956,7 +962,7 @@ async function refreshMiis() {
       if (list) {
         list.innerHTML =
           '<div class="empty-panel">' +
-          (r?.error || "Dolphin path not set.") +
+          escapeHtml(r?.error || "Dolphin path not set.") +
           "</div>";
       }
 
@@ -986,7 +992,7 @@ async function refreshMiis() {
       button.innerHTML =
         `<span class="num">${String(i + 1).padStart(2, "0")}</span>` +
         `<span class="name">` +
-        `${m.name || "Unnamed Mii"} ` +
+        `${escapeHtml(m.name || "Unnamed Mii")} ` +
         `<small style="opacity:.55;font-size:10px">${tag}</small>` +
         `</span>`;
 
@@ -1374,7 +1380,7 @@ async function renderCurrentMiiOnce() {
       '<div class="loading">' +
       "<b>Real Mii renderer failed</b><br><br>" +
       "Error:<br>" +
-      `<small>${String(e?.message || e)}</small>` +
+      `<small>${escapeHtml(e?.message || e)}</small>` +
       "<br><br>" +
       "Use <b>Set FFL renderer</b> to select " +
       "FFLResHigh.dat / AFLResHigh.dat." +
