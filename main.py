@@ -1174,7 +1174,7 @@ class Api:
                 "--config=Graphics.Hacks.DeferEFBCopies=True",
                 "--config=Graphics.Hacks.SkipDuplicateXFBs=True",
                 "--config=Graphics.Hacks.FastTextureSampling=True",
-                "--config=Dolphin.Core.CPUThread=True",
+                "--config=Dolphin.Core.CPUThread=" + ("True" if hw["cpu_threads"] >= 3 else "False"),
                 "--config=Dolphin.Core.CPUCore=1",
                 "--config=Dolphin.Core.Fastmem=True",
                 "--config=Dolphin.Core.DSPHLE=True",
@@ -1191,6 +1191,20 @@ class Api:
                 "--config=Dolphin.DSP.EnableJIT=True",
                 "--config=SYSCONF.IPL.E60=True",
             ]
+            # Preload the mod's hi-res textures into RAM so they are not read from
+            # disk in the middle of a race (a common cause of stutter). Only when
+            # they comfortably fit in memory.
+            tex_bytes = 0
+            try:
+                for root, _dirs, names in os.walk(os.path.join(user_dir, "Load", "Textures")):
+                    for n in names:
+                        tex_bytes += os.path.getsize(os.path.join(root, n))
+                    if tex_bytes > 3 * 1024 ** 3:
+                        break
+            except OSError:
+                pass
+            if hw["ram_gb"] and tex_bytes < min(1.5, hw["ram_gb"] * 0.2) * 1024 ** 3:
+                launch_args.append("--config=Graphics.Settings.CacheHiresTextures=True")
         # Resolution = Dolphin's internal resolution (a multiple of the Wii's
         # 640x528 picture). Performance mode drops to native 1x unless a
         # dedicated graphics card was found.
@@ -1205,9 +1219,13 @@ class Api:
                 scale = max(1, min(12, scale))
                 launch_args.append(f"--config=Graphics.Settings.InternalResolution={scale}")
         try:
-            subprocess.Popen(launch_args)
+            flags = 0x00000080 if (sys.platform == "win32" and cfg.get("performance_mode")) else 0
+            subprocess.Popen(launch_args, creationflags=flags)
         except OSError as e:
             return {"ok": False, "error": f"Couldn't launch Dolphin: {e}"}
+        if cfg.get("performance_mode"):
+            # Free the CPU and RAM the launcher's web view uses while the game runs.
+            threading.Timer(3.0, self.quit_app).start()
 
         display_message = "Launching..." + (note if note.strip().startswith("⚠") else "")
         return {"ok": True, "message": display_message}
