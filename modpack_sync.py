@@ -1,23 +1,7 @@
 """Incremental modpack sync from a public GitHub repo straight into
 Dolphin's Load/Riivolution folder.
 
-How it works (and why it's fast):
-  * ONE small GitHub API call lists every file in the repo with its git
-    blob SHA and size (conditional request -> free "304 Not Modified"
-    when nothing changed).
-  * Every local file is compared by size first (a stat, no read), then
-    by a cached (size, mtime) fingerprint. Only files that are missing,
-    the wrong size, or never seen before are hashed. A normal "nothing
-    changed" check is a few thousand stat() calls: well under a second.
-  * Only missing/changed files are downloaded (raw.githubusercontent.com,
-    several in parallel), each verified against its git SHA, written to a
-    temp name and atomically swapped in. Interrupted? Run it again and
-    it carries on where it stopped.
-  * Files that were removed from the repo are removed locally, but ONLY
-    ones this sync installed itself, so other mods sharing Dolphin's
-    Riivolution folder are never touched.
-  * PROTECTED_PREFIXES (the player's save data) are installed if missing
-    but never overwritten or deleted.
+
 """
 import hashlib
 import json
@@ -61,7 +45,7 @@ def _lower_thread_priority():
     try:
         import ctypes
         k = ctypes.windll.kernel32
-        k.SetThreadPriority(k.GetCurrentThread(), -1)  # THREAD_PRIORITY_BELOW_NORMAL
+        k.SetThreadPriority(k.GetCurrentThread(), -1)  
     except Exception:
         pass
 
@@ -78,7 +62,6 @@ def _safe_rel(rel):
     return True
 
 
-# ---------------------------------------------------------------- state
 def load_state(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -95,7 +78,6 @@ def save_state(path, state):
     os.replace(tmp, path)
 
 
-# ---------------------------------------------------------------- remote
 def fetch_remote(repo, branch, state, timeout=20):
     """Returns {"tree_sha", "files": {rel: [sha, size]}, "etag"}.
     Uses the cached listing when GitHub answers 304."""
