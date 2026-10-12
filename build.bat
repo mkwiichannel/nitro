@@ -2,6 +2,12 @@
 REM Builds MarioKartNitro.exe — run this ON WINDOWS, inside this folder.
 REM Requires Python 3.10+ installed and on PATH.
 
+if not exist "modpack_sync.py" (
+  echo modpack_sync.py is missing in this folder. Copy ALL files from the project here.
+  pause
+  goto end
+)
+
 echo Installing dependencies...
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
@@ -10,6 +16,7 @@ if exist __pycache__ rmdir /s /q __pycache__
 echo Building standalone EXE with the Windows Common Controls manifest...
 python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx ^
   --name "MarioKartNitro" ^
+  --paths "." --hidden-import modpack_sync ^
   --icon "build_assets\icon.ico" ^
   --manifest "MarioKartNitro.manifest" ^
   --version-file "version_info.txt" ^
