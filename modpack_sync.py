@@ -107,22 +107,14 @@ def fetch_remote(repo, branch, state, timeout=20):
     files = {}
     for entry in data.get("tree", []):
         rel = entry.get("path", "")
-        # Only files inside top-level folders are installed (the folders
-        # of the repo ARE the modpack); loose root files like LICENSE or
-        # README are not.
-        if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
+        he repo ARE the modpack); loose root files like LICENSE or
+            if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
             files[rel] = [entry["sha"], int(entry.get("size", 0))]
     if not files:
         raise SyncError("The modpack repository has no folders to install.")
     return {"tree_sha": data.get("sha", ""), "files": files, "etag": etag}
 
 
-# ---------------------------------------------------------------- Git LFS
-# Big files (e.g. the 100 MB sound archive) live in Git LFS: the repo only
-# holds a ~130 byte pointer text, and raw.githubusercontent.com serves that
-# pointer, not the file. Installing the pointer makes the game crash as soon
-# as it loads the file. Pointers are detected here and the real file is
-# fetched from media.githubusercontent.com instead.
 MEDIA_BASE = "https://media.githubusercontent.com/media"
 LFS_PREFIX = "lfs:"
 
@@ -160,7 +152,7 @@ def resolve_lfs(repo, branch, files):
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=20) as r:
                 data = r.read(512)
         except (urllib.error.URLError, OSError):
-            continue  # leave as-is; a later check tries again
+            continue  
         ptr = _parse_lfs_pointer(data)
         if ptr:
             out[rel] = [LFS_PREFIX + ptr[0], ptr[1]]
@@ -179,7 +171,6 @@ def _sha256_progress(path, on_bytes):
     return LFS_PREFIX + h.hexdigest()
 
 
-# ---------------------------------------------------------------- planning
 def _local_path(dest, rel):
     return os.path.join(dest, *rel.split("/"))
 
@@ -215,7 +206,7 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
     prev = state.get("files", {}) if state.get("dest") == norm else {}
 
     download, to_hash, trusted = [], [], {}
-    for rel, (sha, size) in remote_files.items():  # pass 1: stat only
+    for rel, (sha, size) in remote_files.items():  
         p = _local_path(dest, rel)
         try:
             st = os.stat(p)
@@ -225,13 +216,13 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
         if not stat_mod.S_ISREG(st.st_mode):
             download.append((rel, sha, size))
         elif _protected(rel):
-            continue  # exists: the player's data, never touched
+            continue  
         elif st.st_size != size:
             download.append((rel, sha, size))
         else:
             fp = prev.get(rel)
             if fp and len(fp) == 3 and fp[0] == size and fp[1] == st.st_mtime_ns and fp[2] == sha:
-                trusted[rel] = list(fp)  # verified before, untouched since: no read
+                trusted[rel] = list(fp)  
             else:
                 to_hash.append(rel)
 
@@ -274,7 +265,6 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
     return {"download": download, "delete": delete, "ok": ok}
 
 
-# ---------------------------------------------------------------- download
 def _free_space(path):
     while path and not os.path.isdir(path):
         parent = os.path.dirname(path)
@@ -378,7 +368,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
                         if error is None:
                             error = e
                             stop.set()
-                    except Exception as e:  # noqa: BLE001
+                    except Exception as e:  
                         if error is None:
                             error = SyncError(str(e))
                             stop.set()
@@ -392,7 +382,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
                     pass
                 files.pop(rel, None)
                 d = os.path.dirname(_local_path(dest, rel))
-                # prune now-empty folders, never above the destination
+            
                 while os.path.abspath(d) != os.path.abspath(dest):
                     try:
                         os.rmdir(d)
@@ -400,8 +390,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
                         break
                     d = os.path.dirname(d)
     finally:
-        # Remember what's verified even after a failure, so a retry
-        # doesn't have to re-hash everything it already finished.
+       
         new_state = {
             "repo": repo, "branch": branch,
             "dest": os.path.normcase(os.path.abspath(dest)),
