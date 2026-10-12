@@ -45,7 +45,7 @@ def _lower_thread_priority():
     try:
         import ctypes
         k = ctypes.windll.kernel32
-        k.SetThreadPriority(k.GetCurrentThread(), -1)  
+        k.SetThreadPriority(k.GetCurrentThread(), -1)
     except Exception:
         pass
 
@@ -107,7 +107,7 @@ def fetch_remote(repo, branch, state, timeout=20):
     files = {}
     for entry in data.get("tree", []):
         rel = entry.get("path", "")
-            if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
+        if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
             files[rel] = [entry["sha"], int(entry.get("size", 0))]
     if not files:
         raise SyncError("The modpack repository has no folders to install.")
@@ -151,7 +151,7 @@ def resolve_lfs(repo, branch, files):
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=20) as r:
                 data = r.read(512)
         except (urllib.error.URLError, OSError):
-            continue  
+            continue
         ptr = _parse_lfs_pointer(data)
         if ptr:
             out[rel] = [LFS_PREFIX + ptr[0], ptr[1]]
@@ -205,7 +205,7 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
     prev = state.get("files", {}) if state.get("dest") == norm else {}
 
     download, to_hash, trusted = [], [], {}
-    for rel, (sha, size) in remote_files.items():  
+    for rel, (sha, size) in remote_files.items():
         p = _local_path(dest, rel)
         try:
             st = os.stat(p)
@@ -215,13 +215,13 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
         if not stat_mod.S_ISREG(st.st_mode):
             download.append((rel, sha, size))
         elif _protected(rel):
-            continue  
+            continue
         elif st.st_size != size:
             download.append((rel, sha, size))
         else:
             fp = prev.get(rel)
             if fp and len(fp) == 3 and fp[0] == size and fp[1] == st.st_mtime_ns and fp[2] == sha:
-                trusted[rel] = list(fp)  
+                trusted[rel] = list(fp)
             else:
                 to_hash.append(rel)
 
@@ -367,7 +367,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
                         if error is None:
                             error = e
                             stop.set()
-                    except Exception as e:  
+                    except Exception as e:
                         if error is None:
                             error = SyncError(str(e))
                             stop.set()
@@ -381,7 +381,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
                     pass
                 files.pop(rel, None)
                 d = os.path.dirname(_local_path(dest, rel))
-            
+
                 while os.path.abspath(d) != os.path.abspath(dest):
                     try:
                         os.rmdir(d)
@@ -389,7 +389,7 @@ def run_sync(repo, branch, dest, remote, plan, state, state_path,
                         break
                     d = os.path.dirname(d)
     finally:
-       
+
         new_state = {
             "repo": repo, "branch": branch,
             "dest": os.path.normcase(os.path.abspath(dest)),
