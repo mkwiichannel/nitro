@@ -78,19 +78,6 @@ def _safe_rel(rel):
     return True
 
 
-def git_blob_sha(path):
-    size = os.path.getsize(path)
-    h = hashlib.sha1()
-    h.update(b"blob %d\0" % size)
-    with open(path, "rb") as f:
-        while True:
-            chunk = f.read(1 << 20)
-            if not chunk:
-                break
-            h.update(chunk)
-    return h.hexdigest()
-
-
 # ---------------------------------------------------------------- state
 def load_state(path):
     try:

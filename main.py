@@ -17,9 +17,8 @@ Build a Windows .exe with:  build.bat   (see README.txt)
 
 import base64
 import configparser
-import hashlib
-import http.cookiejar
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -38,7 +37,7 @@ import modpack_sync
 import xml.etree.ElementTree as ET
 import zipfile
 
-webview = None  # imported lazily: the native Qt UI never needs it
+webview = None  # imported when the window is opened
 
 
 def _import_webview():
@@ -53,11 +52,8 @@ APP_VERSION = "1.0.0"
 WEBVIEW2_DOWNLOAD_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
 BUILD_STAMP = "v1.0.0"
 
-# Update manifest — a tiny JSON file YOU control on GitHub, containing
-# {"version": "0.0.1", "download_url": "<google drive link>"}. Edit
-# this file's CONTENT anytime (version bump + swap the drive link if
-# you ever get a new one) and every copy of this exe picks it up
-# automatically — no rebuild, no redistributing the app.
+# Small JSON file in the repo. Only used as a fallback link for the launcher
+# update when GitHub's release list can't be read.
 MANIFEST_URL = "https://raw.githubusercontent.com/mkwiichannel/nitro/main/manifest.json"
 
 
@@ -85,7 +81,6 @@ MODPACK_STATE_PATH = os.path.join(app_data_dir(), "modpack_state.json")
 DEFAULT_CONFIG = {
     "dolphin_path": "",
     "iso_path": "",
-    "mod_directory": os.path.join(app_data_dir(), "mods"),
     "mystuff_directory": os.path.join(app_data_dir(), "MyStuff"),
     "mystuff_mode": "on",
     "resolution": "1920x1584",
@@ -97,18 +92,6 @@ DEFAULT_CONFIG = {
     "content_version": "0.0.1",
     "installed_from_url": "",
     "installed_launcher_url": "",
-    "_launcher_baseline_set": False,
-    "theme_season": "",
-    "theme_colors": {},
-    "theme_banner_url": "",
-    "theme_banner_path": "",
-    "theme_logo_url": "",
-    "theme_logo_path": "",
-    "ui_html_url": "",
-    "ui_html_path": "",
-    "icon_url": "",
-    "icon_path": "",
-    "icon_applied_hash": "",
     "ffl_resource_path": "",
     "mods": [
         {
@@ -161,14 +144,6 @@ def save_config(cfg: dict) -> None:
         json.dump(cfg, f, indent=2)
 
 
-def seed_builtin_mod() -> None:
-    """No local content bundled into the exe anymore — everything
-    comes from the manifest.json + Drive link, exactly like an
-    update. This just makes sure the "Nitro Pack" mod entry exists in
-    config with an empty content_root, so the app knows to show
-    'Install' (same mechanism as 'Update') until the first fetch
-    happens."""
-    pass  # DEFAULT_CONFIG already has the Nitro Pack entry with an
           # empty content_root — nothing to seed from disk anymore.
 
 
@@ -255,137 +230,43 @@ _BROWSER_USER_AGENT = (
 
 def _browser_request(url):
     """Build a request with a normal browser User-Agent — Python's
-    default identifies itself as 'Python-urllib/x.y', which several
-    hosts (Google Drive, GitHub's release-asset CDN, etc.) can treat
-    very differently from a real browser for exactly this kind of
-    scripted download: silent stalls, unusual redirect handling, or
-    an outright 403. Used for every outgoing download, not just
-    Drive's."""
+    default identifies itself as 'Python-urllib/x.y', which some hosts
+    (GitHub's release-asset CDN, for one) treat differently from a real
+    browser for scripted downloads. Used for every outgoing download."""
     return urllib.request.Request(url, headers={"User-Agent": _BROWSER_USER_AGENT})
 
 
-def _extract_gdrive_file_id(url):
-    """Pull the file ID out of any common Google Drive share link
-    format: /file/d/ID/view, ?id=ID, or a bare ID already."""
-    match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
-    if match:
-        return match.group(1)
-    match = re.search(r"[?&]id=([a-zA-Z0-9_-]+)", url)
-    if match:
-        return match.group(1)
-    if re.fullmatch(r"[a-zA-Z0-9_-]{20,}", url.strip()):
-        return url.strip()
-    return None
-
-
-def _resolve_gdrive_confirm_url(html, base, file_id):
-    """Google Drive's large-file warning page HTML has changed format
-    multiple times over the years, and a single regex guess at one
-    field name is fragile. This parses EVERY hidden form field on the
-    page and the form's real action URL, reconstructing the exact
-    request Drive itself expects — the same approach robust
-    Drive-downloader tools use. Falls back to the classic 'confirm=t'
-    bypass token if no form fields are found at all."""
-    action_match = re.search(r'<form[^>]+action="([^"]+)"', html)
-    action_url = action_match.group(1).replace("&amp;", "&") if action_match else base
-
-    fields = dict(re.findall(r'<input[^>]+type="hidden"[^>]+name="([^"]+)"[^>]+value="([^"]*)"', html))
-    # some pages order value before name in the tag — catch that too
-    if not fields:
-        fields = dict(re.findall(r'<input[^>]+type="hidden"[^>]+value="([^"]*)"[^>]+name="([^"]+)"', html))
-        fields = {name: value for value, name in fields.items()}
-
-    if fields:
-        query = urllib.parse.urlencode(fields)
-        separator = "&" if "?" in action_url else "?"
-        return f"{action_url}{separator}{query}"
-
-    # last resort: the long-standing generic bypass token
-    return f"{base}&confirm=t"
-
-
 def fetch_url_bytes(url, timeout=30):
-    """Fetch raw bytes from any URL, with proper handling for Google
-    Drive links (both small files like a manifest.json and large
-    files like a multi-GB zip) — Drive serves an HTML warning page
-    instead of the real content for some links/sizes, so a plain
-    fetch can silently return that warning page's HTML instead of
-    your actual file. Falls through to a plain fetch for any
-    non-Drive URL (GitHub, direct links, etc.)."""
-    file_id = _extract_gdrive_file_id(url)
-    if file_id is None:
-        with urllib.request.urlopen(_browser_request(url), timeout=timeout) as response:
-            return response.read()
-
-    cookie_jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-    base = f"https://drive.google.com/uc?export=download&id={file_id}"
-
-    with opener.open(_browser_request(base), timeout=timeout) as response:
-        content_type = response.headers.get("Content-Type", "")
-        data = response.read()
-        if "text/html" not in content_type:
-            return data
-        html = data.decode("utf-8", errors="ignore")
-
-    confirm_url = _resolve_gdrive_confirm_url(html, base, file_id)
-    with opener.open(_browser_request(confirm_url), timeout=timeout) as response:
+    """Fetch raw bytes from a URL."""
+    with urllib.request.urlopen(_browser_request(url), timeout=timeout) as response:
         return response.read()
 
 
 def download_file(url, dest_path, progress_callback=None):
-    """Download a file (any size) to dest_path, with the same
-    Google-Drive-aware handling as fetch_url_bytes — streams to disk
-    rather than holding a multi-GB file in memory. Uses a long
-    per-read timeout (any brief stall on a multi-GB transfer shouldn't
-    kill the whole download) and verifies the downloaded size against
-    what the server reported, when available. Calls
-    progress_callback(bytes_downloaded, total_bytes) periodically if
-    provided, for showing a real progress bar."""
-    file_id = _extract_gdrive_file_id(url)
-    read_timeout = 600  # 10 minutes of no data at all before giving up, not a total-transfer limit
-
-    def _stream_to_disk(response):
+    """Download a file of any size to dest_path, streaming it to disk and
+    checking the final size against what the server announced. Calls
+    progress_callback(bytes_downloaded, total_bytes) while it runs."""
+    read_timeout = 600  # no data for 10 minutes before giving up, not a total-time limit
+    with urllib.request.urlopen(_browser_request(url), timeout=read_timeout) as response:
         expected_size = response.headers.get("Content-Length")
         total = int(expected_size) if expected_size else None
         downloaded = 0
-        chunk_size = 1024 * 1024  # 1 MB chunks — frequent enough for a smooth progress bar
         with open(dest_path, "wb") as f:
             while True:
-                chunk = response.read(chunk_size)
+                chunk = response.read(1024 * 1024)
                 if not chunk:
                     break
                 f.write(chunk)
                 downloaded += len(chunk)
                 if progress_callback:
                     progress_callback(downloaded, total)
-        if expected_size is not None:
-            actual_size = os.path.getsize(dest_path)
-            if int(expected_size) != actual_size:
-                raise OSError(
-                    f"Download incomplete: got {actual_size} bytes, expected {expected_size}. "
-                    "This usually means the connection dropped partway through — try again."
-                )
-
-    if file_id is None:
-        with urllib.request.urlopen(_browser_request(url), timeout=read_timeout) as response:
-            _stream_to_disk(response)
-        return
-
-    cookie_jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-    base = f"https://drive.google.com/uc?export=download&id={file_id}"
-
-    with opener.open(_browser_request(base), timeout=30) as response:
-        content_type = response.headers.get("Content-Type", "")
-        if "text/html" not in content_type:
-            _stream_to_disk(response)
-            return
-        html = response.read().decode("utf-8", errors="ignore")
-
-    confirm_url = _resolve_gdrive_confirm_url(html, base, file_id)
-    with opener.open(_browser_request(confirm_url), timeout=read_timeout) as response:
-        _stream_to_disk(response)
+    if expected_size is not None:
+        actual_size = os.path.getsize(dest_path)
+        if int(expected_size) != actual_size:
+            raise OSError(
+                f"Download incomplete: got {actual_size} bytes, expected {expected_size}. "
+                "This usually means the connection dropped partway through - try again."
+            )
 
 
 _download_progress = {
@@ -443,6 +324,7 @@ def _latest_launcher_release(url_hint="", force=False):
     if not pick:
         return c["data"]
     c["data"] = {"fp": "rel:%s" % pick.get("id"), "url": pick["browser_download_url"],
+                 "digest": str(pick.get("digest") or ""),
                  "name": rel.get("name") or rel.get("tag_name") or ""}
     c["t"] = time.time()
     return c["data"]
@@ -451,12 +333,10 @@ def _latest_launcher_release(url_hint="", force=False):
 class Api:
     def __init__(self):
         self._window = None  # set after window creation, needed for dialogs
-        # Native (Qt) UI mode: no webview window exists, so anything that
-        # used to reach into self._window goes through these two optional
-        # callables instead (both must be thread-safe).
-        self._on_launcher_update_error = None  # callable(message: str)
-        self._on_request_quit = None           # callable()
         self._pending_sync = None
+        self._launcher_pending_url = None
+        self._launcher_pending_fp = ""
+        self._launcher_pending_digest = ""
 
     # ---------- state ----------
     def get_state(self):
@@ -466,8 +346,7 @@ class Api:
         cfg["discord_url"] = DISCORD_URL
         return cfg
 
-    _TEXT_SETTINGS = ("iso_path", "mod_directory", "mystuff_directory", "mystuff_mode", "resolution",
-                      "language", "ffl_resource_path", "content_drive_url", "version_drive_url")
+    _TEXT_SETTINGS = ("iso_path", "mystuff_directory", "mystuff_mode", "resolution", "language", "ffl_resource_path")
     _FLAG_SETTINGS = ("fullscreen", "auto_update", "performance_mode")
     _GAME_SUFFIXES = (".iso", ".wbfs", ".rvz", ".ciso", ".gcz", ".wia", ".gcm", ".wad")
 
@@ -560,35 +439,6 @@ class Api:
         except OSError as e:
             return {"ok": False, "error": str(e)}
 
-    # ---------- Dolphin's own logging (for real diagnostics) ----------
-    def _enable_dolphin_file_logging(self, user_dir):
-        """Force Dolphin to write its own internal log to a file, so we
-        can read back exactly what Dolphin itself thinks happened
-        during boot/Riivolution patching — real data instead of
-        guesses. Config key confirmed directly against Dolphin's
-        source (Common/Logging/LogManager.cpp): [Options] WriteToFile
-        under Config/Logger.ini in the user folder."""
-        try:
-            config_dir = os.path.join(user_dir, "Config")
-            os.makedirs(config_dir, exist_ok=True)
-            logger_ini = os.path.join(config_dir, "Logger.ini")
-            parser = configparser.ConfigParser()
-            parser.optionxform = str  # preserve key case
-            if os.path.exists(logger_ini):
-                parser.read(logger_ini, encoding="utf-8")
-            if "Options" not in parser:
-                parser["Options"] = {}
-            parser["Options"]["WriteToFile"] = "True"
-            parser["Options"]["WriteToConsole"] = "True"
-            parser["Options"]["Verbosity"] = "4"
-            if "Logs" not in parser:
-                parser["Logs"] = {}
-            for category in ("CORE", "BOOT", "DISCIO", "IOS_FS", "FILEMON", "MASTER_LOG"):
-                parser["Logs"][category] = "True"
-            with open(logger_ini, "w", encoding="utf-8") as f:
-                parser.write(f)
-        except OSError:
-            pass  # non-critical — launch still proceeds without forced logging
 
     def _sync_my_stuff(self, cfg, user_dir):
         """Copies the player's "My Stuff" folder (Settings) into the modpack's
@@ -651,7 +501,6 @@ class Api:
         """Sets the pack's Riivolution "My Stuff" option (Disabled / Enabled /
         Music Only) from the Settings choice, in Dolphin's Riivolution config
         files. Other options in those files are left as they are."""
-        import xml.etree.ElementTree as ET
         choice = {"off": "1", "on": "2", "music": "3"}.get(str(cfg.get("mystuff_mode") or "on"), "2")
         cfg_dir = os.path.join(user_dir, "Load", "Riivolution", "riivolution", "config")
         if not os.path.isdir(os.path.join(user_dir, "Load", "Riivolution", "MarioKartNitro_Test")):
@@ -675,25 +524,6 @@ class Api:
                 tree.write(path, encoding="utf-8", xml_declaration=False)
             except (OSError, ET.ParseError):
                 continue
-
-    def get_dolphin_log_tail(self, lines=80):
-        """Read back the end of Dolphin's own log file after a launch
-        attempt, so we can see what Dolphin itself reported instead of
-        guessing from the outside."""
-        cfg = load_config()
-        dolphin_path = cfg.get("dolphin_path", "")
-        if not dolphin_path:
-            return "Dolphin path not set."
-        user_dir = self._dolphin_user_dir(dolphin_path)
-        log_path = os.path.join(user_dir, "Logs", "dolphin.log")
-        if not os.path.exists(log_path):
-            return f"No log file found yet at {log_path}\n(Play at least once first — logging is now forced on automatically.)"
-        try:
-            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-                all_lines = f.readlines()
-            return f"({log_path})\n\n" + "".join(all_lines[-lines:])
-        except OSError as e:
-            return f"Couldn't read log: {e}"
 
 
     # ---------- Nitro Mii library + Dolphin sync ----------
@@ -996,76 +826,6 @@ class Api:
                 continue
         return {"ok": True, "added": added, "folder": dst}
 
-    # ---------- mods ----------
-    def import_mod(self):
-        if self._window is None:
-            return {"error": "Window not ready"}
-        result = self._window.create_file_dialog(
-            webview.OPEN_DIALOG, allow_multiple=False,
-            file_types=("Riivolution XML (*.xml)", "All files (*.*)"),
-        )
-        if not result:
-            return {"ok": False, "cancelled": True}
-
-        src = result[0]
-        name = os.path.splitext(os.path.basename(src))[0]
-        cfg = load_config()
-
-        # avoid clobbering an existing mod with the same name
-        existing_names = {m["name"] for m in cfg["mods"]}
-        final_name = name
-        i = 2
-        while final_name in existing_names:
-            final_name = f"{name} ({i})"
-            i += 1
-
-        dest_dir = os.path.join(app_data_dir(), "mods", final_name)
-        os.makedirs(dest_dir, exist_ok=True)
-        dest_xml = os.path.join(dest_dir, os.path.basename(src))
-        shutil.copy2(src, dest_xml)
-
-        cfg["mods"].append({
-            "name": final_name, "builtin": False,
-            "xml_path": dest_xml, "content_root": "",
-        })
-        save_config(cfg)
-        return {"ok": True, "mods": cfg["mods"], "name": final_name}
-
-    def set_mod_content_root(self, name):
-        """Point a mod at the folder containing its actual asset
-        folders (e.g. MKWiiTwo, ctgpr) — wherever they already live on
-        disk. No copying: Dolphin's preset just reads directly from
-        here at launch, so this is a one-time pointer, not a transfer."""
-        if self._window is None:
-            return {"error": "Window not ready"}
-        result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
-        if not result:
-            return {"ok": False, "cancelled": True}
-
-        cfg = load_config()
-        for m in cfg["mods"]:
-            if m["name"] == name:
-                m["content_root"] = result[0]
-        save_config(cfg)
-        return {"ok": True, "mods": cfg["mods"]}
-
-    def set_active_mod(self, name):
-        cfg = load_config()
-        if any(m["name"] == name for m in cfg["mods"]):
-            cfg["active_mod"] = name
-            save_config(cfg)
-        return {"ok": True, "active_mod": cfg["active_mod"]}
-
-    def remove_mod(self, name):
-        cfg = load_config()
-        cfg["mods"] = [m for m in cfg["mods"] if not (m["name"] == name and not m.get("builtin"))]
-        if cfg["active_mod"] == name:
-            cfg["active_mod"] = cfg["mods"][0]["name"] if cfg["mods"] else ""
-        mod_dir = os.path.join(app_data_dir(), "mods", name)
-        if os.path.isdir(mod_dir):
-            shutil.rmtree(mod_dir, ignore_errors=True)
-        save_config(cfg)
-        return {"ok": True, "mods": cfg["mods"], "active_mod": cfg["active_mod"]}
 
     # ---------- launch ----------
     def _is_portable_dolphin(self, dolphin_dir):
@@ -1139,68 +899,33 @@ class Api:
 
         return portable_user  # last resort, matches the old behavior
 
-    def get_launch_diagnostics(self):
-        """Everything needed to see exactly what Play will do, without
-        digging through AppData manually — shown directly in the app."""
-        cfg = load_config()
-        active_name = cfg.get("active_mod", "")
-        mod_entry = next((m for m in cfg["mods"] if m["name"] == active_name), None)
-        lines = [f"BUILD: {BUILD_STAMP}  (if this looks old/wrong, you're not running the latest rebuild)"]
-        if os.path.isfile(_STARTUP_TIMING_LOG):
-            try:
-                with open(_STARTUP_TIMING_LOG, "r", encoding="utf-8") as f:
-                    timing_lines = f.read().strip()
-                if timing_lines:
-                    lines.append("")
-                    lines.append("--- Startup timing (most recent launches) ---")
-                    lines.append(timing_lines)
-                    lines.append("--- end startup timing ---")
-            except OSError:
-                pass
-        if os.path.isfile(_MEMORY_DUMP_LOG):
-            try:
-                with open(_MEMORY_DUMP_LOG, "r", encoding="utf-8") as f:
-                    lines.append("")
-                    lines.append("--- Memory snapshot (RAM passed 1 GB) ---")
-                    lines.append(f.read()[-6000:])
-            except OSError:
-                pass
-        _ms = modpack_sync.load_state(MODPACK_STATE_PATH)
-        lines.append(f"Modpack: {_ms.get('repo', '(not synced yet)')}@{(_ms.get('tree_sha') or '-')[:7]}, "
-                     f"{len(_ms.get('files', {}))} files tracked")
-        lines.append(f"Dolphin: {cfg.get('dolphin_path') or '(not set)'}")
-        lines.append(f"ISO: {cfg.get('iso_path') or '(not set)'}")
-        lines.append(f"Active mod: {active_name or '(none)'}")
-        dolphin_path = cfg.get("dolphin_path", "")
-        if dolphin_path:
-            user_dir = self._dolphin_user_dir(dolphin_path)
-            lines.append(f"Dolphin user folder: {user_dir}")
-            riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
-            lines.append(f"Riivolution folder: {riivolution_root}")
-            if os.path.isdir(riivolution_root):
-                lines.append(f"  Contents: {os.listdir(riivolution_root)}")
-            else:
-                lines.append("  MISSING — doesn't exist yet")
-        if mod_entry:
-            xml_path = mod_entry.get("xml_path", "")
-            content_root = mod_entry.get("content_root", "")
-            lines.append(f"XML: {xml_path} [{'found' if os.path.exists(xml_path) else 'MISSING'}]")
-            if content_root:
-                lines.append(f"Content folder: {content_root} [{'found' if os.path.isdir(content_root) else 'MISSING'}]")
-                if os.path.isdir(content_root):
-                    lines.append(f"  Contents: {os.listdir(content_root)}")
-            else:
-                lines.append("Content folder: NOT SET")
-        else:
-            lines.append("No mod entry found for the active mod.")
-        preset_path = os.path.join(app_data_dir(), "presets", f"{active_name}.json")
-        if os.path.exists(preset_path):
-            with open(preset_path, "r", encoding="utf-8") as f:
-                lines.append(f"Last generated preset ({preset_path}):")
-                lines.append(f.read())
-        else:
-            lines.append(f"No preset generated yet at {preset_path}")
-        return "\n".join(lines)
+
+    @staticmethod
+    def _reset_dolphin_file_logging(user_dir):
+        """Earlier launcher builds switched on Dolphin's verbose file logging
+        (Config/Logger.ini). That slows Dolphin down, so remove exactly the
+        entries those builds wrote - and only if they are still there as written."""
+        path = os.path.join(user_dir, "Config", "Logger.ini")
+        try:
+            if not os.path.isfile(path):
+                return
+            parser = configparser.ConfigParser()
+            parser.optionxform = str
+            parser.read(path, encoding="utf-8")
+            opts = parser["Options"] if parser.has_section("Options") else {}
+            logs = parser["Logs"] if parser.has_section("Logs") else {}
+            categories = ("CORE", "BOOT", "DISCIO", "IOS_FS", "FILEMON", "MASTER_LOG")
+            if not (opts.get("WriteToFile") == "True" and opts.get("WriteToConsole") == "True"
+                    and opts.get("Verbosity") == "4" and all(logs.get(c) == "True" for c in categories)):
+                return
+            for key in ("WriteToFile", "WriteToConsole", "Verbosity"):
+                parser.remove_option("Options", key)
+            for c in categories:
+                parser.remove_option("Logs", c)
+            with open(path, "w", encoding="utf-8") as f:
+                parser.write(f)
+        except (OSError, configparser.Error):
+            pass
 
     def _kill_dolphin(self, dolphin_path):
         """Kill any already-running Dolphin process before launching a
@@ -1255,6 +980,7 @@ class Api:
             return {"ok": False, "error": "MKW ISO path isn't set (or the file doesn't exist). Set it in Settings first."}
 
         self._kill_dolphin(dolphin_path)
+        self._reset_dolphin_file_logging(self._dolphin_user_dir(dolphin_path))
 
         # Player's own custom files (skins, music...) -> the pack's "My Stuff" folder.
         try:
@@ -1273,7 +999,6 @@ class Api:
         mod_entry = next((m for m in cfg["mods"] if m["name"] == active_name), None)
         launch_target = iso_path
         note = ""
-        diagnostic_detail = ""
         user_dir = self._dolphin_user_dir(dolphin_path)
 
         if mod_entry and mod_entry.get("xml_path") and os.path.exists(mod_entry["xml_path"]):
@@ -1326,14 +1051,9 @@ class Api:
                     assets_found = len(asset_folders) > 0
                     if not assets_found:
                         note = " ⚠ No asset folders found alongside riivolution — mod may not apply correctly."
-                    diagnostic_detail = (
-                        f"Linked into {riivolution_root}: {linked} | Using xml: {xml_path} | "
-                        f"Asset folders found: {asset_folders if assets_found else 'NONE'}"
-                    )
-                except OSError as e:
+                except OSError:
                     riivolution_root = None
-                    note = " ⚠ Couldn't link the content folder into Dolphin's folder — see diagnostics."
-                    diagnostic_detail = f"Link error: {e}"
+                    note = " ⚠ Couldn't link the content folder into Dolphin's folder."
             else:
                 # No content_root set yet: fall back to staging just
                 # the xml into Dolphin's own folder. This only works
@@ -1346,12 +1066,10 @@ class Api:
                     staged_xml = os.path.join(riivolution_xml_dir, os.path.basename(xml_path))
                     shutil.copy2(xml_path, staged_xml)
                     xml_path = staged_xml
-                    note = " ⚠ No content folder set — set one in the Mods tab for the mod to fully apply."
-                    diagnostic_detail = f"Staged xml only at {staged_xml}, no content_root set."
-                except OSError as e:
+                    note = " ⚠ The modpack files aren't installed yet, so the mod may not apply."
+                except OSError:
                     riivolution_root = None
-                    note = " ⚠ Couldn't stage the mod profile — see diagnostics."
-                    diagnostic_detail = f"Stage error: {e}"
+                    note = " ⚠ Couldn't stage the mod profile."
 
             if riivolution_root:
                 try:
@@ -1367,9 +1085,8 @@ class Api:
                         my_stuff_mode=cfg.get("mystuff_mode") or "on",
                     )
                     launch_target = preset_path
-                except (OSError, ET.ParseError) as e:
+                except (OSError, ET.ParseError):
                     note = " ⚠ Couldn't build the mod preset, launching the plain ISO instead."
-                    diagnostic_detail = f"Preset error: {e}"
                     launch_target = iso_path
 
         launch_args = [
@@ -1404,63 +1121,14 @@ class Api:
                 scale = w // 640 if (w % 640 == 0 and h == (w // 640) * 528) else -(-h // 528)
                 scale = max(1, min(12, scale))
                 launch_args.append(f"--config=Graphics.Settings.InternalResolution={scale}")
-        self._enable_dolphin_file_logging(user_dir)
-        manual_command = " ".join(f'"{a}"' if " " in a else a for a in launch_args)
         try:
             subprocess.Popen(launch_args)
         except OSError as e:
             return {"ok": False, "error": f"Couldn't launch Dolphin: {e}"}
 
-        # short message for the toast; full detail stays available via
-        # get_launch_diagnostics() for whenever it's actually needed
         display_message = "Launching..." + (note if note.strip().startswith("⚠") else "")
-        return {"ok": True, "message": display_message, "manual_command": manual_command, "detail": diagnostic_detail}
+        return {"ok": True, "message": display_message}
 
-    # ---------- remote seasonal theme (colors / logo / banner / Mii / UI, no rebuild) ----------
-    @staticmethod
-    def _download_and_cache(cfg, url, url_key, path_key, cache_filename, keep_ext=False):
-        """Shared helper for every "fetch this URL, cache it locally"
-        field in the theme block below (banner/logo/default Mii). Always
-        re-fetches when a URL is present -- these are small files
-        checked once per Play press at most, so the cost of always
-        checking is trivial, and it means overwriting the SAME file at
-        the SAME GitHub URL (the normal way to push a changed image) is
-        picked up with nothing else to touch. Comparing cfg[url_key]
-        against the URL text, instead, would miss exactly that case:
-        the URL string wouldn't have changed even though the file
-        behind it did. Returns True only if the downloaded bytes are
-        actually different from what's already cached (caller is
-        responsible for saving cfg). Leaves the previous cached file in
-        place if the new one can't be reached, so a bad/offline URL
-        never removes something that was already working."""
-        url = str(url or "").strip()
-        if not url:
-            return False
-        try:
-            data = fetch_url_bytes(url, timeout=20)
-            filename = cache_filename
-            if keep_ext:
-                ext = os.path.splitext(url)[1] or ".bin"
-                filename = f"{cache_filename}{ext}"
-            path = os.path.join(app_data_dir(), filename)
-
-            existing = None
-            if os.path.isfile(path):
-                try:
-                    with open(path, "rb") as f:
-                        existing = f.read()
-                except OSError:
-                    existing = None
-            if existing == data and cfg.get(url_key) == url:
-                return False  # nothing actually changed, skip the write
-
-            with open(path, "wb") as f:
-                f.write(data)
-            cfg[url_key] = url
-            cfg[path_key] = path
-            return True
-        except OSError:
-            return False  # keep whatever was cached before if the download fails
 
     def check_for_update(self, light=False):
         """Fetch the manifest.json (hardcoded GitHub URL, controlled
@@ -1495,6 +1163,7 @@ class Api:
             launcher_fp = launcher_url
         self._launcher_pending_fp = launcher_fp
         self._launcher_pending_url = launcher_url
+        self._launcher_pending_digest = rel.get("digest", "") if rel else ""
         installed_launcher_url = cfg.get("installed_launcher_url", "")
         if launcher_fp and (not installed_launcher_url or
                             (launcher_fp.startswith("rel:") and not installed_launcher_url.startswith("rel:"))):
@@ -1502,7 +1171,6 @@ class Api:
             # the current build, so adopt it instead of nagging an update
             # popup for the exact build the player just got.
             cfg["installed_launcher_url"] = launcher_fp
-            cfg["_launcher_baseline_set"] = True
             save_config(cfg)
             installed_launcher_url = launcher_fp
         launcher_update_available = bool(launcher_fp and launcher_fp != installed_launcher_url)
@@ -1637,7 +1305,7 @@ class Api:
             def on_progress(done, total):
                 _set_progress(status="downloading", downloaded_bytes=done, total_bytes=total or None)
 
-            new_state = modpack_sync.run_sync(repo, branch, dest, remote, plan, state,
+            modpack_sync.run_sync(repo, branch, dest, remote, plan, state,
                                               MODPACK_STATE_PATH, progress_cb=on_progress)
             _set_progress(status="extracting")  # finishing up: config + cleanup
 
@@ -1661,107 +1329,6 @@ class Api:
         except Exception as e:  # noqa: BLE001 - never leave the UI polling forever
             _set_progress(status="error", error=f"Modpack update failed: {e}")
 
-    def _apply_update_worker(self, download_url, latest_version):
-        """The actual download+extract+install work, run on a
-        background thread by start_update(). Reports progress via the
-        module-level _download_progress dict as it goes."""
-        cfg = load_config()
-        permanent_content = os.path.join(app_data_dir(), "mods", "Nitro Pack", "content")
-        tmp_zip = os.path.join(app_data_dir(), "_update_download.zip")
-        tmp_extract = os.path.join(app_data_dir(), "_update_extract")
-
-        def on_progress(downloaded, total):
-            _set_progress(status="downloading", downloaded_bytes=downloaded, total_bytes=total)
-
-        try:
-            download_file(download_url, tmp_zip, progress_callback=on_progress)
-        except OSError as e:
-            _set_progress(status="error", error=f"Download failed: {e}")
-            return
-
-        _set_progress(status="extracting")
-        try:
-            if os.path.isdir(tmp_extract):
-                shutil.rmtree(tmp_extract)
-            os.makedirs(tmp_extract, exist_ok=True)
-            with zipfile.ZipFile(tmp_zip, "r") as zf:
-                bad_file = zf.testzip()
-                if bad_file is not None:
-                    raise OSError(
-                        f"Downloaded zip is corrupted (bad file: {bad_file}) — "
-                        "the download likely got cut short. Try again."
-                    )
-                zf.extractall(tmp_extract)
-
-            # Anchor the search on "riivolution" only — that's a fixed
-            # Dolphin/Riivolution convention, not something that gets
-            # renamed. Whatever OTHER folder(s) sit alongside it
-            # (currently "MKWiiTwo", might be renamed later) get
-            # copied automatically along with it, whatever they're
-            # called — nothing here depends on that specific name.
-            # No folder-name assumptions at all — just unwrap a single
-            # top-level wrapper folder if the zip has one, otherwise
-            # use its contents directly. Whatever's actually in there
-            # gets installed as-is.
-            entries = os.listdir(tmp_extract)
-            if len(entries) == 1 and os.path.isdir(os.path.join(tmp_extract, entries[0])):
-                extracted_root = os.path.join(tmp_extract, entries[0])
-            else:
-                extracted_root = tmp_extract
-
-            if os.path.isdir(permanent_content):
-                shutil.rmtree(permanent_content)
-            os.makedirs(os.path.dirname(permanent_content), exist_ok=True)
-            shutil.copytree(extracted_root, permanent_content)
-        except (OSError, zipfile.BadZipFile) as e:
-            _set_progress(status="error", error=f"Update extraction failed: {e}")
-            return
-        finally:
-            for p in (tmp_zip, tmp_extract):
-                try:
-                    if os.path.isfile(p):
-                        os.remove(p)
-                    elif os.path.isdir(p):
-                        shutil.rmtree(p, ignore_errors=True)
-                except OSError:
-                    pass
-
-        dolphin_path = cfg.get("dolphin_path", "")
-        if dolphin_path and os.path.isfile(dolphin_path):
-            user_dir = self._dolphin_user_dir(dolphin_path)
-            riivolution_root = os.path.join(user_dir, "Load", "Riivolution")
-            if os.path.isdir(riivolution_root):
-                for entry in os.listdir(riivolution_root):
-                    entry_path = os.path.join(riivolution_root, entry)
-                    if os.path.isdir(entry_path):
-                        shutil.rmtree(entry_path, ignore_errors=True)
-
-        cfg["content_version"] = latest_version
-        cfg["installed_from_url"] = download_url
-        version_txt_path = os.path.join(permanent_content, "version.txt")
-        if os.path.exists(version_txt_path):
-            try:
-                with open(version_txt_path, "r", encoding="utf-8") as f:
-                    actual_installed_version = f.read().strip()
-                if actual_installed_version:
-                    cfg["content_version"] = actual_installed_version
-            except OSError:
-                pass
-        for m in cfg["mods"]:
-            if m.get("name") == "Nitro Pack":
-                m["content_root"] = permanent_content
-                xml_candidate = None
-                for dirpath, _dirnames, filenames in os.walk(permanent_content):
-                    for fname in filenames:
-                        if fname.lower().endswith(".xml"):
-                            xml_candidate = os.path.join(dirpath, fname)
-                            break
-                    if xml_candidate:
-                        break
-                if xml_candidate and os.path.exists(xml_candidate):
-                    m["xml_path"] = xml_candidate
-        save_config(cfg)
-        _set_progress(status="done", version=cfg["content_version"])
 
     # ---------- misc ----------
     def open_discord(self):
@@ -1769,29 +1336,23 @@ class Api:
         return {"ok": True}
 
     def quit_app(self):
-        if self._on_request_quit is not None:
-            self._on_request_quit()
-        elif self._window is not None:
+        if self._window is not None:
             self._window.destroy()
         return {"ok": True}
 
     # ---------- whole-launcher self-update (manifest.json's launcher_nitro) ----------
     def start_launcher_update(self, download_url):
-        """Downloads a full new launcher build -- manifest.json's
-        top-level "launcher_nitro" field, a Drive link to a zipped
-        MarioKartNitro.exe -- and swaps it in for the one currently
-        running. Unlike every other remote field, this one is never
-        applied silently: check_for_update() only reports it as
-        available, and the frontend shows a popup with an explicit
+        """Downloads the newest launcher build from the official GitHub release
+        found by check_for_update() and swaps it in for the one currently
+        running. It is never applied silently: check_for_update() only reports
+        it as available, and the frontend shows a popup with an explicit
         "Update!" button (see showLauncherUpdatePopup() in index.html)
         before this is ever called.
 
         Runs the actual work on a background thread and returns right
         away, since a multi-hundred-MB download shouldn't block the
         UI call. See _launcher_update_worker() for the mechanics of
-        how the swap itself happens (it's the same "can't overwrite a
-        file that's currently running" problem as the .exe icon, just
-        for the whole binary instead of one resource)."""
+        how the swap itself happens (a running exe can't overwrite itself)."""
         download_url = str(download_url or "").strip()
         if not download_url:
             return {"ok": False, "error": "No launcher download URL given."}
@@ -1835,12 +1396,6 @@ class Api:
         same cross-thread technique used elsewhere in this file) so the popup shows a real message instead of
         hanging on "Installing..." forever."""
         def fail(message):
-            if self._on_launcher_update_error is not None:
-                try:
-                    self._on_launcher_update_error(str(message))
-                except Exception:
-                    pass
-                return
             if self._window is not None:
                 try:
                     safe = json.dumps(str(message))
@@ -1863,6 +1418,24 @@ class Api:
         except OSError as e:
             fail(f"Download failed: {e}")
             return
+
+        expected = self._launcher_pending_digest
+        if expected.startswith("sha256:"):
+            h = hashlib.sha256()
+            try:
+                with open(tmp_download, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        h.update(chunk)
+            except OSError as e:
+                fail(f"Couldn't check the download: {e}")
+                return
+            if h.hexdigest() != expected[len("sha256:"):].lower():
+                try:
+                    os.remove(tmp_download)
+                except OSError:
+                    pass
+                fail("The downloaded update doesn't match GitHub's checksum, so it was not installed.")
+                return
 
         new_exe = None
         is_zip = False
@@ -1986,12 +1559,7 @@ class Api:
         # keep retrying regardless, this just avoids a near-certain
         # first failed attempt in the common case.
         time.sleep(0.5)
-        if self._on_request_quit is not None:
-            try:
-                self._on_request_quit()
-            except Exception:
-                pass
-        elif self._window is not None:
+        if self._window is not None:
             try:
                 self._window.destroy()
             except Exception:
@@ -2125,32 +1693,17 @@ def _show_windows_message(title, message):
         pass
 
 
-def _apply_optional_webview2_args():
+def _apply_webview2_args():
     """Chromium flags for the WebView2 window.
 
-    --disable-gpu-compositing is always on: on some PCs (graphics driver
-    dependent) GPU compositing made the window stop responding after a
-    click, and turning it off fixed that in testing. WebGL (the Mii
-    preview) still runs on the GPU; only the final page compositing is
-    done in software, which is cheap for this UI.
-
-    The WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS env var REPLACES the
-    arguments pywebview sets in code, so pywebview's own two defaults are
-    re-included. Extra flags can still be added without a rebuild by
-    putting them on one line in <app data>/webview2_args.txt."""
-    base = ["--disable-features=ElasticOverscroll", "--allow-file-access-from-files",
-            "--disable-gpu-compositing"]
-    extra = []
-    try:
-        args_file = os.path.join(app_data_dir(), "webview2_args.txt")
-        if os.path.isfile(args_file):
-            with open(args_file, "r", encoding="utf-8") as f:
-                extra = [a for a in f.read().split() if a not in base]
-    except OSError:
-        extra = []
-    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = " ".join(base + extra)
-    if extra:
-        _append_timing_log(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | extra WebView2 args active: {' '.join(extra)}")
+    --disable-gpu-compositing: on some PCs GPU compositing made the window
+    stop responding after a click. WebGL (the Mii preview) still runs on the
+    GPU; only the final page compositing is done in software, which is cheap
+    for this UI. The environment variable REPLACES the arguments pywebview
+    sets in code, so pywebview's own two defaults are included."""
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = " ".join([
+        "--disable-features=ElasticOverscroll", "--allow-file-access-from-files",
+        "--disable-gpu-compositing"])
 
 
 def _start_webview_with_webview2_check():
@@ -2191,7 +1744,7 @@ def _start_webview_with_webview2_check():
         storage_path = os.path.join(app_data_dir(), "webview2_data")
         os.makedirs(storage_path, exist_ok=True)
         _trim_webview2_cache(storage_path)
-        _apply_optional_webview2_args()
+        _apply_webview2_args()
         webview.start(gui="edgechromium", private_mode=False, storage_path=storage_path)
     except Exception as e:
         _offer_webview2_install(e)
@@ -2240,181 +1793,15 @@ def _close_splash_screen():
         pass
 
 
-def _process_creation_time():
-    """Returns this process's actual OS-level creation time (seconds
-    since epoch), via GetProcessTimes -- distinct from "when main()
-    started running", since on a onefile build there's a real gap
-    between the two (unpacking the whole exe to a temp folder, then
-    starting the Python interpreter) that main() itself has no way to
-    see. Returns None on any failure; callers treat that as "unknown"
-    rather than guessing."""
-    if os.name != "nt":
-        return None
-    try:
-        import ctypes
-        import ctypes.wintypes as wintypes
-
-        class FILETIME(ctypes.Structure):
-            _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
-
-        kernel32 = ctypes.windll.kernel32
-        creation, exit_t, kernel_t, user_t = FILETIME(), FILETIME(), FILETIME(), FILETIME()
-        handle = kernel32.GetCurrentProcess()
-        if not kernel32.GetProcessTimes(
-            handle, ctypes.byref(creation), ctypes.byref(exit_t),
-            ctypes.byref(kernel_t), ctypes.byref(user_t)
-        ):
-            return None
-        ticks = (creation.dwHighDateTime << 32) | creation.dwLowDateTime
-        # FILETIME: 100ns ticks since 1601-01-01; convert to Unix epoch.
-        return (ticks - 116444736000000000) / 10_000_000
-    except Exception:
-        return None
-
-
-def _process_ram_mb():
-    """Current working-set RAM for this process, in MB, via
-    GetProcessMemoryInfo -- the same number Task Manager shows.
-    Returns None on any failure."""
-    if os.name != "nt":
-        return None
-    try:
-        import ctypes
-
-        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
-            _fields_ = [
-                ("cb", ctypes.c_ulong),
-                ("PageFaultCount", ctypes.c_ulong),
-                ("PeakWorkingSetSize", ctypes.c_size_t),
-                ("WorkingSetSize", ctypes.c_size_t),
-                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
-                ("QuotaPagedPoolUsage", ctypes.c_size_t),
-                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
-                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
-                ("PagefileUsage", ctypes.c_size_t),
-                ("PeakPagefileUsage", ctypes.c_size_t),
-            ]
-
-        counters = PROCESS_MEMORY_COUNTERS()
-        counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS)
-        handle = ctypes.windll.kernel32.GetCurrentProcess()
-        if not ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
-            return None
-        return counters.WorkingSetSize / (1024 * 1024)
-    except Exception:
-        return None
-
-
-_STARTUP_TIMING_LOG = os.path.join(app_data_dir(), "startup_timing.log")
-
-
-def _append_timing_log(line):
-    """Appends one line to startup_timing.log, keeping only the most
-    recent 20 runs -- small, bounded, and readable straight from the
-    in-app diagnostics panel (get_launch_diagnostics()) without
-    needing to go dig through AppData by hand."""
-    try:
-        existing = []
-        if os.path.isfile(_STARTUP_TIMING_LOG):
-            with open(_STARTUP_TIMING_LOG, "r", encoding="utf-8") as f:
-                existing = f.readlines()
-        existing.append(line.rstrip("\n") + "\n")
-        existing = existing[-20:]
-        with open(_STARTUP_TIMING_LOG, "w", encoding="utf-8") as f:
-            f.writelines(existing)
-    except OSError:
-        pass
-
-
-def _log_startup_timing(t_process_created, t_main_start, t_before_webview_start, t_shown):
-    """Writes one real, measured timing line for this launch -- how
-    long onefile extraction + interpreter startup took, how long this
-    app's own init code took, and how long WebView2 itself took to
-    get a window on screen -- plus RAM at that point and again 15s
-    later once things have settled. This replaces guessing at where
-    the remaining slowness lives with an actual breakdown from a real
-    machine, surfaced right in get_launch_diagnostics()."""
-    def fmt(seconds):
-        return f"{seconds:.1f}s" if seconds is not None else "?"
-
-    boot = (t_main_start - t_process_created) if t_process_created else None
-    init = t_before_webview_start - t_main_start
-    engine = t_shown - t_before_webview_start
-    ram = _process_ram_mb()
-    stamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    line = (
-        f"{stamp} | exe-extract+boot: {fmt(boot)} | app init: {fmt(init)} | "
-        f"WebView2 start: {fmt(engine)} | RAM@shown: {ram:.0f}MB" if ram is not None
-        else f"{stamp} | exe-extract+boot: {fmt(boot)} | app init: {fmt(init)} | "
-             f"WebView2 start: {fmt(engine)} | RAM@shown: ?"
-    )
-    _append_timing_log(line)
-
-    def _log_settled_ram():
-        time.sleep(15)
-        ram2 = _process_ram_mb()
-        if ram2 is not None:
-            _append_timing_log(f"{stamp} | RAM after 15s idle: {ram2:.0f}MB")
-
-    threading.Thread(target=_log_settled_ram, daemon=True).start()
-
-
-_MEMORY_DUMP_LOG = os.path.join(app_data_dir(), "memory_dump.log")
-
-
-def _memory_guard(threshold_mb=1000, check_every=15, repeat_after=300):
-    """Diagnostic only: if this process's RAM passes threshold_mb,
-    write ONE snapshot of what it is doing (every thread's current
-    Python stack + the biggest Python object types) to
-    memory_dump.log, shown in Settings -> Show diagnostics. Costs
-    nothing until the threshold is hit. Exists because a tester's
-    launcher reached 2.4 GB / 24% CPU and the cause can't be found
-    by reading code -- this captures it on the machine where it
-    actually happens."""
-    import collections
-    import gc
-    import traceback
-    last = 0.0
-    while True:
-        time.sleep(check_every)
-        ram = _process_ram_mb()
-        if ram is None or ram < threshold_mb or time.time() - last < repeat_after:
-            continue
-        last = time.time()
-        try:
-            names = {t.ident: t.name for t in threading.enumerate()}
-            out = [f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} RAM {ram:.0f} MB ==="]
-            for tid, frame in sys._current_frames().items():
-                out.append(f"--- thread {names.get(tid, tid)} ---")
-                out.append("".join(traceback.format_stack(frame)[-6:]).rstrip())
-            objs = gc.get_objects()
-            counts = collections.Counter(type(o).__name__ for o in objs)
-            out.append(f"--- {len(objs)} tracked objects; top types ---")
-            out.append(", ".join(f"{k}:{v}" for k, v in counts.most_common(12)))
-            big = sorted((len(o) for o in objs if isinstance(o, (bytes, bytearray, str, list, dict))), reverse=True)[:5]
-            out.append(f"--- largest str/bytes/list/dict lengths: {big} ---")
-            with open(_MEMORY_DUMP_LOG, "a", encoding="utf-8") as f:
-                f.write("\n".join(out)[:20000] + "\n\n")
-        except Exception as e:  # never let diagnostics hurt the app
-            try:
-                with open(_MEMORY_DUMP_LOG, "a", encoding="utf-8") as f:
-                    f.write(f"memory guard failed: {e}\n")
-            except OSError:
-                pass
-
-
 def _hang_guard(window_title, hung_seconds=15):
     """If Windows reports this app's window as "not responding" for
-    hung_seconds in a row: write every thread's stack to
-    memory_dump.log (shown in Settings -> Show diagnostics, so the
-    real cause can be read off) and restart the launcher once
-    automatically instead of leaving a frozen window. The restart
-    (env NITRO_RESTARTED) only happens once, so it can never loop."""
+    hung_seconds in a row, restart the launcher once instead of leaving a
+    frozen window. The restart (env NITRO_RESTARTED) only happens once, so
+    it can never loop."""
     if os.name != "nt":
         return
     try:
         import ctypes
-        import traceback
         user32 = ctypes.windll.user32
         user32.FindWindowW.restype = ctypes.c_void_p
         user32.IsHungAppWindow.argtypes = [ctypes.c_void_p]
@@ -2435,26 +1822,9 @@ def _hang_guard(window_title, hung_seconds=15):
             hung_since = hung_since or time.time()
             if time.time() - hung_since < hung_seconds:
                 continue
-            names = {t.ident: t.name for t in threading.enumerate()}
-            out = [f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} WINDOW NOT RESPONDING for {hung_seconds}s ==="]
-            for tid, frame in sys._current_frames().items():
-                out.append(f"--- thread {names.get(tid, tid)} ---")
-                out.append("".join(traceback.format_stack(frame)[-8:]).rstrip())
-            try:
-                with open(_MEMORY_DUMP_LOG, "a", encoding="utf-8") as f:
-                    f.write("\n".join(out)[:20000] + "\n\n")
-            except OSError:
-                pass
             if os.environ.get("NITRO_RESTARTED"):
                 return  # already restarted once: leave it, never loop
-            env = dict(os.environ, NITRO_RESTARTED="1", PYINSTALLER_RESET_ENVIRONMENT="1")
-            args = [sys.executable] + ([] if getattr(sys, "frozen", False) else [os.path.abspath(__file__)])
-            args += [a for a in sys.argv[1:]]
-            try:
-                subprocess.Popen(args, env=env, close_fds=True)
-            except OSError:
-                return
-            os._exit(0)
+            _restart_launcher()
     except Exception:
         return
 
@@ -2476,7 +1846,7 @@ def _page_load_watchdog(window, loaded, wait_after_shown=15):
     """The window can appear but its page never load (a stuck WebView2
     start). Seen as "it does nothing, then works on the 2nd or 3rd try".
     If the page hasn't finished loading wait_after_shown seconds after the
-    window appeared, write a snapshot and restart the launcher once."""
+    window appeared, restart the launcher once."""
     if not window.events.shown.wait(timeout=60):
         return
     if loaded.wait(timeout=wait_after_shown) or loaded.is_set():
@@ -2486,7 +1856,7 @@ def _page_load_watchdog(window, loaded, wait_after_shown=15):
     _restart_launcher()
 
 
-def _startup_watchdog(window, t_process_created=None, t_main_start=None, t_before_webview_start=None):
+def _startup_watchdog(window):
     """Safety net for a WebView2 initialization that HANGS instead of
     erroring out -- window.events.shown firing is pywebview's own
     signal that the window actually made it on screen (the same event
@@ -2512,8 +1882,6 @@ def _startup_watchdog(window, t_process_created=None, t_main_start=None, t_befor
     trades a silent, memory-eating hang for a fast, clean failure the
     person can just retry past right away."""
     if window.events.shown.wait(timeout=20):
-        if t_main_start is not None and t_before_webview_start is not None:
-            _log_startup_timing(t_process_created, t_main_start, t_before_webview_start, time.time())
         return  # started fine -- nothing to do
     _show_windows_message(
         "Mario Kart Nitro",
@@ -2681,8 +2049,6 @@ def _cleanup_orphaned_extraction_folders():
 def _run_web(api, mii_only=False):
     """Opens the launcher window (or the Mii editor with --mii)."""
     _import_webview()
-    t_process_created = _process_creation_time()
-    t_main_start = time.time()
     cfg = load_config()
     index_file = _initial_ui_path(cfg)
     _write_initial_state_js(index_file, cfg)
@@ -2710,17 +2076,11 @@ def _run_web(api, mii_only=False):
             except Exception:
                 pass
         window.events.loaded += _open_mii
-    t_before_webview_start = time.time()
     _page_loaded = threading.Event()
     window.events.loaded += lambda: _page_loaded.set()
     threading.Thread(target=_page_load_watchdog, args=(window, _page_loaded), daemon=True).start()
-    threading.Thread(target=_memory_guard, daemon=True).start()
     threading.Thread(target=_hang_guard, args=("Mario Kart Nitro — Mii Editor" if mii_only else "Mario Kart Nitro — Launcher",), daemon=True).start()
-    threading.Thread(
-        target=_startup_watchdog,
-        args=(window, t_process_created, t_main_start, t_before_webview_start),
-        daemon=True,
-    ).start()
+    threading.Thread(target=_startup_watchdog, args=(window,), daemon=True).start()
     _start_webview_with_webview2_check()
 
 
@@ -2767,7 +2127,6 @@ def main():
         _focus_existing_window()
         return
 
-    seed_builtin_mod()
     _migrate_my_stuff_folder()
     if not mii_only:
         # Only the instance that owns the lock may clean up old extraction
@@ -2783,7 +2142,6 @@ def main():
     api = Api()
 
     _run_web(api, mii_only=mii_only)
-
 
 
 if __name__ == "__main__":
