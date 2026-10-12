@@ -85,7 +85,6 @@ DEFAULT_CONFIG = {
     "mystuff_mode": "on",
     "resolution": "1920x1584",
     "language": "en",
-    "fullscreen": False,
     "auto_update": True,
     "performance_mode": False,
     "active_mod": "Nitro Pack",
@@ -347,7 +346,7 @@ class Api:
         return cfg
 
     _TEXT_SETTINGS = ("iso_path", "mystuff_directory", "mystuff_mode", "resolution", "language", "ffl_resource_path")
-    _FLAG_SETTINGS = ("fullscreen", "auto_update", "performance_mode")
+    _FLAG_SETTINGS = ("auto_update", "performance_mode")
     _GAME_SUFFIXES = (".iso", ".wbfs", ".rvz", ".ciso", ".gcz", ".wia", ".gcm", ".wad")
 
     @staticmethod
@@ -1100,21 +1099,43 @@ class Api:
             "--config=Achievements.Achievements.Enabled=False",
             "--config=Graphics.Settings.HiresTextures=True",
         ]
-        if cfg.get("fullscreen"):
-            launch_args.append("--config=Dolphin.Display.Fullscreen=True")
-        else:
-            launch_args.append("--config=Dolphin.Display.Fullscreen=False")
         if cfg.get("performance_mode"):
-            # Light Dolphin settings for weaker PCs. Passed on the command line
-            # for this launch only, so nothing in the player's own Dolphin
-            # configuration is changed. (Hi-res textures stay on: the mod needs them.)
+            # Fastest Dolphin settings for this launch only. They are passed on
+            # the command line, so the player's own Dolphin configuration is never
+            # changed. Hi-res textures stay on (the mod needs them).
             launch_args += [
                 "--config=Graphics.Settings.InternalResolution=1",
                 "--config=Graphics.Settings.MSAA=1",
-                "--config=Graphics.Enhancements.MaxAnisotropy=0",
+                "--config=Graphics.Settings.SSAA=False",
                 "--config=Graphics.Settings.EnablePixelLighting=False",
+                "--config=Graphics.Settings.FastDepthCalc=True",
                 "--config=Graphics.Settings.BackendMultithreading=True",
+                "--config=Graphics.Settings.CPUCull=True",
+                "--config=Graphics.Settings.DisableFog=False",
+                "--config=Graphics.Settings.ShaderCompilationMode=2",
+                "--config=Graphics.Settings.WaitForShadersBeforeStarting=False",
+                "--config=Graphics.Enhancements.MaxAnisotropy=0",
+                "--config=Graphics.Enhancements.PostProcessingShader=",
+                "--config=Graphics.Enhancements.ArbitraryMipmapDetection=False",
+                "--config=Graphics.Enhancements.ForceTrueColor=False",
+                "--config=Graphics.Hardware.VSync=False",
+                "--config=Graphics.Hacks.EFBAccessEnable=False",
+                "--config=Graphics.Hacks.BBoxEnable=False",
+                "--config=Graphics.Hacks.EFBToTextureEnable=True",
+                "--config=Graphics.Hacks.XFBToTextureEnable=True",
+                "--config=Graphics.Hacks.DeferEFBCopies=True",
+                "--config=Graphics.Hacks.SkipDuplicateXFBs=True",
+                "--config=Graphics.Hacks.FastTextureSampling=True",
                 "--config=Dolphin.Core.CPUThread=True",
+                "--config=Dolphin.Core.Fastmem=True",
+                "--config=Dolphin.Core.DSPHLE=True",
+                "--config=Dolphin.Core.SyncOnSkipIdle=True",
+                "--config=Dolphin.Core.MMU=False",
+                "--config=Dolphin.Core.SyncGPU=False",
+                "--config=Dolphin.Core.FPRF=False",
+                "--config=Dolphin.Core.AccurateNaNs=False",
+                "--config=Dolphin.Core.OverclockEnable=False",
+                "--config=Dolphin.DSP.EnableJIT=True",
             ]
         # Resolution = Dolphin's internal resolution (a multiple of the Wii's
         # 640x528 picture). Performance mode keeps the light native setting.

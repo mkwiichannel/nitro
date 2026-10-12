@@ -311,13 +311,26 @@
     .mii-opt.mc{ width:64px !important; height:64px !important; }
     #home .card{ padding:10px 12px; } #home .card h3{ font-size:14px; }
   }
-  #settings .panel{ display:grid; grid-template-columns:1fr 1fr; column-gap:28px; align-content:start; }
-  #settings .field{ max-width:none; margin-bottom:14px; }
+  #settings .panel{ background:none; border:none; padding:0; }
+  .set-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; align-items:start; }
+  .set-card{ position:relative; border:1px solid var(--border); border-radius:16px; padding:20px 22px 8px; overflow:hidden;
+    background:linear-gradient(160deg, rgba(36,19,64,0.85), rgba(26,14,43,0.9)); box-shadow:0 10px 30px rgba(0,0,0,0.35); }
+  .set-card::before{ content:""; position:absolute; left:0; right:0; top:0; height:3px; background:linear-gradient(90deg,#ff6b00,#c084fc); }
+  .set-head{ display:flex; align-items:center; gap:10px; margin:0 0 18px; font-size:14px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text); }
+  .set-ico{ display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; font-size:15px; background:rgba(255,140,0,0.12); border:1px solid var(--border-strong); }
+  #settings .field{ max-width:none; margin-bottom:18px; }
   #settings .field input[type=text], #settings .field select{ max-width:none !important; }
-  #settings .field-inline{ margin:0 0 10px; }
-  #settings #saveSettingsBtn{ justify-self:start; align-self:center; grid-column:2; grid-row:5 / span 3; }
-  #settings .panel > div[style*="border-top"]{ grid-column:1 / -1; margin-top:12px !important; padding-top:14px !important; }
-  #settings .panel > .field-inline{ grid-column:1; }
+  .toggle{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin:0 0 16px; padding:11px 14px; border-radius:11px; cursor:pointer;
+    background:rgba(0,0,0,0.25); border:1px solid var(--border); font-size:13px; font-weight:600; color:var(--text-dim); transition:border-color .15s, color .15s; }
+  .toggle:hover{ border-color:var(--border-strong); color:var(--text); }
+  .toggle input{ position:absolute; opacity:0; pointer-events:none; }
+  .toggle i{ position:relative; flex:none; width:42px; height:24px; border-radius:20px; background:rgba(255,255,255,0.12); transition:background .2s; }
+  .toggle i::after{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .2s; box-shadow:0 2px 6px rgba(0,0,0,0.4); }
+  .toggle input:checked + i{ background:linear-gradient(100deg,#ff6b00,#ffa513); }
+  .toggle input:checked + i::after{ transform:translateX(18px); }
+  .toggle input:focus-visible + i{ outline:2px solid var(--cyan); outline-offset:2px; }
+  .set-actions{ margin-top:18px; display:flex; justify-content:flex-end; }
+  #settings .seg{ display:flex; width:100%; } #settings .seg button{ flex:1; text-align:center; padding:9px 6px; }
 
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
@@ -515,7 +528,9 @@
 <h2 id="settingsTitle">Settings</h2>
 <div class="tag" id="settingsTag">Launcher configuration</div>
 </div>
-<div class="panel">
+<div class="set-grid">
+<div class="set-card">
+<h3 class="set-head"><span class="set-ico">&#128193;</span><span id="groupFiles">Files</span></h3>
 <div class="field"><label id="labelDolphinPath">Dolphin path</label>
 <div class="row"><input type="text" placeholder="Not set" id="settingsDolphinPath" readonly /><button class="browse" id="browseDolphinBtn"><span class="browseLabel">Browse</span></button></div>
 </div>
@@ -525,7 +540,10 @@
 <div class="field"><label id="labelMyStuff">My Stuff folder</label>
 <div class="row"><input type="text" id="settingsMyStuff" readonly /><button class="browse" id="browseMyStuffBtn"><span class="browseLabel">Browse</span></button></div>
 </div>
-<div class="field"><label id="labelResolution">Resolution</label> <select id="settingsResolution" style="max-width: 220px;">
+</div>
+<div class="set-card">
+<h3 class="set-head"><span class="set-ico">&#127918;</span><span id="groupGame">Game</span></h3>
+<div class="field"><label id="labelResolution">Resolution</label> <select id="settingsResolution">
 <option value="640x528">640x528</option>
 <option value="1280x1056">1280x1056</option>
 <option value="1920x1584" selected>1920x1584</option>
@@ -539,7 +557,15 @@
 <option value="7040x5808">7040x5808</option>
 <option value="7680x6336">7680x6336</option>
 </select></div>
-<div class="field"><label id="labelLanguage">Language</label><select id="settingsLanguage" style="max-width: 220px;">
+<div class="field"><label id="labelMyStuffMode">My Stuff in Dolphin</label>
+<div class="seg" id="settingsMyStuffMode" role="group" data-value="on">
+<button type="button" data-v="on" id="optMyStuffOn">Enabled</button><button type="button" data-v="music" id="optMyStuffMusic">Music only</button><button type="button" data-v="off" id="optMyStuffOff">Disabled</button>
+</div></div>
+<label class="toggle" title="Applies the fastest Dolphin settings for this launch: native resolution, no anti-aliasing or filtering, multithreaded video and CPU, fast shader and framebuffer handling, no V-Sync and lighter accuracy options. Your own Dolphin settings are not changed."><span id="labelPerformance">Performance mode</span><input type="checkbox" id="settingsPerformance" /><i></i></label>
+</div>
+<div class="set-card">
+<h3 class="set-head"><span class="set-ico">&#9881;</span><span id="groupLauncher">Launcher</span></h3>
+<div class="field"><label id="labelLanguage">Language</label><select id="settingsLanguage">
 <option value="en">English</option>
 <option value="de">Deutsch</option>
 <option value="fr">Français</option>
@@ -557,15 +583,10 @@
 <option value="sv">Svenska</option>
 <option value="fi">Suomi</option>
 </select></div>
-<div class="field"><label id="labelMyStuffMode">My Stuff in Dolphin</label>
-<div class="seg" id="settingsMyStuffMode" role="group" data-value="on">
-<button type="button" data-v="on" id="optMyStuffOn">Enabled</button><button type="button" data-v="music" id="optMyStuffMusic">Music only</button><button type="button" data-v="off" id="optMyStuffOff">Disabled</button>
-</div></div>
-<div class="field-inline"><input type="checkbox" id="settingsFullscreen" /> <span id="labelFullscreen">Fullscreen</span></div>
-<div class="field-inline"><input type="checkbox" id="settingsAutoUpdate" checked="checked" /> <span id="labelAutoUpdate">Automatic updates</span></div>
-<div class="field-inline" title="Runs Dolphin with light graphics settings (native resolution, no anti-aliasing or anisotropic filtering, multithreaded video) for smoother play on weaker laptops."><input type="checkbox" id="settingsPerformance" /> <span id="labelPerformance">Performance mode</span></div>
-<button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button>
+<label class="toggle"><span id="labelAutoUpdate">Automatic updates</span><input type="checkbox" id="settingsAutoUpdate" checked="checked" /><i></i></label>
 </div>
+</div>
+<div class="set-actions"><button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button></div>
 </section>
 <section class="screen" id="credits">
 <div class="sub-head"><button class="back" onclick="go('home')" id="creditsBackBtn">← Home</button>
@@ -2070,7 +2091,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"License, community links, and what Nitro is built on.",
       settingsBackBtn:"← Home", settingsTitle:"Settings", settingsTag:"Launcher configuration",
       labelDolphinPath:"Dolphin path", labelIsoPath:"MKW ISO path", labelMyStuff:"My Stuff folder", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Enabled", optMyStuffMusic:"Music only", optMyStuffOff:"Disabled", addedFiles:"Files added:",
-      labelResolution:"Resolution", labelLanguage:"Language", labelFullscreen:"Fullscreen",
+      labelResolution:"Resolution", labelLanguage:"Language", groupFiles:"Files", groupGame:"Game", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatic updates", labelPerformance:"Performance mode", saveSettingsLabel:"Save settings", browseLabel:"Browse",
       setupTitle:"Setup", setupIntro:"Set your paths once. Nitro will remember them.",
       labelSetupDolphin:"Dolphin installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Continue",
@@ -2129,7 +2150,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"Lizenz, Community-Links und worauf Nitro basiert.",
       settingsBackBtn:"← Start", settingsTitle:"Einstellungen", settingsTag:"Launcher-Konfiguration",
       labelDolphinPath:"Dolphin-Pfad", labelIsoPath:"MKW-ISO-Pfad", labelMyStuff:"My-Stuff-Ordner", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Aktiviert", optMyStuffMusic:"Nur Musik", optMyStuffOff:"Deaktiviert", addedFiles:"Dateien hinzugefügt:",
-      labelResolution:"Auflösung", labelLanguage:"Sprache", labelFullscreen:"Vollbild",
+      labelResolution:"Auflösung", labelLanguage:"Sprache", groupFiles:"Dateien", groupGame:"Spiel", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatische Updates", labelPerformance:"Leistungsmodus", saveSettingsLabel:"Einstellungen speichern", browseLabel:"Durchsuchen",
       setupTitle:"Einrichtung", setupIntro:"Lege deine Pfade einmal fest. Nitro merkt sie sich.",
       labelSetupDolphin:"Dolphin-Installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Weiter",
@@ -2188,7 +2209,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Crédits", cardCreditsDesc:"Licence, liens communautaires et base de Nitro.",
       settingsBackBtn:"← Accueil", settingsTitle:"Paramètres", settingsTag:"Configuration du launcher",
       labelDolphinPath:"Chemin Dolphin", labelIsoPath:"Chemin ISO MKW", labelMyStuff:"Dossier My Stuff", labelMyStuffMode:"My Stuff dans Dolphin", optMyStuffOn:"Activé", optMyStuffMusic:"Musique uniquement", optMyStuffOff:"Désactivé", addedFiles:"Fichiers ajoutés :",
-      labelResolution:"Résolution", labelLanguage:"Langue", labelFullscreen:"Plein écran",
+      labelResolution:"Résolution", labelLanguage:"Langue", groupFiles:"Fichiers", groupGame:"Jeu", groupLauncher:"Lanceur",
       labelAutoUpdate:"Mises à jour automatiques", labelPerformance:"Mode performance", saveSettingsLabel:"Enregistrer", browseLabel:"Parcourir",
       setupTitle:"Configuration", setupIntro:"Définissez vos chemins une fois. Nitro s'en souviendra.",
       labelSetupDolphin:"Installation Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continuer",
@@ -2247,7 +2268,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Créditos", cardCreditsDesc:"Licencia, enlaces de la comunidad y en qué se basa Nitro.",
       settingsBackBtn:"← Inicio", settingsTitle:"Ajustes", settingsTag:"Configuración del launcher",
       labelDolphinPath:"Ruta de Dolphin", labelIsoPath:"Ruta de la ISO", labelMyStuff:"Carpeta My Stuff", labelMyStuffMode:"My Stuff en Dolphin", optMyStuffOn:"Activado", optMyStuffMusic:"Solo música", optMyStuffOff:"Desactivado", addedFiles:"Archivos añadidos:",
-      labelResolution:"Resolución", labelLanguage:"Idioma", labelFullscreen:"Pantalla completa",
+      labelResolution:"Resolución", labelLanguage:"Idioma", groupFiles:"Archivos", groupGame:"Juego", groupLauncher:"Lanzador",
       labelAutoUpdate:"Actualizaciones automáticas", labelPerformance:"Modo rendimiento", saveSettingsLabel:"Guardar ajustes", browseLabel:"Examinar",
       setupTitle:"Configuración", setupIntro:"Configura tus rutas una vez. Nitro las recordará.",
       labelSetupDolphin:"Instalación de Dolphin", labelSetupIso:"ISO de Mario Kart Wii", setupContinueLabel:"Continuar",
@@ -2306,7 +2327,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Crediti", cardCreditsDesc:"Licenza, link della community e su cosa si basa Nitro.",
       settingsBackBtn:"← Home", settingsTitle:"Impostazioni", settingsTag:"Configurazione del launcher",
       labelDolphinPath:"Percorso Dolphin", labelIsoPath:"Percorso ISO MKW", labelMyStuff:"Cartella My Stuff", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Attivato", optMyStuffMusic:"Solo musica", optMyStuffOff:"Disattivato", addedFiles:"File aggiunti:",
-      labelResolution:"Risoluzione", labelLanguage:"Lingua", labelFullscreen:"Schermo intero",
+      labelResolution:"Risoluzione", labelLanguage:"Lingua", groupFiles:"File", groupGame:"Gioco", groupLauncher:"Launcher",
       labelAutoUpdate:"Aggiornamenti automatici", labelPerformance:"Modalità prestazioni", saveSettingsLabel:"Salva impostazioni", browseLabel:"Sfoglia",
       setupTitle:"Configurazione", setupIntro:"Imposta i tuoi percorsi una volta. Nitro li ricorderà.",
       labelSetupDolphin:"Installazione Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continua",
@@ -2365,7 +2386,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Créditos", cardCreditsDesc:"Licença, links da comunidade e a base do Nitro.",
       settingsBackBtn:"← Início", settingsTitle:"Configurações", settingsTag:"Configuração do launcher",
       labelDolphinPath:"Caminho do Dolphin", labelIsoPath:"Caminho da ISO", labelMyStuff:"Pasta My Stuff", labelMyStuffMode:"My Stuff no Dolphin", optMyStuffOn:"Ativado", optMyStuffMusic:"Só música", optMyStuffOff:"Desativado", addedFiles:"Ficheiros adicionados:",
-      labelResolution:"Resolução", labelLanguage:"Idioma", labelFullscreen:"Tela cheia",
+      labelResolution:"Resolução", labelLanguage:"Idioma", groupFiles:"Arquivos", groupGame:"Jogo", groupLauncher:"Launcher",
       labelAutoUpdate:"Atualizações automáticas", labelPerformance:"Modo desempenho", saveSettingsLabel:"Salvar configurações", browseLabel:"Procurar",
       setupTitle:"Configuração", setupIntro:"Defina seus caminhos uma vez. O Nitro vai lembrá-los.",
       labelSetupDolphin:"Instalação do Dolphin", labelSetupIso:"ISO do Mario Kart Wii", setupContinueLabel:"Continuar",
@@ -2424,7 +2445,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"Licentie, community-links en waar Nitro op gebouwd is.",
       settingsBackBtn:"← Start", settingsTitle:"Instellingen", settingsTag:"Launcher-configuratie",
       labelDolphinPath:"Dolphin-pad", labelIsoPath:"MKW ISO-pad", labelMyStuff:"My Stuff-map", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Ingeschakeld", optMyStuffMusic:"Alleen muziek", optMyStuffOff:"Uitgeschakeld", addedFiles:"Bestanden toegevoegd:",
-      labelResolution:"Resolutie", labelLanguage:"Taal", labelFullscreen:"Volledig scherm",
+      labelResolution:"Resolutie", labelLanguage:"Taal", groupFiles:"Bestanden", groupGame:"Spel", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatische updates", labelPerformance:"Prestatiemodus", saveSettingsLabel:"Instellingen opslaan", browseLabel:"Bladeren",
       setupTitle:"Installatie", setupIntro:"Stel je paden één keer in. Nitro onthoudt ze.",
       labelSetupDolphin:"Dolphin-installatie", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Doorgaan",
@@ -2483,7 +2504,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Twórcy", cardCreditsDesc:"Licencja, linki społeczności i na czym oparte jest Nitro.",
       settingsBackBtn:"← Start", settingsTitle:"Ustawienia", settingsTag:"Konfiguracja launchera",
       labelDolphinPath:"Ścieżka Dolphin", labelIsoPath:"Ścieżka ISO MKW", labelMyStuff:"Folder My Stuff", labelMyStuffMode:"My Stuff w Dolphin", optMyStuffOn:"Włączone", optMyStuffMusic:"Tylko muzyka", optMyStuffOff:"Wyłączone", addedFiles:"Dodano pliki:",
-      labelResolution:"Rozdzielczość", labelLanguage:"Język", labelFullscreen:"Pełny ekran",
+      labelResolution:"Rozdzielczość", labelLanguage:"Język", groupFiles:"Pliki", groupGame:"Gra", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatyczne aktualizacje", labelPerformance:"Tryb wydajności", saveSettingsLabel:"Zapisz ustawienia", browseLabel:"Przeglądaj",
       setupTitle:"Konfiguracja", setupIntro:"Ustaw ścieżki raz. Nitro je zapamięta.",
       labelSetupDolphin:"Instalacja Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Dalej",
@@ -2542,7 +2563,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Emek Verenler", cardCreditsDesc:"Lisans, topluluk bağlantıları ve Nitro'nun dayandığı temel.",
       settingsBackBtn:"← Ana Sayfa", settingsTitle:"Ayarlar", settingsTag:"Launcher yapılandırması",
       labelDolphinPath:"Dolphin yolu", labelIsoPath:"MKW ISO yolu", labelMyStuff:"My Stuff klasörü", labelMyStuffMode:"Dolphin'de My Stuff", optMyStuffOn:"Etkin", optMyStuffMusic:"Yalnızca müzik", optMyStuffOff:"Devre dışı", addedFiles:"Eklenen dosya:",
-      labelResolution:"Çözünürlük", labelLanguage:"Dil", labelFullscreen:"Tam ekran",
+      labelResolution:"Çözünürlük", labelLanguage:"Dil", groupFiles:"Dosyalar", groupGame:"Oyun", groupLauncher:"Başlatıcı",
       labelAutoUpdate:"Otomatik güncellemeler", labelPerformance:"Performans modu", saveSettingsLabel:"Ayarları kaydet", browseLabel:"Gözat",
       setupTitle:"Kurulum", setupIntro:"Yollarını bir kez ayarla. Nitro onları hatırlayacak.",
       labelSetupDolphin:"Dolphin kurulumu", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Devam",
@@ -2601,7 +2622,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Авторы", cardCreditsDesc:"Лицензия, ссылки сообщества и на чём основан Nitro.",
       settingsBackBtn:"← Главная", settingsTitle:"Настройки", settingsTag:"Настройка лаунчера",
       labelDolphinPath:"Путь к Dolphin", labelIsoPath:"Путь к ISO", labelMyStuff:"Папка My Stuff", labelMyStuffMode:"My Stuff в Dolphin", optMyStuffOn:"Включено", optMyStuffMusic:"Только музыка", optMyStuffOff:"Выключено", addedFiles:"Добавлено файлов:",
-      labelResolution:"Разрешение", labelLanguage:"Язык", labelFullscreen:"Полноэкранный режим",
+      labelResolution:"Разрешение", labelLanguage:"Язык", groupFiles:"Файлы", groupGame:"Игра", groupLauncher:"Лаунчер",
       labelAutoUpdate:"Автоматические обновления", labelPerformance:"Режим производительности", saveSettingsLabel:"Сохранить настройки", browseLabel:"Обзор",
       setupTitle:"Настройка", setupIntro:"Задайте пути один раз. Nitro их запомнит.",
       labelSetupDolphin:"Установка Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Продолжить",
@@ -2660,7 +2681,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"クレジット", cardCreditsDesc:"ライセンス、コミュニティリンク、Nitroの構成要素。",
       settingsBackBtn:"← ホーム", settingsTitle:"設定", settingsTag:"ランチャー設定",
       labelDolphinPath:"Dolphinのパス", labelIsoPath:"MKW ISOのパス", labelMyStuff:"My Stuffフォルダ", labelMyStuffMode:"DolphinでのMy Stuff", optMyStuffOn:"有効", optMyStuffMusic:"音楽のみ", optMyStuffOff:"無効", addedFiles:"追加したファイル:",
-      labelResolution:"解像度", labelLanguage:"言語", labelFullscreen:"フルスクリーン",
+      labelResolution:"解像度", labelLanguage:"言語", groupFiles:"ファイル", groupGame:"ゲーム", groupLauncher:"ランチャー",
       labelAutoUpdate:"自動更新", labelPerformance:"パフォーマンスモード", saveSettingsLabel:"設定を保存", browseLabel:"参照",
       setupTitle:"セットアップ", setupIntro:"パスを一度設定すれば、Nitroが記憶します。",
       labelSetupDolphin:"Dolphinのインストール先", labelSetupIso:"マリオカートWii ISO", setupContinueLabel:"続ける",
@@ -2719,7 +2740,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"크레딧", cardCreditsDesc:"라이선스, 커뮤니티 링크 및 Nitro의 기반.",
       settingsBackBtn:"← 홈", settingsTitle:"설정", settingsTag:"런처 구성",
       labelDolphinPath:"Dolphin 경로", labelIsoPath:"MKW ISO 경로", labelMyStuff:"My Stuff 폴더", labelMyStuffMode:"Dolphin의 My Stuff", optMyStuffOn:"사용", optMyStuffMusic:"음악만", optMyStuffOff:"사용 안 함", addedFiles:"추가된 파일:",
-      labelResolution:"해상도", labelLanguage:"언어", labelFullscreen:"전체 화면",
+      labelResolution:"해상도", labelLanguage:"언어", groupFiles:"파일", groupGame:"게임", groupLauncher:"런처",
       labelAutoUpdate:"자동 업데이트", labelPerformance:"성능 모드", saveSettingsLabel:"설정 저장", browseLabel:"찾아보기",
       setupTitle:"설정", setupIntro:"경로를 한 번 설정하면 Nitro가 기억합니다.",
       labelSetupDolphin:"Dolphin 설치 경로", labelSetupIso:"마리오 카트 Wii ISO", setupContinueLabel:"계속",
@@ -2778,7 +2799,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"鸣谢", cardCreditsDesc:"许可证、社区链接以及 Nitro 的构建基础。",
       settingsBackBtn:"← 主页", settingsTitle:"设置", settingsTag:"启动器配置",
       labelDolphinPath:"Dolphin 路径", labelIsoPath:"MKW ISO 路径", labelMyStuff:"My Stuff 文件夹", labelMyStuffMode:"Dolphin 中的 My Stuff", optMyStuffOn:"启用", optMyStuffMusic:"仅音乐", optMyStuffOff:"禁用", addedFiles:"已添加文件：",
-      labelResolution:"分辨率", labelLanguage:"语言", labelFullscreen:"全屏",
+      labelResolution:"分辨率", labelLanguage:"语言", groupFiles:"文件", groupGame:"游戏", groupLauncher:"启动器",
       labelAutoUpdate:"自动更新", labelPerformance:"性能模式", saveSettingsLabel:"保存设置", browseLabel:"浏览",
       setupTitle:"设置向导", setupIntro:"设置一次路径，Nitro 会记住它们。",
       labelSetupDolphin:"Dolphin 安装位置", labelSetupIso:"马里奥赛车 Wii ISO", setupContinueLabel:"继续",
@@ -2837,7 +2858,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"الشكر والتقدير", cardCreditsDesc:"الترخيص، روابط المجتمع، وأساس Nitro.",
       settingsBackBtn:"← الرئيسية", settingsTitle:"الإعدادات", settingsTag:"تهيئة المشغّل",
       labelDolphinPath:"مسار Dolphin", labelIsoPath:"مسار ISO", labelMyStuff:"مجلد My Stuff", labelMyStuffMode:"My Stuff في Dolphin", optMyStuffOn:"مفعّل", optMyStuffMusic:"الموسيقى فقط", optMyStuffOff:"معطّل", addedFiles:"الملفات المضافة:",
-      labelResolution:"الدقة", labelLanguage:"اللغة", labelFullscreen:"ملء الشاشة",
+      labelResolution:"الدقة", labelLanguage:"اللغة", groupFiles:"الملفات", groupGame:"اللعبة", groupLauncher:"المشغّل",
       labelAutoUpdate:"التحديثات التلقائية", labelPerformance:"وضع الأداء", saveSettingsLabel:"حفظ الإعدادات", browseLabel:"استعراض",
       setupTitle:"الإعداد", setupIntro:"حدد مساراتك مرة واحدة. سيتذكرها Nitro.",
       labelSetupDolphin:"تثبيت Dolphin", labelSetupIso:"ISO الخاص بماريو كارت Wii", setupContinueLabel:"متابعة",
@@ -2896,7 +2917,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"Licens, community-länkar och vad Nitro bygger på.",
       settingsBackBtn:"← Hem", settingsTitle:"Inställningar", settingsTag:"Launcher-konfiguration",
       labelDolphinPath:"Dolphin-sökväg", labelIsoPath:"MKW ISO-sökväg", labelMyStuff:"My Stuff-mapp", labelMyStuffMode:"My Stuff i Dolphin", optMyStuffOn:"Aktiverad", optMyStuffMusic:"Endast musik", optMyStuffOff:"Avstängd", addedFiles:"Filer tillagda:",
-      labelResolution:"Upplösning", labelLanguage:"Språk", labelFullscreen:"Helskärm",
+      labelResolution:"Upplösning", labelLanguage:"Språk", groupFiles:"Filer", groupGame:"Spel", groupLauncher:"Startprogram",
       labelAutoUpdate:"Automatiska uppdateringar", labelPerformance:"Prestandaläge", saveSettingsLabel:"Spara inställningar", browseLabel:"Bläddra",
       setupTitle:"Konfiguration", setupIntro:"Ange dina sökvägar en gång. Nitro kommer ihåg dem.",
       labelSetupDolphin:"Dolphin-installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Fortsätt",
@@ -2955,7 +2976,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Tekijät", cardCreditsDesc:"Lisenssi, yhteisölinkit ja mihin Nitro perustuu.",
       settingsBackBtn:"← Koti", settingsTitle:"Asetukset", settingsTag:"Käynnistimen asetukset",
       labelDolphinPath:"Dolphin-polku", labelIsoPath:"MKW ISO -polku", labelMyStuff:"My Stuff -kansio", labelMyStuffMode:"My Stuff Dolphinissa", optMyStuffOn:"Käytössä", optMyStuffMusic:"Vain musiikki", optMyStuffOff:"Pois käytöstä", addedFiles:"Tiedostoja lisätty:",
-      labelResolution:"Resoluutio", labelLanguage:"Kieli", labelFullscreen:"Koko näyttö",
+      labelResolution:"Resoluutio", labelLanguage:"Kieli", groupFiles:"Tiedostot", groupGame:"Peli", groupLauncher:"Käynnistin",
       labelAutoUpdate:"Automaattiset päivitykset", labelPerformance:"Suorituskykytila", saveSettingsLabel:"Tallenna asetukset", browseLabel:"Selaa",
       setupTitle:"Asennus", setupIntro:"Aseta polkusi kerran. Nitro muistaa ne.",
       labelSetupDolphin:"Dolphin-asennus", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Jatka",
@@ -3073,7 +3094,6 @@ function toast(msg, isError, sticky) {
       sel.value = v;
     })();
     document.getElementById('settingsLanguage').value = state.language || 'en';
-    document.getElementById('settingsFullscreen').checked = !!state.fullscreen;
     document.getElementById('settingsAutoUpdate').checked = !!state.auto_update;
     document.getElementById('settingsPerformance').checked = !!state.performance_mode;
 
@@ -3206,7 +3226,6 @@ function toast(msg, isError, sticky) {
       mystuff_mode: document.getElementById('settingsMyStuffMode').dataset.value || 'on',
       resolution: document.getElementById('settingsResolution').value,
       language: document.getElementById('settingsLanguage').value,
-      fullscreen: document.getElementById('settingsFullscreen').checked,
       auto_update: document.getElementById('settingsAutoUpdate').checked,
       performance_mode: document.getElementById('settingsPerformance').checked,
     };
