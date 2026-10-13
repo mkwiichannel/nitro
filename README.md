@@ -29,7 +29,7 @@
   speed.
 - **My Stuff.** Drop your own files like music into a folder and the launcher
   puts them into the mod for you.
-- **16 languages.** Strings live in `translations.json`.
+- **16 languages.** Strings live in.
 - **Small and quick.** One `.exe`, no installer!
 
 ## What you need
