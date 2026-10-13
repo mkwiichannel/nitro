@@ -37,7 +37,7 @@ import modpack_sync
 import xml.etree.ElementTree as ET
 import zipfile
 
-webview = None  # imported when the window is opened
+webview = None
 
 
 def _import_webview():
@@ -52,8 +52,6 @@ APP_VERSION = "1.0.0"
 WEBVIEW2_DOWNLOAD_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
 BUILD_STAMP = "v1.0.0"
 
-# Small JSON file in the repo. Only used as a fallback link for the launcher
-# update when GitHub's release list can't be read.
 MANIFEST_URL = "https://raw.githubusercontent.com/mkwiichannel/nitro/main/manifest.json"
 
 
