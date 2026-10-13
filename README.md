@@ -1,82 +1,97 @@
 <div align="center">
 
-<img src="logo.png" alt="Mario Kart Nitro" width="140" />
+<img src="logo.png" alt="Mario Kart Nitro" width="150" />
 
 # Mario Kart Nitro
 
+**A Mario Kart Wii mod and the small launcher that runs it.**
+Pick your Dolphin, pick your game, press Play.
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE.txt)
-[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#requirements)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#what-you-need)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2.svg)](https://discord.gg/AhkHNPG65G)
 
 </div>
 
 ---
 
-## What is this?
+## Why a launcher?
 
-Mario Kart Nitro is a Mario Kart Wii mod distributed through its own lightweight
-Windows launcher, so nobody has to manage Riivolution XML files, Dolphin
-settings, and folder structures by hand.
+Running a big Mario Kart Wii mod normally means editing Riivolution XML files,
+copying folders into the right place, and fixing Dolphin settings by hand every
+time something updates. Nitro does all of that for you. You press one button and
+the game starts.
 
-## Features
+## What it does
 
-- **One-click play** – pick your Dolphin and your game, press Play. The launcher
-  stages the mod into Dolphin's `Load/Riivolution` folder and starts the game.
-- **Automatic mod updates** – the modpack is synced from the
-  [Nitropack](https://github.com/mkwiichannel/Nitropack) repository. Only files
-  that changed are downloaded and every file is hash-checked.
-- **Self-updating launcher** – new launcher builds are applied in place, with no
-  reinstalling or manual replacing.
-- **Mii editor** – a live close-up preview with visual pickers for every part
-  (face, hair, brows, eyes, nose, mouth, beard, glasses, …), colour swatches and
-  sliders.
-- **Fits your window** – every page fits the window without page scrolling
-- **16 languages** – see `translations.json`.
-- **Light on resources** – a single standalone `.exe`, tuned to load fast and stay
-  smooth on modest hardware.
+- **Play in one click.** Sets up the mod inside Dolphin's `Load/Riivolution`
+  folder and starts the game.
+- **Keeps the mod up to date.** Pulls from the
+  [Nitropack](https://github.com/mkwiichannel/Nitropack) repo and only downloads
+  files that changed. Every file is checked against its hash, and a download that
+  gets interrupted picks up where it stopped.
+- **Updates itself.** New launcher versions come from this repo's official
+  releases, are checked against a checksum, and replace the old exe.
+- **Mii editor.** Pick every part visually, with a live preview next to it.
+- **Performance mode.** One switch that starts Dolphin with settings tuned for
+  speed (native resolution, no anti-aliasing, faster CPU and video options, 60 Hz
+  for PAL). It only applies to that launch. Your own Dolphin settings are never
+  touched.
+- **My Stuff.** Drop your own files (like music) into a folder and the launcher
+  puts them into the mod for you.
+- **16 languages.** Strings live in `translations.json`.
+- **Small and quick.** One `.exe`, no installer, made to run fine on modest PCs.
 
-## Requirements
+## What you need
 
-- Windows 10/11,
-- [Dolphin Emulator](https://dolphin-emu.org/) with Riivolution support
-- A legally obtained Mario Kart Wii ISO/WBFS (not provided here or anywhere by
-  this project)
+- Windows 10 or 11
+- [Dolphin](https://dolphin-emu.org/) with Riivolution support
+- Your own Mario Kart Wii ISO or WBFS. This project doesn't provide one and never
+  will.
 
-## Getting started
+## Get started
 
-1. Grab the latest `MarioKartNitro.exe` from the [Releases](../../releases) page.
-2. Run it.
-3. The mod content is downloaded automatically.
-4. Press Play. Updates are checked every time the launcher opens.
+1. Download `MarioKartNitro.exe` from the [Releases](../../releases) page.
+2. Run it and point it at `Dolphin.exe` and your game file.
+3. Let it download the mod the first time.
+4. Press Play.
 
+Updates are checked every time the launcher opens.
 
-## How updates work
+## Where things come from
 
-| What | Source | How it applies |
+| What | Source | How it arrives |
 |---|---|---|
-| Modpack | `mkwiichannel/Nitropack` (GitHub) | Incremental, hash-checked sync into Dolphin's Riivolution folder |
-| Launcher | Latest [release](../../releases/latest) of this repository | "Update available" prompt, then the `.exe` is swapped and relaunched |
+| Mod files | [`mkwiichannel/Nitropack`](https://github.com/mkwiichannel/Nitropack) | Incremental, hash-checked sync |
+| Launcher | [Latest release](../../releases/latest) of this repo | Prompt, then the exe is swapped and restarted |
 
-The time of the last modpack sync and launcher update is stored in the launcher
-config and shown on the version pill.
+## Build it yourself
 
+You need Windows and Python 3.10 or newer. Get all the files from this repo (the
+launcher imports `modpack_sync.py` and the `mii_renderer` folder), then run:
 
+```
+build.bat
+```
 
+The finished exe ends up in `dist/MarioKartNitro.exe`.
 
+## Built with
+
+[PyWebView](https://pywebview.flowrl.com/) for the window, plain HTML for the
+interface, and Python for everything behind it. The Mii renderer is based on
+[MiiJS / FFL.js](mii_renderer/THIRD_PARTY_NOTICES.md).
 
 ## License
 
-Released under the [GNU General Public License v3.0](LICENSE.txt).
-
-Third-party components and their licenses are listed in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+GPL v3, see [LICENSE.txt](LICENSE.txt). Third-party parts and their licenses are
+listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Community
 
-Join the [Discord](https://discord.gg/AhkHNPG65G) for support, updates,
-and to chat with the community.
+Questions, bugs, or just want to chat? Come to the
+[Discord](https://discord.gg/AhkHNPG65G).
 
 ---
 
-<sub>Developed by Dom (mkwiichannel).</sub>
+<sub>Made by Dom (mkwiichannel).</sub>
