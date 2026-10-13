@@ -4,8 +4,7 @@
 
 # Mario Kart Nitro
 
-**A Mario Kart Wii mod, and the launcher that runs it.**  
-Pick your Dolphin, pick your game, press Play.
+
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE.txt)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#what-you-need)
