@@ -4,8 +4,6 @@
 
 # Mario Kart Nitro
 
-**A Mario Kart Wii mod and the small launcher that runs it.**
-Pick your Dolphin, pick your game, press Play.
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE.txt)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#what-you-need)
@@ -15,12 +13,6 @@ Pick your Dolphin, pick your game, press Play.
 
 ---
 
-## Why a launcher?
-
-Running a big Mario Kart Wii mod normally means editing Riivolution XML files,
-copying folders into the right place, and fixing Dolphin settings by hand every
-time something updates. Nitro does all of that for you. You press one button and
-the game starts.
 
 ## What it does
 
@@ -34,13 +26,11 @@ the game starts.
   releases, are checked against a checksum, and replace the old exe.
 - **Mii editor.** Pick every part visually, with a live preview next to it.
 - **Performance mode.** One switch that starts Dolphin with settings tuned for
-  speed (native resolution, no anti-aliasing, faster CPU and video options, 60 Hz
-  for PAL). It only applies to that launch. Your own Dolphin settings are never
-  touched.
-- **My Stuff.** Drop your own files (like music) into a folder and the launcher
+  speed.
+- **My Stuff.** Drop your own files like music into a folder and the launcher
   puts them into the mod for you.
 - **16 languages.** Strings live in `translations.json`.
-- **Small and quick.** One `.exe`, no installer, made to run fine on modest PCs.
+- **Small and quick.** One `.exe`, no installer!
 
 ## What you need
 
