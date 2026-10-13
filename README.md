@@ -65,22 +65,6 @@ Updates are checked every time the launcher opens.
 | Mod files | [`mkwiichannel/Nitropack`](https://github.com/mkwiichannel/Nitropack) | Incremental, hash-checked sync |
 | Launcher | [Latest release](../../releases/latest) of this repo | Prompt, then the exe is swapped and restarted |
 
-## Build it yourself
-
-You need Windows and Python 3.10 or newer. Get all the files from this repo (the
-launcher imports `modpack_sync.py` and the `mii_renderer` folder), then run:
-
-```
-build.bat
-```
-
-The finished exe ends up in `dist/MarioKartNitro.exe`.
-
-## Built with
-
-[PyWebView](https://pywebview.flowrl.com/) for the window, plain HTML for the
-interface, and Python for everything behind it. The Mii renderer is based on
-[MiiJS / FFL.js](mii_renderer/THIRD_PARTY_NOTICES.md).
 
 ## License
 
