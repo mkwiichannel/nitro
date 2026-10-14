@@ -1,15 +1,7 @@
 """
 Mario Kart Nitro — Launcher
 
-Desktop shell around index.html (pywebview), with a real Python
-backend behind it:
-  - persists your Dolphin path / ISO path / preferences to disk
-  - real native file/folder browse dialogs
-  - imports and tracks Riivolution mod profiles (.xml), one "active"
-    at a time
-  - Play stages the active mod into Dolphin's Riivolution folder and
-    actually launches Dolphin with your ISO
-  - Open Discord opens your real invite link in the system browser
+Desktop shell around index.html (pywebview)
 
 Run directly with:  python main.py
 Build a Windows .exe with:  build.bat   (see README.txt)
@@ -105,9 +97,6 @@ _HW_CACHE = {}
 
 
 def detect_hardware():
-    """Graphics card, CPU threads and RAM of this PC, read once and cached.
-    Used only to choose sensible Dolphin settings for Performance mode.
-    Any failure just returns "unknown" and the safe low settings are used."""
     if _HW_CACHE:
         return _HW_CACHE
     info = {"gpus": [], "cpu_threads": os.cpu_count() or 2, "ram_gb": 0.0, "gpu_class": "unknown"}
@@ -160,14 +149,6 @@ def load_config() -> dict:
 
 
 def _repair_stale_builtin_mod(cfg: dict) -> None:
-    """Self-heal: a saved config.json from an OLDER build can carry
-    forward an xml_path/content_root pointing at a location that no
-    longer exists. If the built-in entry's xml_path is missing on
-    disk, re-point it (and content_root, if not customized) at the
-    permanent app-data location — but only if something was actually
-    installed there before; otherwise leave it empty so the app
-    correctly shows 'Install' rather than silently pointing at
-    nothing."""
     permanent_content = os.path.join(app_data_dir(), "mods", "Nitro Pack", "content")
     good_xml = os.path.join(permanent_content, "riivolution", "MKnitro.xml")
     for m in cfg.get("mods", []):
@@ -190,18 +171,6 @@ def save_config(cfg: dict) -> None:
 
 
 def _parse_riivolution_options(xml_path, my_stuff_mode="on"):
-    """Read a Riivolution XML and pick a choice for every <option>,
-    matching the user's own proven-working manual configuration
-    exactly (confirmed via screenshot of Dolphin's own 'Start with
-    Riivolution Patches' dialog: Pack=Enabled, My Stuff=From Pack) —
-    not a generic default, since this specific mod's textures depend
-    on My Stuff being explicitly set to "From Pack", not left
-    disabled.
-
-    Dolphin matches by option-name (this XML has no id="..."
-    attributes), and choice indices are 1-based (0 = disabled,
-    confirmed in DiscIO/RiivolutionParser.cpp).
-    """
     tree = ET.parse(xml_path)
     root = tree.getroot()
     options_out = []
@@ -222,7 +191,6 @@ def _parse_riivolution_options(xml_path, my_stuff_mode="on"):
             else:
                 # prefer whichever choice matches the user's own
                 # proven-working selection ("From Pack") over any
-                # other option (e.g. "From CTGP-r")
                 chosen_index = 1  # fallback: first choice, 1-indexed
                 for idx, choice in enumerate(choices):
                     if "pack" in choice.get("name", "").lower():
@@ -288,7 +256,7 @@ def download_file(url, dest_path, progress_callback=None):
     """Download a file of any size to dest_path, streaming it to disk and
     checking the final size against what the server announced. Calls
     progress_callback(bytes_downloaded, total_bytes) while it runs."""
-    read_timeout = 600  # no data for 10 minutes before giving up, not a total-time limit
+    read_timeout = 600  # no data for 10 minutes before giving up, not a total-time limit!
     with urllib.request.urlopen(_browser_request(url), timeout=read_timeout) as response:
         expected_size = response.headers.get("Content-Length")
         total = int(expected_size) if expected_size else None
