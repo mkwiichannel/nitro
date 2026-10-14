@@ -67,4 +67,4 @@ Questions, bugs, or just want to chat? Come to the
 
 ---
 
-<sub>Made by MKWii Channel.</sub>
+<sub> </sub>
