@@ -32,6 +32,13 @@ class SyncError(Exception):
     pass
 
 
+NEVER_INSTALL_PREFIXES = ("riivolution/save/",)
+
+
+def _never_install(rel):
+    return rel.lower().startswith(NEVER_INSTALL_PREFIXES)
+
+
 def _protected(rel):
     low = rel.lower()
     return low.startswith(PROTECTED_PREFIXES) or low.startswith("mariokartnitro_test/mystuff/")
@@ -107,7 +114,7 @@ def fetch_remote(repo, branch, state, timeout=20):
     files = {}
     for entry in data.get("tree", []):
         rel = entry.get("path", "")
-        if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not rel.lower().endswith(".zip"):
+        if entry.get("type") == "blob" and "/" in rel and _safe_rel(rel) and not _never_install(rel) and not rel.lower().endswith(".zip"):
             files[rel] = [entry["sha"], int(entry.get("size", 0))]
     if not files:
         raise SyncError("The modpack repository has no folders to install.")
@@ -206,6 +213,8 @@ def make_plan(dest, remote_files, state, workers=2, progress_cb=None):
 
     download, to_hash, trusted = [], [], {}
     for rel, (sha, size) in remote_files.items():
+        if _never_install(rel):
+            continue
         p = _local_path(dest, rel)
         try:
             st = os.stat(p)
