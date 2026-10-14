@@ -52,7 +52,7 @@ Updates are checked every time the launcher opens.
 
 | What | Source | How it arrives |
 |---|---|---|
-| Mod files | [`mkwiichannel/Nitropack`](https://github.com/mkwiichannel/Nitropack) | Incremental, hash-checked sync |
+| Mod files | [`Nitropack`](https://github.com/mkwiichannel/Nitropack) | Incremental, hash-checked sync |
 | Launcher | [Latest release](../../releases/latest) of this repo | Prompt, then the exe is swapped and restarted |
 
 ## License
