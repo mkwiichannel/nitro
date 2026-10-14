@@ -46,7 +46,7 @@
 3. Let it download the mod the first time.
 4. Press Play.
 
-###### Updates are checked every time the launcher opens.
+  ###### Updates are checked every time the launcher opens.
 
 ## Where things come from
 
