@@ -20,8 +20,6 @@ RAW_BASE = "https://raw.githubusercontent.com"
 DEFAULT_REPO = "mkwiichannel/Nitropack"
 DEFAULT_BRANCH = "main"
 
-# The Riivolution XML redirects the game's save into this folder, so the
-# files here are the PLAYER's progress, not mod content.
 PROTECTED_PREFIXES = ("riivolution/save/", "riivolution/config/", "mariokartnitro_test/my stuff/")
 
 _BAD_CHARS = set('<>:"|?*\\')
