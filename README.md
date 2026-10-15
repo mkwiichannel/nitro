@@ -19,7 +19,7 @@
 - **Play in one click.** Sets up the mod inside Dolphin's `Load/Riivolution`
   folder and starts the game.
 - **Keeps the mod up to date.** Pulls from the
-  [Nitropack](https://github.com/mkwiichannel/Nitropack) repo and only downloads
+  [Nitropack](https://github.com/nitroforge/Nitropack) repo and only downloads
   files that changed. Every file is checked against its hash, and a download that
   gets interrupted picks up where it stopped.
 - **Updates itself.** New launcher versions come from this repo's official
@@ -30,7 +30,7 @@
 - **My Stuff.** Drop your own files like music into a folder and the launcher
   puts them into the mod for you.
 - **16 languages.**
-- **Small and quick.** One `.exe`, no installer.
+- **Small and quick.** 
 
 ## What you need
 
@@ -52,7 +52,7 @@
 
 | What | Source | How it arrives |
 |---|---|---|
-| Mod files | [`Nitropack`](https://github.com/mkwiichannel/Nitropack) | Incremental, hash-checked sync |
+| Mod files | [`Nitropack`](https://github.com/nitroforge/Nitropack) | Incremental, hash-checked sync |
 | Launcher | [Latest release](../../releases/latest) | Prompt, then the exe is swapped and restarted |
 
 ## License
