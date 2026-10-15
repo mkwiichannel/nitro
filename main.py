@@ -44,7 +44,7 @@ APP_VERSION = "1.0.0"
 WEBVIEW2_DOWNLOAD_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
 BUILD_STAMP = "v1.0.0"
 
-MANIFEST_URL = "https://raw.githubusercontent.com/mkwiichannel/nitro/main/manifest.json"
+MANIFEST_URL = "https://raw.githubusercontent.com/nitroforge/NitroLauncher/main/manifest.json"
 
 
 def resource_path(relative_path: str) -> str:
@@ -294,8 +294,12 @@ def _set_progress(**kwargs):
         _download_progress.update(kwargs)
 
 
-_LAUNCHER_REPO_DEFAULT = "mkwiichannel/nitro"
-_LAUNCHER_RELEASE_PREFIX = "https://github.com/mkwiichannel/nitro/releases/"
+_LAUNCHER_REPO_DEFAULT = "nitroforge/NitroLauncher"
+_LAUNCHER_RELEASE_PREFIX = (
+    "https://github.com/nitroforge/NitroLauncher/releases/",
+    "https://github.com/nitroforge/nitro/releases/",
+    "https://github.com/mkwiichannel/nitro/releases/",
+)
 _launcher_release_cache = {"t": 0.0, "etag": "", "data": None}
 
 
@@ -328,9 +332,9 @@ def _latest_launcher_release(url_hint="", force=False):
     except (OSError, ValueError):
         return c["data"]
     assets = [a for a in (rel.get("assets") or []) if isinstance(a, dict) and a.get("browser_download_url")]
-    pick = next((a for a in assets if str(a.get("name", "")).lower() == "mariokartnitro.exe"), None) \
-        or next((a for a in assets if str(a.get("name", "")).lower().endswith(".exe")), None) \
-        or next((a for a in assets if str(a.get("name", "")).lower().endswith(".zip")), None)
+    # Only the launcher itself is ever installed: an asset named exactly
+    # MarioKartNitro.exe. Any other file on the release is ignored.
+    pick = next((a for a in assets if str(a.get("name", "")).lower() == "mariokartnitro.exe"), None)
     if not pick:
         return c["data"]
     c["data"] = {"fp": "rel:%s" % pick.get("id"), "url": pick["browser_download_url"],
@@ -1510,45 +1514,11 @@ class Api:
 
         if is_zip:
             try:
-                if os.path.isdir(tmp_extract):
-                    shutil.rmtree(tmp_extract, ignore_errors=True)
-                os.makedirs(tmp_extract, exist_ok=True)
-                with zipfile.ZipFile(tmp_download, "r") as zf:
-                    bad_file = zf.testzip()
-                    if bad_file is not None:
-                        raise OSError(f"Downloaded zip is corrupted (bad file: {bad_file}).")
-                    zf.extractall(tmp_extract)
-            except (OSError, zipfile.BadZipFile) as e:
-                fail(f"Couldn't unpack the update: {e}")
-                return
-            finally:
-                try:
-                    os.remove(tmp_download)
-                except OSError:
-                    pass
-
-            # Prefer an exe with the SAME filename as the one currently
-            # running (handles a zip with extra files/folders alongside
-            # it); fall back to just the first .exe found anywhere inside.
-            exe_basename = os.path.basename(sys.executable)
-            for dirpath, _dirnames, filenames in os.walk(tmp_extract):
-                for fname in filenames:
-                    if fname.lower() == exe_basename.lower():
-                        new_exe = os.path.join(dirpath, fname)
-                        break
-                if new_exe:
-                    break
-            if not new_exe:
-                for dirpath, _dirnames, filenames in os.walk(tmp_extract):
-                    for fname in filenames:
-                        if fname.lower().endswith(".exe"):
-                            new_exe = os.path.join(dirpath, fname)
-                            break
-                    if new_exe:
-                        break
-            if not new_exe:
-                fail("The downloaded update doesn't contain an .exe.")
-                return
+                os.remove(tmp_download)
+            except OSError:
+                pass
+            fail("The downloaded update is not a launcher exe, so it was not installed.")
+            return
         else:
             # Not a zip at all -- treat the download itself as the new
             # exe directly (a bare .exe uploaded straight to a GitHub
@@ -1556,6 +1526,18 @@ class Api:
             # to something clearly an .exe so Explorer/AV scanners
             # dealing with the temp file don't choke on a missing
             # extension, and there's no extract folder to clean up.
+            try:
+                with open(tmp_download, "rb") as f:
+                    is_exe = f.read(2) == b"MZ"
+            except OSError:
+                is_exe = False
+            if not is_exe:
+                try:
+                    os.remove(tmp_download)
+                except OSError:
+                    pass
+                fail("The downloaded update is not a launcher exe, so it was not installed.")
+                return
             new_exe = os.path.join(app_data_dir(), "_launcher_update_new.exe")
             try:
                 if os.path.isfile(new_exe):

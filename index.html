@@ -311,13 +311,69 @@
     .mii-opt.mc{ width:64px !important; height:64px !important; }
     #home .card{ padding:10px 12px; } #home .card h3{ font-size:14px; }
   }
-  #settings .panel{ display:grid; grid-template-columns:1fr 1fr; column-gap:28px; align-content:start; }
-  #settings .field{ max-width:none; margin-bottom:14px; }
+  #settings .panel{ background:none; border:none; padding:0 6px 0 0; }
+  .set-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 56px; align-items:start; }
+  .set-group{ margin-bottom:18px; }
+  .set-title{ margin:0; padding:0 0 9px; border-bottom:1px solid var(--border-strong); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan); }
+  #settings .field{ max-width:none; margin:0; padding:12px 0; display:grid; grid-template-columns:minmax(120px,38%) 1fr; align-items:center; gap:14px; border-bottom:1px solid rgba(255,255,255,0.06); }
+  #settings .field > label{ margin:0; }
   #settings .field input[type=text], #settings .field select{ max-width:none !important; }
-  #settings .field-inline{ margin:0 0 10px; }
-  #settings #saveSettingsBtn{ justify-self:start; align-self:center; grid-column:2; grid-row:5 / span 3; }
-  #settings .panel > div[style*="border-top"]{ grid-column:1 / -1; margin-top:12px !important; padding-top:14px !important; }
-  #settings .panel > .field-inline{ grid-column:1; }
+  #settings .seg{ display:flex; width:100%; } #settings .seg button{ flex:1; text-align:center; padding:8px 6px; }
+  .toggle{ display:grid; grid-template-columns:minmax(120px,38%) 1fr; align-items:center; gap:14px; padding:13px 0; margin:0; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12.5px; font-weight:600; color:var(--text-dim); }
+  .toggle:hover{ color:var(--text); }
+  .toggle input{ position:absolute; opacity:0; pointer-events:none; }
+  .toggle i{ position:relative; width:40px; height:22px; border-radius:20px; background:rgba(255,255,255,0.14); transition:background .2s; }
+  .toggle i::after{ content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .2s; box-shadow:0 2px 5px rgba(0,0,0,.4); }
+  .toggle input:checked + i{ background:linear-gradient(100deg,#ff6b00,#ffa513); }
+  .toggle input:checked + i::after{ transform:translateX(18px); }
+  .toggle input:focus-visible + i{ outline:2px solid var(--cyan); outline-offset:2px; }
+  #openDiscordBtn{ background:rgba(255,255,255,0.06); border:1px solid var(--border-strong); color:var(--text); }
+  #openDiscordBtn:hover{ background:rgba(255,255,255,0.1); }
+  .set-actions{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top:6px; }
+
+  /* Mii tab: flat layout in the Settings style */
+  #mii .mii-shell{ grid-template-columns:260px minmax(0,1fr); gap:30px; }
+  #mii .mii-main{ grid-template-columns:minmax(0,1fr) 334px; gap:30px; }
+  #mii .mii-list, #mii .mii-editor{ background:none; border:none; border-radius:0; box-shadow:none; padding:0; }
+  #mii .mii-list{ padding-right:6px; }
+  #mii .mii-list-head{ padding:0 0 9px; margin:0; border-bottom:1px solid var(--border-strong); }
+  #mii .mii-list-head strong{ font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan); }
+  #mii .mii-slot{ border-radius:0; margin:0; padding:13px 10px; border:none; border-bottom:1px solid rgba(255,255,255,0.06); }
+  #mii .mii-slot:hover{ background:rgba(255,255,255,0.04); }
+  #mii .mii-slot.active{ background:linear-gradient(90deg,rgba(255,140,0,.16),transparent); box-shadow:inset 3px 0 0 #ff8c00; border-color:rgba(255,255,255,0.06); }
+  #mii .mii-preview{ background:radial-gradient(ellipse 60% 50% at 50% 42%,rgba(255,130,20,.22),transparent 65%),radial-gradient(ellipse 80% 35% at 50% 100%,rgba(130,60,220,.25),transparent 70%); border:none; box-shadow:none; border-radius:0; }
+  #mii .mii-preview canvas#miiCanvas{ inset:0; margin:auto; width:min(calc(100% - 20px),320px); height:min(calc(100% - 20px),320px); }
+  #mii .mii-toolbar{ flex-wrap:nowrap; gap:8px; }
+  #mii .mii-toolbar .btn{ flex:1 1 auto; justify-content:center; text-align:center; padding:11px 10px; font-size:13px; white-space:nowrap; }
+  #mii .mii-tabs{ gap:2px; padding-bottom:0; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.08); }
+  #mii .mii-tab{ background:none; border:none; border-bottom:2px solid transparent; border-radius:0; margin-bottom:-1px; padding:9px 8px; font-size:12.5px; font-weight:600; box-shadow:none; transform:none; }
+  #mii .mii-tab:hover{ color:var(--text); border-color:transparent; transform:none; }
+  #mii .mii-tab.active{ color:#fff; background:none; border-bottom-color:#ff8c00; box-shadow:none; }
+  #mii .mii-row2{ display:block; }
+  #mii .mii-field{ margin:0; padding:12px 0; display:grid; grid-template-columns:minmax(80px,32%) 1fr; align-items:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+  #mii .mii-field label{ margin:0; }
+  #mii .mii-field:has(.mii-picker), #mii .mii-field:has(.mii-swatches){ display:block; }
+  #mii .mii-field:has(.mii-picker) label, #mii .mii-field:has(.mii-swatches) label{ margin-bottom:10px; }
+  #mii .mii-picker:has(.mii-opt.mc){ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  #mii .mii-picker .mii-opt.mc{ width:auto !important; height:auto !important; aspect-ratio:1/1; }
+  #mii .mii-list{ scrollbar-width:none; -ms-overflow-style:none; }
+  #mii .mii-list::-webkit-scrollbar{ display:none; width:0; height:0; }
+  /* Custom dark dropdown for Mii selects */
+  .cs-native{ display:none !important; }
+  .cs{ position:relative; width:100%; }
+  .cs-btn{ width:100%; text-align:left; padding:9px 34px 9px 12px; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,0.03); color:var(--text); font:inherit; font-size:13px; cursor:pointer; position:relative; transition:border-color .12s, background .12s; }
+  .cs-btn::after{ content:""; position:absolute; right:13px; top:50%; width:7px; height:7px; border-right:2px solid var(--text-dim); border-bottom:2px solid var(--text-dim); transform:translateY(-70%) rotate(45deg); transition:transform .15s; }
+  .cs-btn:hover, .cs.open .cs-btn{ border-color:rgba(255,140,0,.55); background:rgba(255,140,0,.06); }
+  .cs.open .cs-btn::after{ transform:translateY(-30%) rotate(-135deg); }
+  .cs-list{ display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:50; max-height:240px; overflow-y:auto; padding:5px; border:1px solid var(--border-strong); border-radius:12px; background:#120a1f; box-shadow:0 14px 40px rgba(0,0,0,.65), 0 0 24px rgba(255,120,0,.12); scrollbar-width:thin; scrollbar-color:rgba(255,140,0,.4) transparent; }
+  .cs.open .cs-list{ display:block; }
+  .cs-opt{ padding:9px 11px; border-radius:8px; font-size:13px; color:var(--text-dim); cursor:pointer; }
+  .cs-opt:hover{ background:rgba(255,255,255,0.07); color:var(--text); }
+  .cs-opt.on{ color:#fff; background:linear-gradient(90deg,rgba(255,140,0,.22),rgba(255,140,0,.06)); box-shadow:inset 3px 0 0 #ff8c00; }
+  #mii .mii-swatches{ flex-wrap:nowrap; gap:6px; padding:6px 4px; }
+  #mii .mii-swatches .mii-sw{ flex:1 1 0; min-width:0; max-width:26px; width:auto; height:auto; aspect-ratio:1/1; }
+  #mii .mii-field input[type=text], #mii .mii-field select{ background:transparent; }
+  @media(max-width:1000px){ #mii .mii-shell{ grid-template-columns:190px minmax(0,1fr); gap:16px; } #mii .mii-main{ grid-template-columns:minmax(0,1fr) 291px; gap:16px; } }
 
   body::before{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
@@ -346,22 +402,27 @@
   .launcher-update-box{
     background:linear-gradient(180deg, #241340, var(--panel));
     border:1px solid var(--border-strong);
-    border-radius:18px;
+    border-radius:18px; overflow:hidden;
     box-shadow:0 24px 70px rgba(0,0,0,0.6), 0 0 60px rgba(255,120,0,0.12);
-    padding:30px 34px 26px; width:min(420px, 90vw);
-    text-align:center; animation:luIn .22s ease;
+    width:min(420px, 90vw);
+    animation:luIn .22s ease;
   }
   @keyframes luIn{ from{ opacity:0; transform:translateY(10px) scale(.97); } to{ opacity:1; transform:none; } }
-  .lu-icon{ width:64px; height:64px; margin:0 auto 14px; border-radius:18px; display:flex; align-items:center; justify-content:center;
-    background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.35); box-shadow:0 0 28px rgba(255,140,0,0.3); }
-  .lu-icon img{ width:40px; height:40px; object-fit:contain; }
-  .launcher-update-box h3{ margin:0 0 6px; font-family:var(--display); font-size:22px; letter-spacing:.4px; }
-  .launcher-update-box p{ margin:0 0 20px; color:var(--text-dim); font-size:14px; line-height:1.55; }
-  .lu-bar{ height:6px; border-radius:6px; background:rgba(255,255,255,0.08); overflow:hidden; margin:0 0 20px; }
+  .lu-body{ padding:22px 24px 20px; }
+  .lu-head{ display:flex; gap:16px; align-items:center; }
+  .lu-icon{ width:52px; height:52px; flex:0 0 auto; border-radius:15px; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.35); box-shadow:0 0 24px rgba(255,140,0,0.28); }
+  .lu-icon img{ width:34px; height:34px; object-fit:contain; }
+  .lu-text{ text-align:left; min-width:0; }
+  .launcher-update-box h3{ margin:0 0 3px; font-family:var(--display); font-size:18px; letter-spacing:.3px; }
+  .launcher-update-box p{ margin:0; color:var(--text-dim); font-size:13px; line-height:1.5; }
+  .lu-hint{ margin-top:4px; font-size:11.5px; color:var(--text-faint); }
+  .lu-bar:not(.hidden) + .lu-body .lu-hint{ display:none; }
+  .lu-bar{ height:4px; background:rgba(255,255,255,0.08); overflow:hidden; margin:0; }
   .lu-bar.hidden{ display:none; }
-  .lu-bar i{ display:block; height:100%; width:40%; border-radius:6px; background:linear-gradient(90deg, #ff6b00, #ffb347); animation:luBar 1.1s ease-in-out infinite; }
+  .lu-bar i{ display:block; height:100%; width:40%; background:linear-gradient(90deg, #ff6b00, #ffb347); box-shadow:0 0 12px rgba(255,140,0,.6); animation:luBar 1.1s ease-in-out infinite; }
   @keyframes luBar{ 0%{ transform:translateX(-110%); } 100%{ transform:translateX(280%); } }
-  .lu-actions{ display:flex; gap:10px; justify-content:center; }
+  .lu-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
   .lu-actions .btn{ min-width:120px; justify-content:center; }
   .lu-actions .btn.later{ background:rgba(255,255,255,0.06); color:var(--text-dim); }
   .lu-actions .btn.later:hover{ background:rgba(255,255,255,0.1); color:var(--text); }
@@ -371,13 +432,20 @@
 <body>
 <div class="launcher-update-overlay hidden" id="launcherUpdateModal">
   <div class="launcher-update-box">
-    <div class="lu-icon"><img src="logo.png" alt="" /></div>
-    <h3 id="launcherUpdateTitle">Update available</h3>
-    <p id="launcherUpdateMsg">A new launcher version is available.</p>
     <div class="lu-bar hidden" id="launcherUpdateBar"><i></i></div>
-    <div class="lu-actions">
-      <button class="btn later" id="launcherUpdateLater">Later</button>
-      <button class="btn btn-primary" id="launcherUpdateBtn">Update!</button>
+    <div class="lu-body">
+      <div class="lu-head">
+        <div class="lu-icon"><img src="logo.png" alt="" /></div>
+        <div class="lu-text">
+          <h3 id="launcherUpdateTitle">Update available</h3>
+          <p id="launcherUpdateMsg">A new launcher version is available.</p>
+          <div class="lu-hint" id="launcherUpdateHint">Takes a few seconds and restarts by itself.</div>
+        </div>
+      </div>
+      <div class="lu-actions">
+        <button class="btn later" id="launcherUpdateLater">Later</button>
+        <button class="btn btn-primary" id="launcherUpdateBtn">Update!</button>
+      </div>
     </div>
   </div>
 </div>
@@ -386,7 +454,7 @@
 <div class="brand-text">MARIO KART <span>NITRO</span></div>
 <div class="ver-pill" id="verPill">v1.0.0</div>
 </div>
-<nav class="tabs" id="tabs"><button data-target="home" class="active" id="navHome">Home</button> <button data-target="mii" id="navMii">Mii</button> <button data-target="credits" id="navCredits">Credits</button> <button data-target="settings" id="navSettings">Settings</button></nav>
+<nav class="tabs" id="tabs"><button data-target="home" class="active" id="navHome">Home</button> <button data-target="mii" id="navMii">Mii</button> <button data-target="settings" id="navSettings">Settings</button></nav>
 </div>
 <main>
 <section class="screen active" id="home">
@@ -425,11 +493,6 @@
 <div class="icon">⚙</div>
 <h3 id="cardSettingsTitle">Settings</h3>
 <p id="cardSettingsDesc">Configure paths, resolution, language and updates.</p>
-</button>
-<button class="card" onclick="go('credits')">
-<div class="icon">i</div>
-<h3 id="cardCreditsTitle">Credits</h3>
-<p id="cardCreditsDesc">License, community links, and what Nitro is built on.</p>
 </button>
 </div>
 </section>
@@ -515,7 +578,9 @@
 <h2 id="settingsTitle">Settings</h2>
 <div class="tag" id="settingsTag">Launcher configuration</div>
 </div>
-<div class="panel">
+<div class="set-grid">
+<div class="set-group">
+<h3 class="set-title" id="groupFiles">Files</h3>
 <div class="field"><label id="labelDolphinPath">Dolphin path</label>
 <div class="row"><input type="text" placeholder="Not set" id="settingsDolphinPath" readonly /><button class="browse" id="browseDolphinBtn"><span class="browseLabel">Browse</span></button></div>
 </div>
@@ -525,7 +590,11 @@
 <div class="field"><label id="labelMyStuff">My Stuff folder</label>
 <div class="row"><input type="text" id="settingsMyStuff" readonly /><button class="browse" id="browseMyStuffBtn"><span class="browseLabel">Browse</span></button></div>
 </div>
-<div class="field"><label id="labelResolution">Resolution</label> <select id="settingsResolution" style="max-width: 220px;">
+</div>
+<div class="set-col">
+<div class="set-group">
+<h3 class="set-title" id="groupGame">Game</h3>
+<div class="field"><label id="labelResolution">Resolution</label> <select id="settingsResolution">
 <option value="640x528">640x528</option>
 <option value="1280x1056">1280x1056</option>
 <option value="1920x1584" selected>1920x1584</option>
@@ -539,7 +608,15 @@
 <option value="7040x5808">7040x5808</option>
 <option value="7680x6336">7680x6336</option>
 </select></div>
-<div class="field"><label id="labelLanguage">Language</label><select id="settingsLanguage" style="max-width: 220px;">
+<div class="field"><label id="labelMyStuffMode">My Stuff in Dolphin</label>
+<div class="seg" id="settingsMyStuffMode" role="group" data-value="on">
+<button type="button" data-v="on" id="optMyStuffOn">Enabled</button><button type="button" data-v="music" id="optMyStuffMusic">Music only</button><button type="button" data-v="off" id="optMyStuffOff">Disabled</button>
+</div></div>
+<label class="toggle" title="Applies the fastest Dolphin settings for this launch: native resolution, no anti-aliasing or filtering, multithreaded video and CPU, fast shader and framebuffer handling, no V-Sync and lighter accuracy options. Dolphin gets high priority. Your own Dolphin settings are not changed."><span id="labelPerformance">Performance mode</span><input type="checkbox" id="settingsPerformance" /><i></i></label>
+</div>
+<div class="set-group">
+<h3 class="set-title" id="groupLauncher">Launcher</h3>
+<div class="field"><label id="labelLanguage">Language</label><select id="settingsLanguage">
 <option value="en">English</option>
 <option value="de">Deutsch</option>
 <option value="fr">Français</option>
@@ -557,39 +634,11 @@
 <option value="sv">Svenska</option>
 <option value="fi">Suomi</option>
 </select></div>
-<div class="field"><label id="labelMyStuffMode">My Stuff in Dolphin</label>
-<div class="seg" id="settingsMyStuffMode" role="group" data-value="on">
-<button type="button" data-v="on" id="optMyStuffOn">Enabled</button><button type="button" data-v="music" id="optMyStuffMusic">Music only</button><button type="button" data-v="off" id="optMyStuffOff">Disabled</button>
-</div></div>
-<div class="field-inline"><input type="checkbox" id="settingsAutoUpdate" checked="checked" /> <span id="labelAutoUpdate">Automatic updates</span></div>
-<div class="field-inline" title="Applies the fastest Dolphin settings for this launch: native resolution, no anti-aliasing or filtering, multithreaded video and CPU, fast shader and framebuffer handling, no V-Sync and lighter accuracy options. Dolphin gets high priority. Your own Dolphin settings are not changed."><input type="checkbox" id="settingsPerformance" /> <span id="labelPerformance">Performance mode</span></div>
-<button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button>
+<label class="toggle"><span id="labelAutoUpdate">Automatic updates</span><input type="checkbox" id="settingsAutoUpdate" checked="checked" /><i></i></label>
 </div>
-</section>
-<section class="screen" id="credits">
-<div class="sub-head"><button class="back" onclick="go('home')" id="creditsBackBtn">← Home</button>
-<h2 id="creditsTitle">Credits</h2>
-<div class="tag"></div>
 </div>
-<div class="panel">
-<div class="credit-block">
-<h4 id="creditsAppName">Mario Kart Nitro</h4>
-<p id="creditsAppDesc">Custom launcher — version 1.0.0</p>
 </div>
-<div class="credit-block">
-<h4 id="creditsLicenseTitle">License</h4>
-<p id="creditsLicenseText">GNU GPL v3.0</p>
-</div>
-<div class="credit-block">
-<h4 id="creditsCommunityTitle">Community</h4>
-<p><a href="#" onclick="window.pywebview.api.open_discord(); return false;">discord.gg/wbU8vw8vJq</a></p>
-</div>
-<div class="credit-block">
-<h4 id="creditsProfileTitle">Nitro profile</h4>
-<p id="creditsProfileText">Included <code>MKnitro.xml</code> / <code>Config.pul</code> / <code>Loader.pul</code> / <code>Code.pul</code> are bundled as the current launcher profile inputs.</p>
-</div>
-<button class="btn btn-primary" id="openDiscordBtn"> <svg width="16" height="16" viewbox="0 0 127.14 96.36" fill="currentColor" style="flex-shrink: 0;"> <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"></path> </svg> <span id="openDiscordLabel">Open Discord</span> </button>
-</div>
+<div class="set-actions"><button class="btn" id="openDiscordBtn"> <svg width="16" height="16" viewbox="0 0 127.14 96.36" fill="currentColor" style="flex-shrink: 0;"> <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"></path> </svg> <span id="openDiscordLabel">Open Discord</span> </button><button class="btn btn-primary" id="saveSettingsBtn"><span id="saveSettingsLabel">Save settings</span></button></div>
 </section>
 <section class="screen" id="setup">
 <div class="sub-head"><button class="back" onclick="go('home')">← Home</button>
@@ -1753,7 +1802,15 @@ function miiSwatchPicker(inputId, colors, names){
   miiPickers.push({ input: host.input, items });
 }
 
+function miiShowValues(){
+  document.querySelectorAll("#mii input[type=range]").forEach(inp => {
+    const el = document.getElementById(inp.id + "V");
+    if (el) el.textContent = inp.value;
+  });
+}
+
 function syncMiiPickers(){
+  miiShowValues();
   for (const p of miiPickers){
     const v = String(p.input.value);
     p.items.forEach((b, i) => b.classList.toggle("active", String(i) === v));
@@ -1895,8 +1952,8 @@ function miiThumbsFallback(){
 
 const MII_STEP_ICONS = [
   [/Rot$/,   "\u21BA", "\u21BB", 1, "rotL", "rotR"],
-  [/Vert$/,  "\u25B2", "\u25BC", -1, "up", "down"],
-  [/Space$/, "\u2192\u2190", "\u2190\u2192", 1, "near", "wide"],
+  [/Vert$/,  "\u25B2", "\u25BC", 1, "up", "down"],
+  [/Space$/, "\u2192\u2190", "\u2190\u2192", 1, "wide", "near"],
   [/(Size|Height|Weight)$/, "\u2212", "+", 1, "reduce", "enlarge"]
 ];
 const miiSteppers = [];
@@ -1943,6 +2000,7 @@ function miiMakeStepper(input){
 }
 document.querySelectorAll("#mii input[type=range]").forEach(inp => {
   if (inp.style.display !== "none") miiMakeStepper(inp);
+  inp.addEventListener("input", miiShowValues);
 });
 
 if (MC && MC.sym) document.querySelectorAll(".mii-tab").forEach(btn => {
@@ -2069,7 +2127,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"License, community links, and what Nitro is built on.",
       settingsBackBtn:"← Home", settingsTitle:"Settings", settingsTag:"Launcher configuration",
       labelDolphinPath:"Dolphin path", labelIsoPath:"MKW ISO path", labelMyStuff:"My Stuff folder", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Enabled", optMyStuffMusic:"Music only", optMyStuffOff:"Disabled", addedFiles:"Files added:",
-      labelResolution:"Resolution", labelLanguage:"Language",
+      labelResolution:"Resolution", labelLanguage:"Language", groupFiles:"Files", groupGame:"Game", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatic updates", labelPerformance:"Performance mode", saveSettingsLabel:"Save settings", browseLabel:"Browse",
       setupTitle:"Setup", setupIntro:"Set your paths once. Nitro will remember them.",
       labelSetupDolphin:"Dolphin installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Continue",
@@ -2118,7 +2176,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Creator name",
       launcherUpdateMsg:"A new launcher version is available.", launcherUpdateTitle:"Update available", launcherUpdateLater:"Later", launcherUpdateBtn:"Update!",
       launcherUpdateInstalling:"Downloading and installing — this window will restart automatically.",
-      launcherUpdateFailed:"Update failed. You can keep using this version for now." },
+      launcherUpdateHint:"Takes a few seconds and restarts by itself.", launcherUpdateFailed:"Update failed. You can keep using this version for now." },
     de: { navHome:"Start", navCredits:"Credits", navSettings:"Einstellungen",
       exitBtn:"Schließen",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiver Mod", labelLauncher:"Launcher",
@@ -2128,7 +2186,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"Lizenz, Community-Links und worauf Nitro basiert.",
       settingsBackBtn:"← Start", settingsTitle:"Einstellungen", settingsTag:"Launcher-Konfiguration",
       labelDolphinPath:"Dolphin-Pfad", labelIsoPath:"MKW-ISO-Pfad", labelMyStuff:"My-Stuff-Ordner", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Aktiviert", optMyStuffMusic:"Nur Musik", optMyStuffOff:"Deaktiviert", addedFiles:"Dateien hinzugefügt:",
-      labelResolution:"Auflösung", labelLanguage:"Sprache",
+      labelResolution:"Auflösung", labelLanguage:"Sprache", groupFiles:"Dateien", groupGame:"Spiel", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatische Updates", labelPerformance:"Leistungsmodus", saveSettingsLabel:"Einstellungen speichern", browseLabel:"Durchsuchen",
       setupTitle:"Einrichtung", setupIntro:"Lege deine Pfade einmal fest. Nitro merkt sie sich.",
       labelSetupDolphin:"Dolphin-Installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Weiter",
@@ -2177,7 +2235,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Ersteller-Name",
       launcherUpdateMsg:"Eine neue Launcher-Version ist verfügbar.", launcherUpdateTitle:"Update verfügbar", launcherUpdateLater:"Später", launcherUpdateBtn:"Aktualisieren!",
       launcherUpdateInstalling:"Wird heruntergeladen und installiert — dieses Fenster startet automatisch neu.",
-      launcherUpdateFailed:"Update fehlgeschlagen. Du kannst diese Version vorerst weiter benutzen." },
+      launcherUpdateHint:"Dauert nur wenige Sekunden und startet von selbst neu.", launcherUpdateFailed:"Update fehlgeschlagen. Du kannst diese Version vorerst weiter benutzen." },
     fr: { navHome:"Accueil", navCredits:"Crédits", navSettings:"Paramètres",
       exitBtn:"Fermer",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod actif", labelLauncher:"Launcher",
@@ -2187,7 +2245,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Crédits", cardCreditsDesc:"Licence, liens communautaires et base de Nitro.",
       settingsBackBtn:"← Accueil", settingsTitle:"Paramètres", settingsTag:"Configuration du launcher",
       labelDolphinPath:"Chemin Dolphin", labelIsoPath:"Chemin ISO MKW", labelMyStuff:"Dossier My Stuff", labelMyStuffMode:"My Stuff dans Dolphin", optMyStuffOn:"Activé", optMyStuffMusic:"Musique uniquement", optMyStuffOff:"Désactivé", addedFiles:"Fichiers ajoutés :",
-      labelResolution:"Résolution", labelLanguage:"Langue",
+      labelResolution:"Résolution", labelLanguage:"Langue", groupFiles:"Fichiers", groupGame:"Jeu", groupLauncher:"Lanceur",
       labelAutoUpdate:"Mises à jour automatiques", labelPerformance:"Mode performance", saveSettingsLabel:"Enregistrer", browseLabel:"Parcourir",
       setupTitle:"Configuration", setupIntro:"Définissez vos chemins une fois. Nitro s'en souviendra.",
       labelSetupDolphin:"Installation Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continuer",
@@ -2236,7 +2294,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Nom du créateur",
       launcherUpdateMsg:"Une nouvelle version du launcher est disponible.", launcherUpdateTitle:"Mise à jour disponible", launcherUpdateLater:"Plus tard", launcherUpdateBtn:"Mettre à jour !",
       launcherUpdateInstalling:"Téléchargement et installation en cours — cette fenêtre redémarrera automatiquement.",
-      launcherUpdateFailed:"Mise à jour échouée. Vous pouvez continuer à utiliser cette version pour l'instant." },
+      launcherUpdateHint:"Quelques secondes, puis redémarrage automatique.", launcherUpdateFailed:"Mise à jour échouée. Vous pouvez continuer à utiliser cette version pour l'instant." },
     es: { navHome:"Inicio", navCredits:"Créditos", navSettings:"Ajustes",
       exitBtn:"Cerrar",
       labelDolphin:"Dolphin", labelIso:"ISO de MKW", labelActiveMod:"Mod activo", labelLauncher:"Launcher",
@@ -2246,7 +2304,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Créditos", cardCreditsDesc:"Licencia, enlaces de la comunidad y en qué se basa Nitro.",
       settingsBackBtn:"← Inicio", settingsTitle:"Ajustes", settingsTag:"Configuración del launcher",
       labelDolphinPath:"Ruta de Dolphin", labelIsoPath:"Ruta de la ISO", labelMyStuff:"Carpeta My Stuff", labelMyStuffMode:"My Stuff en Dolphin", optMyStuffOn:"Activado", optMyStuffMusic:"Solo música", optMyStuffOff:"Desactivado", addedFiles:"Archivos añadidos:",
-      labelResolution:"Resolución", labelLanguage:"Idioma",
+      labelResolution:"Resolución", labelLanguage:"Idioma", groupFiles:"Archivos", groupGame:"Juego", groupLauncher:"Lanzador",
       labelAutoUpdate:"Actualizaciones automáticas", labelPerformance:"Modo rendimiento", saveSettingsLabel:"Guardar ajustes", browseLabel:"Examinar",
       setupTitle:"Configuración", setupIntro:"Configura tus rutas una vez. Nitro las recordará.",
       labelSetupDolphin:"Instalación de Dolphin", labelSetupIso:"ISO de Mario Kart Wii", setupContinueLabel:"Continuar",
@@ -2295,7 +2353,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Nombre del creador",
       launcherUpdateMsg:"Hay una nueva versión del launcher disponible.", launcherUpdateTitle:"Actualización disponible", launcherUpdateLater:"Más tarde", launcherUpdateBtn:"¡Actualizar!",
       launcherUpdateInstalling:"Descargando e instalando — esta ventana se reiniciará automáticamente.",
-      launcherUpdateFailed:"Error al actualizar. Por ahora puedes seguir usando esta versión." },
+      launcherUpdateHint:"Tarda unos segundos y se reinicia solo.", launcherUpdateFailed:"Error al actualizar. Por ahora puedes seguir usando esta versión." },
     it: { navHome:"Home", navCredits:"Crediti", navSettings:"Impostazioni",
       exitBtn:"Chiudi",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Mod attiva", labelLauncher:"Launcher",
@@ -2305,7 +2363,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Crediti", cardCreditsDesc:"Licenza, link della community e su cosa si basa Nitro.",
       settingsBackBtn:"← Home", settingsTitle:"Impostazioni", settingsTag:"Configurazione del launcher",
       labelDolphinPath:"Percorso Dolphin", labelIsoPath:"Percorso ISO MKW", labelMyStuff:"Cartella My Stuff", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Attivato", optMyStuffMusic:"Solo musica", optMyStuffOff:"Disattivato", addedFiles:"File aggiunti:",
-      labelResolution:"Risoluzione", labelLanguage:"Lingua",
+      labelResolution:"Risoluzione", labelLanguage:"Lingua", groupFiles:"File", groupGame:"Gioco", groupLauncher:"Launcher",
       labelAutoUpdate:"Aggiornamenti automatici", labelPerformance:"Modalità prestazioni", saveSettingsLabel:"Salva impostazioni", browseLabel:"Sfoglia",
       setupTitle:"Configurazione", setupIntro:"Imposta i tuoi percorsi una volta. Nitro li ricorderà.",
       labelSetupDolphin:"Installazione Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Continua",
@@ -2354,7 +2412,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Nome del creatore",
       launcherUpdateMsg:"È disponibile una nuova versione del launcher.", launcherUpdateTitle:"Aggiornamento disponibile", launcherUpdateLater:"Più tardi", launcherUpdateBtn:"Aggiorna!",
       launcherUpdateInstalling:"Download e installazione in corso — questa finestra si riavvierà automaticamente.",
-      launcherUpdateFailed:"Aggiornamento non riuscito. Per ora puoi continuare a usare questa versione." },
+      launcherUpdateHint:"Richiede pochi secondi e si riavvia da solo.", launcherUpdateFailed:"Aggiornamento non riuscito. Per ora puoi continuare a usare questa versione." },
     pt: { navHome:"Início", navCredits:"Créditos", navSettings:"Config.",
       exitBtn:"Fechar",
       labelDolphin:"Dolphin", labelIso:"ISO do MKW", labelActiveMod:"Mod ativo", labelLauncher:"Launcher",
@@ -2364,7 +2422,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Créditos", cardCreditsDesc:"Licença, links da comunidade e a base do Nitro.",
       settingsBackBtn:"← Início", settingsTitle:"Configurações", settingsTag:"Configuração do launcher",
       labelDolphinPath:"Caminho do Dolphin", labelIsoPath:"Caminho da ISO", labelMyStuff:"Pasta My Stuff", labelMyStuffMode:"My Stuff no Dolphin", optMyStuffOn:"Ativado", optMyStuffMusic:"Só música", optMyStuffOff:"Desativado", addedFiles:"Ficheiros adicionados:",
-      labelResolution:"Resolução", labelLanguage:"Idioma",
+      labelResolution:"Resolução", labelLanguage:"Idioma", groupFiles:"Arquivos", groupGame:"Jogo", groupLauncher:"Launcher",
       labelAutoUpdate:"Atualizações automáticas", labelPerformance:"Modo desempenho", saveSettingsLabel:"Salvar configurações", browseLabel:"Procurar",
       setupTitle:"Configuração", setupIntro:"Defina seus caminhos uma vez. O Nitro vai lembrá-los.",
       labelSetupDolphin:"Instalação do Dolphin", labelSetupIso:"ISO do Mario Kart Wii", setupContinueLabel:"Continuar",
@@ -2413,7 +2471,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Nome do criador",
       launcherUpdateMsg:"Uma nova versão do launcher está disponível.", launcherUpdateTitle:"Atualização disponível", launcherUpdateLater:"Mais tarde", launcherUpdateBtn:"Atualizar!",
       launcherUpdateInstalling:"Baixando e instalando — esta janela será reiniciada automaticamente.",
-      launcherUpdateFailed:"Falha na atualização. Você pode continuar usando esta versão por agora." },
+      launcherUpdateHint:"Leva poucos segundos e reinicia sozinho.", launcherUpdateFailed:"Falha na atualização. Você pode continuar usando esta versão por agora." },
     nl: { navHome:"Start", navCredits:"Credits", navSettings:"Instellingen",
       exitBtn:"Sluiten",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Actieve mod", labelLauncher:"Launcher",
@@ -2423,7 +2481,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"Licentie, community-links en waar Nitro op gebouwd is.",
       settingsBackBtn:"← Start", settingsTitle:"Instellingen", settingsTag:"Launcher-configuratie",
       labelDolphinPath:"Dolphin-pad", labelIsoPath:"MKW ISO-pad", labelMyStuff:"My Stuff-map", labelMyStuffMode:"My Stuff in Dolphin", optMyStuffOn:"Ingeschakeld", optMyStuffMusic:"Alleen muziek", optMyStuffOff:"Uitgeschakeld", addedFiles:"Bestanden toegevoegd:",
-      labelResolution:"Resolutie", labelLanguage:"Taal",
+      labelResolution:"Resolutie", labelLanguage:"Taal", groupFiles:"Bestanden", groupGame:"Spel", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatische updates", labelPerformance:"Prestatiemodus", saveSettingsLabel:"Instellingen opslaan", browseLabel:"Bladeren",
       setupTitle:"Installatie", setupIntro:"Stel je paden één keer in. Nitro onthoudt ze.",
       labelSetupDolphin:"Dolphin-installatie", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Doorgaan",
@@ -2472,7 +2530,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Naam maker",
       launcherUpdateMsg:"Er is een nieuwe launcherversie beschikbaar.", launcherUpdateTitle:"Update beschikbaar", launcherUpdateLater:"Later", launcherUpdateBtn:"Updaten!",
       launcherUpdateInstalling:"Downloaden en installeren — dit venster herstart automatisch.",
-      launcherUpdateFailed:"Update mislukt. Je kunt deze versie voorlopig blijven gebruiken." },
+      launcherUpdateHint:"Duurt een paar seconden en start vanzelf opnieuw.", launcherUpdateFailed:"Update mislukt. Je kunt deze versie voorlopig blijven gebruiken." },
     pl: { navHome:"Start", navCredits:"Twórcy", navSettings:"Ustawienia",
       exitBtn:"Zamknij",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Aktywny mod", labelLauncher:"Launcher",
@@ -2482,7 +2540,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Twórcy", cardCreditsDesc:"Licencja, linki społeczności i na czym oparte jest Nitro.",
       settingsBackBtn:"← Start", settingsTitle:"Ustawienia", settingsTag:"Konfiguracja launchera",
       labelDolphinPath:"Ścieżka Dolphin", labelIsoPath:"Ścieżka ISO MKW", labelMyStuff:"Folder My Stuff", labelMyStuffMode:"My Stuff w Dolphin", optMyStuffOn:"Włączone", optMyStuffMusic:"Tylko muzyka", optMyStuffOff:"Wyłączone", addedFiles:"Dodano pliki:",
-      labelResolution:"Rozdzielczość", labelLanguage:"Język",
+      labelResolution:"Rozdzielczość", labelLanguage:"Język", groupFiles:"Pliki", groupGame:"Gra", groupLauncher:"Launcher",
       labelAutoUpdate:"Automatyczne aktualizacje", labelPerformance:"Tryb wydajności", saveSettingsLabel:"Zapisz ustawienia", browseLabel:"Przeglądaj",
       setupTitle:"Konfiguracja", setupIntro:"Ustaw ścieżki raz. Nitro je zapamięta.",
       labelSetupDolphin:"Instalacja Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Dalej",
@@ -2531,7 +2589,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Nazwa twórcy",
       launcherUpdateMsg:"Dostępna jest nowa wersja launchera.", launcherUpdateTitle:"Dostępna aktualizacja", launcherUpdateLater:"Później", launcherUpdateBtn:"Zaktualizuj!",
       launcherUpdateInstalling:"Pobieranie i instalowanie — to okno uruchomi się ponownie automatycznie.",
-      launcherUpdateFailed:"Aktualizacja nie powiodła się. Możesz na razie korzystać z tej wersji." },
+      launcherUpdateHint:"Trwa kilka sekund i uruchamia się ponownie samo.", launcherUpdateFailed:"Aktualizacja nie powiodła się. Możesz na razie korzystać z tej wersji." },
     tr: { navHome:"Ana Sayfa", navCredits:"Emek Verenler", navSettings:"Ayarlar",
       exitBtn:"Kapat",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktif Mod", labelLauncher:"Launcher",
@@ -2541,7 +2599,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Emek Verenler", cardCreditsDesc:"Lisans, topluluk bağlantıları ve Nitro'nun dayandığı temel.",
       settingsBackBtn:"← Ana Sayfa", settingsTitle:"Ayarlar", settingsTag:"Launcher yapılandırması",
       labelDolphinPath:"Dolphin yolu", labelIsoPath:"MKW ISO yolu", labelMyStuff:"My Stuff klasörü", labelMyStuffMode:"Dolphin'de My Stuff", optMyStuffOn:"Etkin", optMyStuffMusic:"Yalnızca müzik", optMyStuffOff:"Devre dışı", addedFiles:"Eklenen dosya:",
-      labelResolution:"Çözünürlük", labelLanguage:"Dil",
+      labelResolution:"Çözünürlük", labelLanguage:"Dil", groupFiles:"Dosyalar", groupGame:"Oyun", groupLauncher:"Başlatıcı",
       labelAutoUpdate:"Otomatik güncellemeler", labelPerformance:"Performans modu", saveSettingsLabel:"Ayarları kaydet", browseLabel:"Gözat",
       setupTitle:"Kurulum", setupIntro:"Yollarını bir kez ayarla. Nitro onları hatırlayacak.",
       labelSetupDolphin:"Dolphin kurulumu", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Devam",
@@ -2590,7 +2648,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Oluşturan adı",
       launcherUpdateMsg:"Yeni bir launcher sürümü mevcut.", launcherUpdateTitle:"Güncelleme mevcut", launcherUpdateLater:"Sonra", launcherUpdateBtn:"Güncelle!",
       launcherUpdateInstalling:"İndiriliyor ve kuruluyor — bu pencere otomatik olarak yeniden başlayacak.",
-      launcherUpdateFailed:"Güncelleme başarısız oldu. Şimdilik bu sürümü kullanmaya devam edebilirsiniz." },
+      launcherUpdateHint:"Birkaç saniye sürer ve kendiliğinden yeniden başlar.", launcherUpdateFailed:"Güncelleme başarısız oldu. Şimdilik bu sürümü kullanmaya devam edebilirsiniz." },
     ru: { navHome:"Главная", navCredits:"Авторы", navSettings:"Настройки",
       exitBtn:"Закрыть",
       labelDolphin:"Dolphin", labelIso:"ISO MKW", labelActiveMod:"Активный мод", labelLauncher:"Лаунчер",
@@ -2600,7 +2658,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Авторы", cardCreditsDesc:"Лицензия, ссылки сообщества и на чём основан Nitro.",
       settingsBackBtn:"← Главная", settingsTitle:"Настройки", settingsTag:"Настройка лаунчера",
       labelDolphinPath:"Путь к Dolphin", labelIsoPath:"Путь к ISO", labelMyStuff:"Папка My Stuff", labelMyStuffMode:"My Stuff в Dolphin", optMyStuffOn:"Включено", optMyStuffMusic:"Только музыка", optMyStuffOff:"Выключено", addedFiles:"Добавлено файлов:",
-      labelResolution:"Разрешение", labelLanguage:"Язык",
+      labelResolution:"Разрешение", labelLanguage:"Язык", groupFiles:"Файлы", groupGame:"Игра", groupLauncher:"Лаунчер",
       labelAutoUpdate:"Автоматические обновления", labelPerformance:"Режим производительности", saveSettingsLabel:"Сохранить настройки", browseLabel:"Обзор",
       setupTitle:"Настройка", setupIntro:"Задайте пути один раз. Nitro их запомнит.",
       labelSetupDolphin:"Установка Dolphin", labelSetupIso:"ISO Mario Kart Wii", setupContinueLabel:"Продолжить",
@@ -2649,7 +2707,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Имя создателя",
       launcherUpdateMsg:"Доступна новая версия лаунчера.", launcherUpdateTitle:"Доступно обновление", launcherUpdateLater:"Позже", launcherUpdateBtn:"Обновить!",
       launcherUpdateInstalling:"Загрузка и установка — это окно перезапустится автоматически.",
-      launcherUpdateFailed:"Обновление не удалось. Пока можно продолжать использовать эту версию." },
+      launcherUpdateHint:"Займёт несколько секунд и перезапустится само.", launcherUpdateFailed:"Обновление не удалось. Пока можно продолжать использовать эту версию." },
     ja: { navHome:"ホーム", navCredits:"クレジット", navSettings:"設定",
       exitBtn:"閉じる",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"有効なMod", labelLauncher:"ランチャー",
@@ -2659,7 +2717,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"クレジット", cardCreditsDesc:"ライセンス、コミュニティリンク、Nitroの構成要素。",
       settingsBackBtn:"← ホーム", settingsTitle:"設定", settingsTag:"ランチャー設定",
       labelDolphinPath:"Dolphinのパス", labelIsoPath:"MKW ISOのパス", labelMyStuff:"My Stuffフォルダ", labelMyStuffMode:"DolphinでのMy Stuff", optMyStuffOn:"有効", optMyStuffMusic:"音楽のみ", optMyStuffOff:"無効", addedFiles:"追加したファイル:",
-      labelResolution:"解像度", labelLanguage:"言語",
+      labelResolution:"解像度", labelLanguage:"言語", groupFiles:"ファイル", groupGame:"ゲーム", groupLauncher:"ランチャー",
       labelAutoUpdate:"自動更新", labelPerformance:"パフォーマンスモード", saveSettingsLabel:"設定を保存", browseLabel:"参照",
       setupTitle:"セットアップ", setupIntro:"パスを一度設定すれば、Nitroが記憶します。",
       labelSetupDolphin:"Dolphinのインストール先", labelSetupIso:"マリオカートWii ISO", setupContinueLabel:"続ける",
@@ -2708,7 +2766,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"作成者名",
       launcherUpdateMsg:"新しいランチャーのバージョンが利用可能です。", launcherUpdateTitle:"アップデートがあります", launcherUpdateLater:"あとで", launcherUpdateBtn:"更新する！",
       launcherUpdateInstalling:"ダウンロードしてインストール中です — このウィンドウは自動的に再起動します。",
-      launcherUpdateFailed:"更新に失敗しました。今はこのバージョンを使い続けられます。" },
+      launcherUpdateHint:"数秒で完了し、自動的に再起動します。", launcherUpdateFailed:"更新に失敗しました。今はこのバージョンを使い続けられます。" },
     ko: { navHome:"홈", navCredits:"크레딧", navSettings:"설정",
       exitBtn:"닫기",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"활성 모드", labelLauncher:"런처",
@@ -2718,7 +2776,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"크레딧", cardCreditsDesc:"라이선스, 커뮤니티 링크 및 Nitro의 기반.",
       settingsBackBtn:"← 홈", settingsTitle:"설정", settingsTag:"런처 구성",
       labelDolphinPath:"Dolphin 경로", labelIsoPath:"MKW ISO 경로", labelMyStuff:"My Stuff 폴더", labelMyStuffMode:"Dolphin의 My Stuff", optMyStuffOn:"사용", optMyStuffMusic:"음악만", optMyStuffOff:"사용 안 함", addedFiles:"추가된 파일:",
-      labelResolution:"해상도", labelLanguage:"언어",
+      labelResolution:"해상도", labelLanguage:"언어", groupFiles:"파일", groupGame:"게임", groupLauncher:"런처",
       labelAutoUpdate:"자동 업데이트", labelPerformance:"성능 모드", saveSettingsLabel:"설정 저장", browseLabel:"찾아보기",
       setupTitle:"설정", setupIntro:"경로를 한 번 설정하면 Nitro가 기억합니다.",
       labelSetupDolphin:"Dolphin 설치 경로", labelSetupIso:"마리오 카트 Wii ISO", setupContinueLabel:"계속",
@@ -2767,7 +2825,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"작성자 이름",
       launcherUpdateMsg:"새 런처 버전을 사용할 수 있습니다.", launcherUpdateTitle:"업데이트 가능", launcherUpdateLater:"나중에", launcherUpdateBtn:"업데이트!",
       launcherUpdateInstalling:"다운로드 및 설치 중입니다 — 이 창은 자동으로 재시작됩니다.",
-      launcherUpdateFailed:"업데이트에 실패했습니다. 지금은 이 버전을 계속 사용할 수 있습니다." },
+      launcherUpdateHint:"몇 초 걸리며 자동으로 다시 시작됩니다.", launcherUpdateFailed:"업데이트에 실패했습니다. 지금은 이 버전을 계속 사용할 수 있습니다." },
     zh: { navHome:"主页", navCredits:"鸣谢", navSettings:"设置",
       exitBtn:"关闭",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"当前模组", labelLauncher:"启动器",
@@ -2777,7 +2835,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"鸣谢", cardCreditsDesc:"许可证、社区链接以及 Nitro 的构建基础。",
       settingsBackBtn:"← 主页", settingsTitle:"设置", settingsTag:"启动器配置",
       labelDolphinPath:"Dolphin 路径", labelIsoPath:"MKW ISO 路径", labelMyStuff:"My Stuff 文件夹", labelMyStuffMode:"Dolphin 中的 My Stuff", optMyStuffOn:"启用", optMyStuffMusic:"仅音乐", optMyStuffOff:"禁用", addedFiles:"已添加文件：",
-      labelResolution:"分辨率", labelLanguage:"语言",
+      labelResolution:"分辨率", labelLanguage:"语言", groupFiles:"文件", groupGame:"游戏", groupLauncher:"启动器",
       labelAutoUpdate:"自动更新", labelPerformance:"性能模式", saveSettingsLabel:"保存设置", browseLabel:"浏览",
       setupTitle:"设置向导", setupIntro:"设置一次路径，Nitro 会记住它们。",
       labelSetupDolphin:"Dolphin 安装位置", labelSetupIso:"马里奥赛车 Wii ISO", setupContinueLabel:"继续",
@@ -2826,7 +2884,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"创建者名称",
       launcherUpdateMsg:"有新的启动器版本可用。", launcherUpdateTitle:"有可用更新", launcherUpdateLater:"稍后", launcherUpdateBtn:"更新！",
       launcherUpdateInstalling:"正在下载并安装——此窗口将自动重启。",
-      launcherUpdateFailed:"更新失败。你可以暂时继续使用此版本。" },
+      launcherUpdateHint:"只需几秒钟,完成后自动重启。", launcherUpdateFailed:"更新失败。你可以暂时继续使用此版本。" },
     ar: { navHome:"الرئيسية", navCredits:"الشكر والتقدير", navSettings:"الإعدادات",
       exitBtn:"إغلاق",
       labelDolphin:"Dolphin", labelIso:"ISO الخاص باللعبة", labelActiveMod:"التعديل النشط", labelLauncher:"المشغّل",
@@ -2836,7 +2894,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"الشكر والتقدير", cardCreditsDesc:"الترخيص، روابط المجتمع، وأساس Nitro.",
       settingsBackBtn:"← الرئيسية", settingsTitle:"الإعدادات", settingsTag:"تهيئة المشغّل",
       labelDolphinPath:"مسار Dolphin", labelIsoPath:"مسار ISO", labelMyStuff:"مجلد My Stuff", labelMyStuffMode:"My Stuff في Dolphin", optMyStuffOn:"مفعّل", optMyStuffMusic:"الموسيقى فقط", optMyStuffOff:"معطّل", addedFiles:"الملفات المضافة:",
-      labelResolution:"الدقة", labelLanguage:"اللغة",
+      labelResolution:"الدقة", labelLanguage:"اللغة", groupFiles:"الملفات", groupGame:"اللعبة", groupLauncher:"المشغّل",
       labelAutoUpdate:"التحديثات التلقائية", labelPerformance:"وضع الأداء", saveSettingsLabel:"حفظ الإعدادات", browseLabel:"استعراض",
       setupTitle:"الإعداد", setupIntro:"حدد مساراتك مرة واحدة. سيتذكرها Nitro.",
       labelSetupDolphin:"تثبيت Dolphin", labelSetupIso:"ISO الخاص بماريو كارت Wii", setupContinueLabel:"متابعة",
@@ -2885,7 +2943,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"اسم المنشئ",
       launcherUpdateMsg:"يتوفر إصدار جديد من المشغّل.", launcherUpdateTitle:"تحديث متاح", launcherUpdateLater:"لاحقًا", launcherUpdateBtn:"تحديث!",
       launcherUpdateInstalling:"جاري التنزيل والتثبيت — ستُعاد تشغيل هذه النافذة تلقائيًا.",
-      launcherUpdateFailed:"فشل التحديث. يمكنك الاستمرار في استخدام هذا الإصدار الآن." },
+      launcherUpdateHint:"يستغرق بضع ثوانٍ ويُعاد التشغيل تلقائيًا.", launcherUpdateFailed:"فشل التحديث. يمكنك الاستمرار في استخدام هذا الإصدار الآن." },
     sv: { navHome:"Hem", navCredits:"Credits", navSettings:"Inställningar",
       exitBtn:"Stäng",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiv mod", labelLauncher:"Launcher",
@@ -2895,7 +2953,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Credits", cardCreditsDesc:"Licens, community-länkar och vad Nitro bygger på.",
       settingsBackBtn:"← Hem", settingsTitle:"Inställningar", settingsTag:"Launcher-konfiguration",
       labelDolphinPath:"Dolphin-sökväg", labelIsoPath:"MKW ISO-sökväg", labelMyStuff:"My Stuff-mapp", labelMyStuffMode:"My Stuff i Dolphin", optMyStuffOn:"Aktiverad", optMyStuffMusic:"Endast musik", optMyStuffOff:"Avstängd", addedFiles:"Filer tillagda:",
-      labelResolution:"Upplösning", labelLanguage:"Språk",
+      labelResolution:"Upplösning", labelLanguage:"Språk", groupFiles:"Filer", groupGame:"Spel", groupLauncher:"Startprogram",
       labelAutoUpdate:"Automatiska uppdateringar", labelPerformance:"Prestandaläge", saveSettingsLabel:"Spara inställningar", browseLabel:"Bläddra",
       setupTitle:"Konfiguration", setupIntro:"Ange dina sökvägar en gång. Nitro kommer ihåg dem.",
       labelSetupDolphin:"Dolphin-installation", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Fortsätt",
@@ -2944,7 +3002,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Skaparens namn",
       launcherUpdateMsg:"En ny launcher-version är tillgänglig.", launcherUpdateTitle:"Uppdatering tillgänglig", launcherUpdateLater:"Senare", launcherUpdateBtn:"Uppdatera!",
       launcherUpdateInstalling:"Laddar ner och installerar — det här fönstret startar om automatiskt.",
-      launcherUpdateFailed:"Uppdateringen misslyckades. Du kan fortsätta använda den här versionen för nu." },
+      launcherUpdateHint:"Tar några sekunder och startar om av sig själv.", launcherUpdateFailed:"Uppdateringen misslyckades. Du kan fortsätta använda den här versionen för nu." },
     fi: { navHome:"Koti", navCredits:"Tekijät", navSettings:"Asetukset",
       exitBtn:"Sulje",
       labelDolphin:"Dolphin", labelIso:"MKW ISO", labelActiveMod:"Aktiivinen modi", labelLauncher:"Käynnistin",
@@ -2954,7 +3012,7 @@ function toast(msg, isError, sticky) {
       cardCreditsTitle:"Tekijät", cardCreditsDesc:"Lisenssi, yhteisölinkit ja mihin Nitro perustuu.",
       settingsBackBtn:"← Koti", settingsTitle:"Asetukset", settingsTag:"Käynnistimen asetukset",
       labelDolphinPath:"Dolphin-polku", labelIsoPath:"MKW ISO -polku", labelMyStuff:"My Stuff -kansio", labelMyStuffMode:"My Stuff Dolphinissa", optMyStuffOn:"Käytössä", optMyStuffMusic:"Vain musiikki", optMyStuffOff:"Pois käytöstä", addedFiles:"Tiedostoja lisätty:",
-      labelResolution:"Resoluutio", labelLanguage:"Kieli",
+      labelResolution:"Resoluutio", labelLanguage:"Kieli", groupFiles:"Tiedostot", groupGame:"Peli", groupLauncher:"Käynnistin",
       labelAutoUpdate:"Automaattiset päivitykset", labelPerformance:"Suorituskykytila", saveSettingsLabel:"Tallenna asetukset", browseLabel:"Selaa",
       setupTitle:"Asennus", setupIntro:"Aseta polkusi kerran. Nitro muistaa ne.",
       labelSetupDolphin:"Dolphin-asennus", labelSetupIso:"Mario Kart Wii ISO", setupContinueLabel:"Jatka",
@@ -3003,7 +3061,7 @@ function toast(msg, isError, sticky) {
       miiLblCreator:"Luojan nimi",
       launcherUpdateMsg:"Uusi launcher-versio on saatavilla.", launcherUpdateTitle:"Päivitys saatavilla", launcherUpdateLater:"Myöhemmin", launcherUpdateBtn:"Päivitä!",
       launcherUpdateInstalling:"Ladataan ja asennetaan — tämä ikkuna käynnistyy automaattisesti uudelleen.",
-      launcherUpdateFailed:"Päivitys epäonnistui. Voit jatkaa tämän version käyttöä toistaiseksi." },
+      launcherUpdateHint:"Kestää muutaman sekunnin ja käynnistyy itse uudelleen.", launcherUpdateFailed:"Päivitys epäonnistui. Voit jatkaa tämän version käyttöä toistaiseksi." },
   };
 
   function applyTranslations(langCode){
@@ -3233,7 +3291,9 @@ function toast(msg, isError, sticky) {
     const msg = document.getElementById('launcherUpdateMsg');
     const bar = document.getElementById('launcherUpdateBar');
     const title = document.getElementById('launcherUpdateTitle');
+    const hint = document.getElementById('launcherUpdateHint');
     if(!modal || !btn || !msg) return;
+    if(hint){ hint.textContent = t.launcherUpdateHint || hint.textContent; hint.style.display = ''; }
     title.textContent = t.launcherUpdateTitle || 'Update available';
     msg.textContent = t.launcherUpdateMsg;
     btn.textContent = t.launcherUpdateBtn;
@@ -3244,6 +3304,7 @@ function toast(msg, isError, sticky) {
     later.onclick = () => modal.classList.add('hidden');
     btn.onclick = async () => {
       btn.disabled = true; later.disabled = true;
+      if(hint) hint.style.display = 'none';
       bar.classList.remove('hidden');
       msg.textContent = t.launcherUpdateInstalling;
       const fail = text => {
@@ -3289,6 +3350,57 @@ window.addEventListener("DOMContentLoaded", () => {
   const img = document.querySelector(".hero-banner img");
   if(img) img.decoding = "async";
 });
+</script>
+<script>
+(function(){
+  const vDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  const iDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "selectedIndex");
+  const all = [];
+  function closeAll(){ all.forEach(w => w.classList.remove("open")); }
+  function build(sel){
+    const wrap = document.createElement("div"); wrap.className = "cs";
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "cs-btn";
+    const list = document.createElement("div"); list.className = "cs-list";
+    wrap.append(btn, list);
+    sel.classList.add("cs-native");
+    sel.insertAdjacentElement("afterend", wrap);
+    all.push(wrap);
+    const label = () => { const o = sel.options[sel.selectedIndex]; btn.textContent = o ? o.textContent : ""; };
+    const fill = () => {
+      list.innerHTML = "";
+      Array.from(sel.options).forEach((o, i) => {
+        const d = document.createElement("div");
+        d.className = "cs-opt" + (i === sel.selectedIndex ? " on" : "");
+        d.textContent = o.textContent;
+        d.addEventListener("click", e => {
+          e.stopPropagation();
+          iDesc.set.call(sel, i); label(); wrap.classList.remove("open");
+          sel.dispatchEvent(new Event("input", { bubbles: true }));
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        list.appendChild(d);
+      });
+    };
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const was = wrap.classList.contains("open");
+      closeAll();
+      if (!was){
+        fill(); wrap.classList.add("open");
+        const on = list.querySelector(".on"); if (on) on.scrollIntoView({ block: "nearest" });
+      }
+    });
+    Object.defineProperty(sel, "value", { configurable: true, get(){ return vDesc.get.call(sel); }, set(v){ vDesc.set.call(sel, v); label(); } });
+    Object.defineProperty(sel, "selectedIndex", { configurable: true, get(){ return iDesc.get.call(sel); }, set(v){ iDesc.set.call(sel, v); label(); } });
+    new MutationObserver(label).observe(sel, { childList: true, subtree: true, characterData: true });
+    const vis = () => { wrap.style.display = sel.style.display === "none" ? "none" : ""; };
+    new MutationObserver(vis).observe(sel, { attributes: true, attributeFilter: ["style"] });
+    vis(); label();
+  }
+  build(document.getElementById("miiGender"));
+  document.addEventListener("click", closeAll);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeAll(); });
+})();
 </script>
 </body>
 </html>
